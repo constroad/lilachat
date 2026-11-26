@@ -165,6 +165,7 @@ function drawBubble(cell: MessageCell, chat: CellDrawContext): ReactElement {
       entrega={cell.delivery}
       esGrupo={chat.isGroup}
       nombreAutor={prospect?.name ?? (author === undefined ? undefined : chat.names.get(author))}
+      insignia={prospect?.badge}
       fotoAutor={author === undefined || prospect ? undefined : chat.photos.get(author)}
       onGreet={cell.greets ? chat.onGreet : undefined}
       onVerImagen={chat.onOpenMedia}

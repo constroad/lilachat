@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useRef, type ComponentProps } from 'react';
-import { replyOpensThread, usesFlatLayout, type MemberPill } from '@lilachat/shared';
+import { drawsAsList, replyOpensThread, usesFlatLayout, type MemberPill } from '@lilachat/shared';
 import { MessageRow, type Row } from './MessageRow';
 import type { ChatMessage } from './useChat';
 import { useGroupsAsList } from '../ui/groupsAsList';
@@ -63,8 +63,10 @@ export function useDibujarFila(p: {
 }) {
   const { rows, yo, jwt, encrypted, esGrupo, nombres, fotos, roles, leidoHasta, entregadoHasta, divisorSeq, noLeidosAlAbrir } = p;
   useVoiceNoteQueue({ chatId: p.chatId, rows, names: nombres, photos: fotos });
-  // Groups as flat rows, like Slack (design `s-01`): always in a company space, on request in a personal group.
-  const flat = usesFlatLayout({ kind: esGrupo ? 'group' : 'direct', workspaceId: p.workspaceId }, { groupsAsList: useGroupsAsList() });
+  // A space's replies open threads (`flat`); the rows are bubbles unless the person asked for the list (José 25/11).
+  const groupsAsList = useGroupsAsList();
+  const flat = usesFlatLayout({ kind: esGrupo ? 'group' : 'direct', workspaceId: p.workspaceId }, { groupsAsList });
+  const listLook = drawsAsList({ kind: esGrupo ? 'group' : 'direct' }, { groupsAsList });
   const { elegidos, enSeleccion, resaltado, seqBuscado, onVerImagen, onSeleccionar, onResponder, onFallido, onTocarCita, onAbrirHilo, hiloConNuevas } = p;
   // A new message rebuilt every quote: the unchanged ones keep their object and their row bails out (F4, 02/11).
   const citados = useKeptValues(p.citados);
@@ -72,8 +74,8 @@ export function useDibujarFila(p: {
   const { onGreet } = p;
   // One cell per row with all that changes its look: an equal cell keeps its object and FlashList skips it (F4, 03/11).
   const built = useMemo(
-    () => buildMessageCells(rows, { myUserId: yo, flat, dividerSeq: divisorSeq, unreadAtOpen: noLeidosAlAbrir, otherReadSeq: leidoHasta, otherDeliveredSeq: entregadoHasta, quotes: citados, threadHasNew: hiloConNuevas }),
-    [rows, yo, flat, divisorSeq, noLeidosAlAbrir, leidoHasta, entregadoHasta, citados, hiloConNuevas]
+    () => buildMessageCells(rows, { myUserId: yo, flat: listLook, dividerSeq: divisorSeq, unreadAtOpen: noLeidosAlAbrir, otherReadSeq: leidoHasta, otherDeliveredSeq: entregadoHasta, quotes: citados, threadHasNew: hiloConNuevas }),
+    [rows, yo, listLook, divisorSeq, noLeidosAlAbrir, leidoHasta, entregadoHasta, citados, hiloConNuevas]
   );
   const lastCells = useRef<readonly MessageCell[] | undefined>(undefined);
   const cells = keepCells(lastCells.current, built.cells);
@@ -92,8 +94,8 @@ export function useDibujarFila(p: {
     [encrypted, flat, onResponder, onResponderEnHilo]
   );
   const chat = useMemo<CellDrawContext>(
-    () => ({ myUserId: yo, jwt, encrypted, isGroup: esGrupo, flat, names: nombres, photos: fotos, roles, chosen: elegidos, selecting: enSeleccion, highlighted: resaltado, searched: seqBuscado, starred: destacados, onOpenMedia: onVerImagen, onSelect: onSeleccionar, onReply: reply, onFailed: onFallido, onGoToQuote: onTocarCita, onOpenThread: onAbrirHilo, onReact: onReaccionar, onMoreEmojis: onMasEmojis, onShowReactions: onVerReacciones, onGreet, onShowPerson: p.onShowPerson }),
-    [yo, jwt, encrypted, esGrupo, flat, nombres, fotos, roles, elegidos, enSeleccion, resaltado, seqBuscado, destacados, onVerImagen, onSeleccionar, reply, onFallido, onTocarCita, onAbrirHilo, onReaccionar, onMasEmojis, onVerReacciones, onGreet, p.onShowPerson]
+    () => ({ myUserId: yo, jwt, encrypted, isGroup: esGrupo, flat: listLook, names: nombres, photos: fotos, roles, chosen: elegidos, selecting: enSeleccion, highlighted: resaltado, searched: seqBuscado, starred: destacados, onOpenMedia: onVerImagen, onSelect: onSeleccionar, onReply: reply, onFailed: onFallido, onGoToQuote: onTocarCita, onOpenThread: onAbrirHilo, onReact: onReaccionar, onMoreEmojis: onMasEmojis, onShowReactions: onVerReacciones, onGreet, onShowPerson: p.onShowPerson }),
+    [yo, jwt, encrypted, esGrupo, listLook, nombres, fotos, roles, elegidos, enSeleccion, resaltado, seqBuscado, destacados, onVerImagen, onSeleccionar, reply, onFallido, onTocarCita, onAbrirHilo, onReaccionar, onMasEmojis, onVerReacciones, onGreet, p.onShowPerson]
   );
   const drawRow = useCallback(
     ({ item }: { item: MessageCell }) => {

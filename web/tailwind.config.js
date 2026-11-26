@@ -36,6 +36,11 @@ const PALETTE = {
   'en-linea': 'online',
   // Read checks (José, 22/10: in dark mode «read» looked like «delivered»): the app's blue, light and dark.
   'check-leido': 'readTick',
+  // The app's bubble colors (José 25/11: dark mode like WhatsApp and Telegram, a full color on each side).
+  'burbuja-propia': 'bubbleOwn',
+  'on-burbuja-propia': 'onBubbleOwn',
+  'burbuja-ajena': 'bubbleOther',
+  'on-burbuja-ajena': 'onBubbleOther',
   warning: 'warning',
   'autor-1': 'author1',
   'autor-2': 'author2',

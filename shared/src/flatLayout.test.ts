@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { memberBadge, memberCountLabel, usesFlatLayout } from './flatLayout.js';
+import { drawsAsList, memberBadge, memberCountLabel, usesFlatLayout } from './flatLayout.js';
 
 /**
  * The Slack format (José, 21/10: «Lilachat se ve muy desordenado»; designs
@@ -18,6 +18,20 @@ describe('usesFlatLayout', () => {
   it('a personal group keeps bubbles unless the person asks for the list', () => {
     expect(usesFlatLayout({ kind: 'group' }, { groupsAsList: false })).toBe(false);
     expect(usesFlatLayout({ kind: 'group', workspaceId: null }, { groupsAsList: true })).toBe(true);
+  });
+});
+
+// José 25/11 (WhatsApp and Telegram screenshots): a space's chats are bubbles too; only the person's
+// own «grupos como lista» draws flat rows. Replies in a space still open threads (`usesFlatLayout`).
+describe('drawsAsList', () => {
+  it('a space or channel is drawn as bubbles unless the person asks for the list', () => {
+    expect(drawsAsList({ kind: 'group', workspaceId: 'w1' }, { groupsAsList: false })).toBe(false);
+    expect(drawsAsList({ kind: 'group', channel: { visibility: 'public' } }, { groupsAsList: false })).toBe(false);
+    expect(drawsAsList({ kind: 'group', workspaceId: 'w1' }, { groupsAsList: true })).toBe(true);
+  });
+  it('a 1:1 or my notes are always bubbles', () => {
+    expect(drawsAsList({ kind: 'direct' }, { groupsAsList: true })).toBe(false);
+    expect(drawsAsList({ kind: 'notas' }, { groupsAsList: true })).toBe(false);
   });
 });
 

@@ -71,6 +71,7 @@ function FilaDeMensaje({
   entrega,
   esGrupo = false,
   nombreAutor,
+  insignia,
   fotoAutor,
   onGreet,
   onVerImagen,
@@ -108,6 +109,8 @@ function FilaDeMensaje({
   esGrupo?: boolean;
   /** El nombre de quien escribió (resuelto con la agenda), en un grupo. */
   nombreAutor?: string;
+  /** «WhatsApp» beside a Dali prospect's name (José 25/11: bubbles in a space keep the flat row's pill). */
+  insignia?: string | null;
   /** Su foto de perfil, si tiene (FL13d). */
   fotoAutor?: string;
   /** «Saludar 👋» on «X se unió a Lilachat». */
@@ -316,14 +319,16 @@ function FilaDeMensaje({
               testID={`persona-${idDeFila}`}
               accessibilityLabel={`Ver a ${nombreAutor}`}
             >
-              <Text
-                testID={`autor-${idDeFila}`}
-                className="px-3 pt-1.5 text-[13px] font-semibold"
-                style={{ color: colorAutor }}
-                numberOfLines={1}
-              >
-                {nombreAutor}
-              </Text>
+              <View className="flex-row items-center gap-1.5 px-3 pt-1.5">
+                <Text testID={`autor-${idDeFila}`} className="shrink text-[13px] font-semibold" style={{ color: colorAutor }} numberOfLines={1}>
+                  {nombreAutor}
+                </Text>
+                {insignia ? (
+                  <View className="rounded-md bg-en-linea/15 px-1.5 py-px">
+                    <Text className="text-[11px] font-semibold text-en-linea">{insignia}</Text>
+                  </View>
+                ) : null}
+              </View>
             </Pressable>
           ) : null}
           {/* La cita llega resuelta desde la pantalla, que tiene todos los mensajes. A deleted message quotes nothing (E2E 11/11). */}

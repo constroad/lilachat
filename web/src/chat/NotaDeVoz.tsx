@@ -43,7 +43,7 @@ export function NotaDeVoz(props: { id: string; chatId: string; authorName: strin
   const onda = props.onda?.length ? props.onda : ONDA_PLANA;
   return (
     <div data-testid="nota-de-voz" className="flex min-w-[240px] items-center gap-3 py-1">
-      <button type="button" aria-label={sounding ? 'Pausar' : 'Reproducir'} onClick={toggle} className={`grid h-9 w-9 shrink-0 place-items-center rounded-full ${props.mio ? 'bg-on-primary/20' : 'bg-primary/10 text-primary'}`}>
+      <button type="button" aria-label={sounding ? 'Pausar' : 'Reproducir'} onClick={toggle} className={`grid h-9 w-9 shrink-0 place-items-center rounded-full ${props.mio ? 'bg-on-burbuja-propia/20' : 'bg-primary/10 text-primary'}`}>
         {sounding ? <Pause size={18} /> : <Play size={18} />}
       </button>
       <div className="min-w-0 flex-1">
@@ -73,7 +73,7 @@ export function NotaDeVoz(props: { id: string; chatId: string; authorName: strin
           className="flex h-8 cursor-pointer touch-none items-center gap-[2px]"
         >
           {onda.map((nivel, indice) => (
-            <span key={indice} className={`w-[3px] rounded-full ${indice / onda.length <= shown ? (props.mio ? 'bg-on-primary' : 'bg-primary') : props.mio ? 'bg-on-primary/40' : 'bg-outline/40'}`} style={{ height: `${Math.max(12, nivel)}%` }} />
+            <span key={indice} className={`w-[3px] rounded-full ${indice / onda.length <= shown ? (props.mio ? 'bg-on-burbuja-propia' : 'bg-primary') : props.mio ? 'bg-on-burbuja-propia/40' : 'bg-outline/40'}`} style={{ height: `${Math.max(12, nivel)}%` }} />
           ))}
         </div>
         <span className="text-[11px] tabular-nums opacity-80">{duracionDeVoz(ms)}</span>
@@ -83,7 +83,7 @@ export function NotaDeVoz(props: { id: string; chatId: string; authorName: strin
         data-testid="velocidad-voz"
         aria-label={`Velocidad ${rate}×`}
         onClick={() => (mine ? setVoiceNoteRate(nextPlaybackRate(rate)) : setIdleRate(nextPlaybackRate(rate)))}
-        className={`shrink-0 rounded-full px-2 py-1 text-[12px] font-bold tabular-nums ${props.mio ? 'bg-on-primary/20' : 'bg-primary/10 text-primary'}`}
+        className={`shrink-0 rounded-full px-2 py-1 text-[12px] font-bold tabular-nums ${props.mio ? 'bg-on-burbuja-propia/20' : 'bg-primary/10 text-primary'}`}
       >
         {`${String(rate).replace('.', ',')}×`}
       </button>

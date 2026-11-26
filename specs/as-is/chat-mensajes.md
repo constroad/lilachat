@@ -22,7 +22,9 @@ la búsqueda y las tarjetas de enlace. Hilos, medios, agenda y stickers tienen s
 - Divisor de no leídos y botón «bajar» con contador: `divisorNoLeidos.ts`, `useDivisorNoLeidos.tsx`, `finalDeLaConversacion.ts`.
 - Saltar a un mensaje (búsqueda, aviso, cita): `useIrAMensaje.ts`, `anchorAfterJump.ts`, `scrollSafely.ts`.
 - Mensaje largo colapsado con «Leer más»: motor `shared/src/mensajeLargo.ts` (700 caracteres o 15 líneas).
-- Formato Slack (filas planas) en canales, grupos de espacio o «grupos como lista»: `FlatMessageRow.tsx`, `ui/groupsAsList.ts`, `settings/GroupsAsListSetting.tsx`, motor `shared/src/flatLayout.ts`.
+- Burbujas en TODOS los chats desde el 25/11 (José, capturas de WhatsApp y Telegram): los canales y grupos de un espacio también. Las filas planas estilo Slack solo con «grupos como lista» (`drawsAsList`): `FlatMessageRow.tsx`, `ui/groupsAsList.ts`, `settings/GroupsAsListSetting.tsx`, motor `shared/src/flatLayout.ts`. En un espacio «Responder» sigue abriendo el hilo (`usesFlatLayout` decide el comportamiento, `drawsAsList` el dibujo).
+- Colores de burbuja (`shared/src/tokens.ts`): en oscuro la propia es violeta pleno `#5b3fc4` con texto claro y la ajena `#232f47`, un paso sobre el fondo. La web usa los mismos tokens (`bg-burbuja-propia`, `bg-burbuja-ajena`), con esquinas `rounded-2xl` y la punta recortada en la primera del bloque. Un prospecto de Dali lleva la etiqueta «WhatsApp» junto a su nombre en la burbuja.
+- Tarjeta de PDF con página: la tarjeta mide lo que la miniatura (240 dp + margen), la página va con esquinas redondeadas y el nombre se corta abajo; nunca se sale de la burbuja (`TarjetaDeArchivo.tsx`, `PdfCardWeb.tsx`).
 - Tamaño de letra del chat (`settings/ChatFontSetting.tsx`) y fondo (`FondoDelChat.tsx`).
 - Línea «Reenviado» (`ForwardedLabel.tsx`, 13/11).
 
@@ -163,6 +165,7 @@ Lo demás (editar, borrar, reenviar, fijar, destacar, info, reacciones, mencione
 - **20/10:** reacciones, chat contigo («Tú»), fijados como Slack (50, sin vencimiento) y reenviar como WhatsApp (0.1.105).
 - **20/10:** «Destacados» aprobado por José. Vista previa de YouTube, TikTok, Instagram y Facebook.
 - **21/10:** «Responder» abre el teclado. Formato Slack en canales (diseño `s-01`).
+- **25/11:** look de WhatsApp y Telegram: burbujas con color en los dos lados también en los espacios, violeta pleno en oscuro, PDF contenido en la burbuja.
 - **22/10:** abrir un mensaje viejo con su contexto. Lo borrado se lee borrado. «Bajar» dice cuántos sin leer.
 - **23/10:** un enlace de Google Maps muestra el punto (pendiente 80).
 - **23/11:** la tarjeta de ubicación (`LocationCard`/`LocationCardWeb`) gana «Abrir en Waze» junto a
@@ -198,7 +201,7 @@ Lo demás (editar, borrar, reenviar, fijar, destacar, info, reacciones, mencione
 | `f1-web-reacciones-reenviar` | Implementado | `reacciones/BotonDeReaccionar.tsx`, `reenviar/DialogoReenviar.tsx` |
 | `f1-web-info-fijados` | Implementado | `web/src/chat/info/DescripcionDelChat.tsx` |
 | `e-17-menciones-sugerencias-*` | Implementado | `SugerenciasDeMencion.tsx` (app y web), `shared/src/menciones.ts` |
-| `s-01-grupo-formato-slack` | Implementado como opción | `FlatMessageRow.tsx`, `shared/src/flatLayout.ts`, `GroupsAsListSetting.tsx` |
+| `s-01-grupo-formato-slack` | Solo con «grupos como lista» (25/11) | `FlatMessageRow.tsx`, `shared/src/flatLayout.ts`, `GroupsAsListSetting.tsx` |
 
 La banda «Ana respondió en un hilo · Ver» no tiene diseño de Stitch (decisión propia, 16/11).
 

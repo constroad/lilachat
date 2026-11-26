@@ -87,8 +87,8 @@ export const BurbujaDeMensaje = memo(function BurbujaDeMensaje(props: Props) {
           />
         ) : (
         <div
-          className={`max-w-full rounded-xl px-3 py-2 text-[length:var(--chat-font,14px)] leading-[var(--chat-line,20px)] ${
-            mio ? 'bg-primary text-on-primary' : 'border border-outline/15 bg-surface text-on-surface'
+          className={`max-w-full rounded-2xl px-3 py-2 text-[length:var(--chat-font,14px)] leading-[var(--chat-line,20px)] shadow-sm ${
+            mio ? `bg-burbuja-propia text-on-burbuja-propia ${agrupado ? '' : 'rounded-tr-md'}` : `bg-burbuja-ajena text-on-burbuja-ajena ${agrupado ? '' : 'rounded-tl-md'}`
           } ${mensaje.estado === 'fallido' ? 'opacity-70' : ''}`}
         >
           {props.conAutor ? <AuthorName senderId={mensaje.senderId} clientKey={mensaje.clientKey} prospectName={mensaje.prospect?.name} /> : null}
@@ -195,8 +195,10 @@ function AuthorName({ senderId, clientKey, prospectName }: { senderId: string; c
   const name = prospectName ?? nombres.get(senderId) ?? 'Alguien';
   const openCard = senderId !== yo && !prospectName && onViewPerson ? () => onViewPerson(senderId) : undefined;
   return (
-    <p className={`mb-0.5 truncate text-[13px] font-semibold ${COLOR_DE_AUTOR[colorDeAutor(senderId)]}`}>
-      <AuthorTap onTap={openCard} testId={`autor-${clientKey}`} label={`Ver a ${name}`}>{name}</AuthorTap>
+    <p className={`mb-0.5 flex min-w-0 items-center gap-1.5 text-[13px] font-semibold ${COLOR_DE_AUTOR[colorDeAutor(senderId)]}`}>
+      <span className="truncate"><AuthorTap onTap={openCard} testId={`autor-${clientKey}`} label={`Ver a ${name}`}>{name}</AuthorTap></span>
+      {/* A Dali prospect keeps the flat row's pill in a bubble (José 25/11). */}
+      {prospectName ? <span data-testid={`prospecto-${clientKey}`} className="shrink-0 rounded-md bg-en-linea/15 px-1.5 py-px text-[11px] text-en-linea">{contactBadge}</span> : null}
     </p>
   );
 }
@@ -235,7 +237,7 @@ function ThreadQuote({ root, mine, compact = false }: { root: number; mine: bool
     );
   }
   return (
-    <button type="button" data-testid={`cita-hilo-${root}`} onClick={() => onAbrirHilo?.(root)} className={`mb-1 block w-full rounded-lg border-l-4 px-2 py-1 text-left text-[13px] ${mine ? 'border-on-primary/60 bg-black/10' : 'border-primary bg-background'}`}>
+    <button type="button" data-testid={`cita-hilo-${root}`} onClick={() => onAbrirHilo?.(root)} className={`mb-1 block w-full rounded-lg border-l-4 px-2 py-1 text-left text-[13px] ${mine ? 'border-on-burbuja-propia/60 bg-black/15' : 'border-primary bg-background'}`}>
       <span className="block text-[11px] opacity-80">Respondió en un hilo</span>
       {rootMessage ? <span className={`block font-semibold ${mine ? '' : COLOR_DE_AUTOR[colorDeAutor(rootMessage.senderId)]}`}>{nombres.get(rootMessage.senderId) ?? 'Alguien'}</span> : null}
       <span className="line-clamp-2 block opacity-90">{preview}</span>
@@ -249,7 +251,7 @@ function CitaDelMensaje({ seq, mio }: { seq: number; mio: boolean }) {
   const original = citado(seq);
   const texto = original?.deletedAt ? 'Se eliminó este mensaje' : original?.body ?? (original?.media ? 'Archivo' : 'Mensaje anterior');
   return (
-    <div data-testid={`cita-${seq}`} className={`mb-1 rounded-lg border-l-4 px-2 py-1 text-[13px] ${mio ? 'border-on-primary/60 bg-black/10' : 'border-primary bg-background'}`}>
+    <div data-testid={`cita-${seq}`} className={`mb-1 rounded-lg border-l-4 px-2 py-1 text-[13px] ${mio ? 'border-on-burbuja-propia/60 bg-black/15' : 'border-primary bg-background'}`}>
       {original ? <p className={`font-semibold ${mio ? '' : COLOR_DE_AUTOR[colorDeAutor(original.senderId)]}`}>{nombres.get(original.senderId) ?? 'Alguien'}</p> : null}
       <p className="line-clamp-2 opacity-90">{texto}</p>
     </div>

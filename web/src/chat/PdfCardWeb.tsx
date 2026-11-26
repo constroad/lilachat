@@ -23,7 +23,7 @@ export function PdfCardWeb({ media, testId, onOpen }: { media: PdfMedia; testId:
       </span>
     </>
   );
-  const frame = 'mb-1 block w-full max-w-[300px] overflow-hidden rounded-lg border border-outline/15 bg-surface text-left';
+  const frame = 'mb-1 block w-full max-w-[300px] overflow-hidden rounded-xl border border-outline/15 bg-surface text-left text-on-surface';
   return onOpen ? (
     <button type="button" data-testid={testId} onClick={onOpen} className={frame}>{body}</button>
   ) : (

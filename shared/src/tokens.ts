@@ -136,11 +136,16 @@ export const vividPulse = {
       railActive: '#253048',
       onRailActive: '#e7e9f3',
       listBackground: '#1a2337',
-      bubbleOwn: '#3b2a6b',
-      onBubbleOwn: '#f1ecff',
-      onBubbleOwnMuted: '#b9addf',
+      /**
+       * José 25/11 (WhatsApp green, Telegram violet): the deep violet read as a black block. A full
+       * violet, like Telegram's, still holds white text (6:1) and its muted line (4.6:1).
+       */
+      bubbleOwn: '#5b3fc4',
+      onBubbleOwn: '#f6f3ff',
+      onBubbleOwnMuted: '#d6ccff',
       readTickOwn: '#7dd3fc',
-      bubbleOther: '#1e293b',
+      /** A step above the chat's navy, so the bubble reads as a bubble and not as a hole. */
+      bubbleOther: '#232f47',
       onBubbleOther: '#e7e9f3',
       readTick: '#60a5fa',
       /** Los mismos tonos, claros: legibles sobre la burbuja ajena oscura. */

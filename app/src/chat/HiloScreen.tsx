@@ -8,7 +8,7 @@ import { KeyboardStickyView } from 'react-native-keyboard-controller';
 import { useScrollConTeclado } from './useScrollConTeclado';
 import { ChatKeyboardArea } from './ChatBottom';
 import { ArrowLeft, Check, ClipboardCheck, Send, Smile, Square, SquareCheck, X } from 'lucide-react-native';
-import { checklistMembers, deleteBeforeCursor, formatClock, memberBadge, usesFlatLayout, miReaccion, primerEnlace, puedeEditar, puedeReaccionar, resolveDeliveryState, type DeliveryState, type MemberPill } from '@lilachat/shared';
+import { checklistMembers, deleteBeforeCursor, formatClock, memberBadge, drawsAsList, miReaccion, primerEnlace, puedeEditar, puedeReaccionar, resolveDeliveryState, type DeliveryState, type MemberPill } from '@lilachat/shared';
 import type { MencionElegida, MencionEnMensaje } from '@lilachat/shared';
 import { useMenciones, type MentionableMember } from './useMenciones';
 import { SugerenciasDeMencion } from './SugerenciasDeMencion';
@@ -176,7 +176,8 @@ export function HiloScreen(props: {
   }, [highlighted]);
   const nombreDe = (id: string) => (id === props.yo ? 'Tú' : (props.nombres.get(id) ?? 'Alguien'));
   // The thread follows its chat: as a list in the Slack format (design `s-02`).
-  const flat = usesFlatLayout({ kind: props.esGrupo ? 'group' : 'direct', workspaceId: props.workspaceId }, { groupsAsList: useGroupsAsList() });
+  // Drawn as Slack rows only when the person asked for the list (José 25/11: bubbles, like WhatsApp and Telegram).
+  const flat = drawsAsList({ kind: props.esGrupo ? 'group' : 'direct' }, { groupsAsList: useGroupsAsList() });
   const badgeOf = (id: string) => memberBadge({ ...props.roles.get(id), isMe: id === props.yo });
 
   const startEditing = (seq: number) => {

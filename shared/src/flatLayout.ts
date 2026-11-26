@@ -13,6 +13,16 @@ export function usesFlatLayout(chat: FlatLayoutChat, prefs: { groupsAsList: bool
   return Boolean(chat.workspaceId || chat.channel) || prefs.groupsAsList;
 }
 
+/**
+ * How the rows LOOK, apart from how replies behave (José 25/11, WhatsApp and Telegram screenshots:
+ * «el nuestro no tiene bordes, es todo cuadrado»): bubbles everywhere, flat rows only when the person
+ * turns on «grupos como lista». A space keeps Slack's behavior (a reply opens a thread) through
+ * `usesFlatLayout`. PURE.
+ */
+export function drawsAsList(chat: FlatLayoutChat, prefs: { groupsAsList: boolean }): boolean {
+  return chat.kind === 'group' && prefs.groupsAsList;
+}
+
 const ROLE_LABEL: Record<string, string> = { owner: 'Dueño', admin: 'Admin', app: 'App' };
 
 /** What a member's pill is made of: the role (in a space, the space's) and the job title in the space. */

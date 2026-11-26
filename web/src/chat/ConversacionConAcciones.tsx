@@ -44,7 +44,7 @@ import { useDestacadosWeb } from './destacados/useDestacadosWeb';
 import { TarjetaDeDestacados } from './destacados/TarjetaDeDestacados';
 import { useStickers } from './stickers/useStickers';
 import type { StickerAction } from './contextoDeLaConversacion';
-import { memberBadge, opensInPhotoViewer, replyOpensThread, usesFlatLayout } from '@lilachat/shared';
+import { drawsAsList, memberBadge, opensInPhotoViewer, replyOpensThread, usesFlatLayout } from '@lilachat/shared';
 import { useGroupsAsList } from '../ui/groupsAsList';
 import { GroupCallStripFor, useCalls } from '../calls/CallProvider';
 import { useVisitDoor } from '../spaces/visits/useVisitDoor';
@@ -185,7 +185,10 @@ export function ConversacionConAcciones(
     [keepReceived, saveGif, chat.id, onAviso]
   );
   // Groups as flat rows, like Slack (design `s-01`): always in a company space, on request in a personal group.
-  const flat = usesFlatLayout(chat, { groupsAsList: useGroupsAsList() });
+  // A space's replies open threads (`flat`); the rows are bubbles unless the person asked for the list (José 25/11).
+  const groupsAsList = useGroupsAsList();
+  const flat = usesFlatLayout(chat, { groupsAsList });
+  const listLook = drawsAsList(chat, { groupsAsList });
   const onAccion = useCallback(
     (mensaje: MensajeEnPantalla, accion: AccionSobreMensaje) => {
       if (accion === 'fijar') return fijar.pedir(mensaje.seq);
@@ -215,8 +218,8 @@ export function ConversacionConAcciones(
   const funAllowed = chat.kind === 'direct' ? !chat.propio : chat.kind === 'group' && chat.funAllowed === true;
   const sendWink = useCallback((wink: WinkId) => void sync.sendWink(chat.id, wink).then((result) => result.ok || onAviso(result.motivo)), [sync, chat.id, onAviso]);
   const contexto = useMemo<ContextoDeLaConversacion>(
-    () => ({ yo, jwt: props.jwt, chat, detalle, nombres, photos, citado, onAccion, onVerFoto: openPhoto, onViewPerson: showPerson, onVerPdf: setPdfAbierto, onGreet: greet, canGreet, puedeFijar, fijados: seqsFijados, onAbrirHilo: chat.encrypted ? undefined : abrirHilo, hiloConNuevas: hilos.hiloConNuevas, onReaccionar: chat.encrypted ? undefined : onReaccionar, onEditarRecordatorio: editReminder, destacados: destacados.seqs, onStickerAction: chat.encrypted ? undefined : onStickerAction, flat, badgeOf, isAppOf, onReturnWink: funAllowed ? sendWink : undefined }),
-    [yo, props.jwt, chat, detalle, nombres, photos, citado, onAccion, openPhoto, showPerson, greet, canGreet, puedeFijar, seqsFijados, abrirHilo, hilos.hiloConNuevas, onReaccionar, editReminder, destacados.seqs, onStickerAction, flat, badgeOf, isAppOf, funAllowed, sendWink]
+    () => ({ yo, jwt: props.jwt, chat, detalle, nombres, photos, citado, onAccion, onVerFoto: openPhoto, onViewPerson: showPerson, onVerPdf: setPdfAbierto, onGreet: greet, canGreet, puedeFijar, fijados: seqsFijados, onAbrirHilo: chat.encrypted ? undefined : abrirHilo, hiloConNuevas: hilos.hiloConNuevas, onReaccionar: chat.encrypted ? undefined : onReaccionar, onEditarRecordatorio: editReminder, destacados: destacados.seqs, onStickerAction: chat.encrypted ? undefined : onStickerAction, flat: listLook, badgeOf, isAppOf, onReturnWink: funAllowed ? sendWink : undefined }),
+    [yo, props.jwt, chat, detalle, nombres, photos, citado, onAccion, openPhoto, showPerson, greet, canGreet, puedeFijar, seqsFijados, abrirHilo, hilos.hiloConNuevas, onReaccionar, editReminder, destacados.seqs, onStickerAction, listLook, badgeOf, isAppOf, funAllowed, sendWink]
   );
 
   // Calls: a 1:1 with a person, never with yourself or an installed app (a bot does not answer).

@@ -37,7 +37,7 @@ describe('a link in a notes chat bubble', () => {
     expect(screen.getByTestId('enlace-guardado-5')).toHaveTextContent('Capi');
     // E2E 18/11: a long author pushed the bubble off screen; the card and its bubble never grow past their column.
     expect(screen.getByTestId('enlace-guardado-5')).toHaveClass('max-w-full');
-    expect(screen.getByTestId('enlace-guardado-5').closest('.rounded-xl.px-3')).toHaveClass('max-w-full');
+    expect(screen.getByTestId('enlace-guardado-5').closest('.rounded-2xl.px-3')).toHaveClass('max-w-full');
     // Review 18/11: the link bubble takes the wider column, so its pill and badges fit.
     expect(screen.getByTestId('enlace-guardado-5').closest('.flex-col')).toHaveClass('flex-1');
     // Its hover actions stack in one column beside it, so the row is not eaten on a phone.

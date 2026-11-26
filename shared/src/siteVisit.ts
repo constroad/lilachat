@@ -249,10 +249,10 @@ export function pointLine(point: VisitPoint): string {
 }
 
 /**
- * Our server passes the point's field hour (`tomadoEn`) to Portal only once Portal's tool declares it and
- * José re-approved it in Agentes: its strict schema refuses an unknown field (José 26/11).
+ * Our server passes the point's field hour (`tomadoEn`) to Portal. On since 26/11: Portal's tool declares
+ * it (ee4028fff); its strict schema would refuse it before. Off again only if Portal drops the field.
  */
-export const VISIT_POINT_FIELD_TIME_READY = false;
+export const VISIT_POINT_FIELD_TIME_READY = true;
 const FIELD_TIME_AHEAD_MS = 5 * 60_000;
 const FIELD_TIME_BACK_MS = 30 * 24 * 3_600_000;
 /** The phone's hour for a point, only when believable: not ahead of the server, not older than 30 days. */

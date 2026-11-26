@@ -177,11 +177,11 @@ visita no escribe nada.
 - Siguen necesitando red y lo dicen: «Ver PDF» y «Abrir croquis»; en una visita que todavía no llegó
   al Portal dicen «Primero la visita tiene que llegar al Portal…».
 - Descartar la creación de una visita nueva se lleva todo su trabajo (`keysGoingWith`).
-- **Hora del punto (26/11, apagada):** el teléfono manda `taken_at` y nuestro server lo pasa como
-  `tomadoEn` (`pointFieldTime`: no más de 5 min adelante ni 30 días atrás) solo con
-  `VISIT_POINT_FIELD_TIME_READY = true`. Orden: Portal declara `tomadoEn` en `marcar_punto_de_visita` y
-  despliega → José reaprueba la herramienta en Agentes → Herramientas (cambia su huella) → se enciende.
-  Antes de eso, mandarlo rechaza el formulario entero.
+- **Hora del punto (26/11, encendida):** el teléfono manda `taken_at` y nuestro server lo pasa como
+  `tomadoEn` (`pointFieldTime`: no más de 5 min adelante ni 30 días atrás; ISO con Z). Portal lo declaró en
+  `marcar_punto_de_visita` (ee4028fff, en producción 16:48Z; un valor que no parsea rechaza el punto, uno
+  fuera de rango toma la hora del server, un reenvío conserva la guardada). Su huella cambió: hasta que
+  José la reaprueba en Agentes → Herramientas, todo punto falla con `tool_unavailable`, con hora o sin ella.
 - **Compresión:** las tomas de la cámara van enteras y nuestro server las achica una vez al quemar el
   sello (foto con sharp, video con ffmpeg, `stampedForward.ts`); las fotos de galería se achican en el
   teléfono (`shrinkPhotoFile`) antes de entrar a la cola, en el Drive y desde el 26/11 también en la

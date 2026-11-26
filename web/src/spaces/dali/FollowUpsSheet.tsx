@@ -87,7 +87,7 @@ function FollowUpCard(props: Props & { item: FollowUpItem; danger?: boolean }) {
       <div className="mt-2.5 flex flex-wrap items-center gap-2">
         {isDraft ? <SolidButton testId="enviar-borrador" disabled={busy || !text.trim()} onClick={() => void run(() => sendFollowUp(props.jwt, props.spaceId, prospect, text.trim()))}><Send size={16} /> Enviar</SolidButton> : null}
         {isDraft && !editing ? <OutlineButton testId="editar-seguimiento" onClick={() => setEditing(true)}>Editar</OutlineButton> : null}
-        <a href={`tel:+${prospect.phone}`} aria-label="Llamar" className="grid h-10 w-10 place-items-center rounded-full border border-outline/30 text-primary hover:bg-background"><Phone size={16} /></a>
+        {prospect.phone ? <a href={`tel:+${prospect.phone}`} aria-label="Llamar" className="grid h-10 w-10 place-items-center rounded-full border border-outline/30 text-primary hover:bg-background"><Phone size={16} /></a> : null}
         <TextButton testId="reprogramar-seguimiento" tone="neutral" onClick={() => setPlanning(true)}><CalendarClock size={14} /> {prospect.nextAction ? 'Reprogramar' : 'Agendar'}</TextButton>
         <TextButton tone="neutral" onClick={() => props.onOpenProspect(prospect)}><MessageSquare size={14} /> Conversación</TextButton>
         {levelOf(prospect.score) === 'cold' ? <TextButton testId="cerrar-solo-consulta" tone="neutral" onClick={() => void run(() => sendChange(props.jwt, props.spaceId, prospect, { result: { outcome: 'lost', reason: 'not_a_buyer' } }))}>Cerrar como solo consulta</TextButton> : null}

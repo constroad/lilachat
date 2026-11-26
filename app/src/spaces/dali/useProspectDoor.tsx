@@ -73,11 +73,13 @@ function HeaderActions({ prospect, onSheet }: { prospect: ProspectView; onSheet:
   const colors = useColores();
   return (
     <View className="flex-row items-center gap-1">
-      <Pressable testID="cabecera-llamar" accessibilityRole="button" accessibilityLabel="Llamar" onPress={() => callProspect(prospect.phone)} className="h-11 w-11 items-center justify-center">
-        <View className="h-10 w-10 items-center justify-center rounded-full border border-outline/30">
-          <Phone size={18} color={colors.primary} />
-        </View>
-      </Pressable>
+      {prospect.phone ? (
+        <Pressable testID="cabecera-llamar" accessibilityRole="button" accessibilityLabel="Llamar" onPress={() => callProspect(prospect.phone)} className="h-11 w-11 items-center justify-center">
+          <View className="h-10 w-10 items-center justify-center rounded-full border border-outline/30">
+            <Phone size={18} color={colors.primary} />
+          </View>
+        </Pressable>
+      ) : null}
       <Pressable testID="cabecera-ficha" accessibilityRole="button" accessibilityLabel="Ficha del prospecto" onPress={onSheet} className="h-11 justify-center">
         <View className="h-10 flex-row items-center gap-0.5 rounded-xl border border-outline/30 pl-3 pr-2">
           <Text className="text-[13px] font-semibold text-on-surface">Ficha</Text>

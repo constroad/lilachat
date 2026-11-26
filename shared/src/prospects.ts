@@ -19,6 +19,7 @@ const PERU_MOBILE_LENGTH = 11;
 
 export type ProspectAttendedBy = 'dali' | 'human';
 export type ProspectSource = { kind: 'ctwa'; adId?: string; adTitle?: string; adUrl?: string; platform?: 'instagram' | 'facebook' };
+/** `phone` is '' when WhatsApp hides the number (a `@lid` chat, `hidden_number: true`): no «Llamar» then. */
 export type ProspectState = { name?: string; phone: string; lastActivityAt: string; attendedBy: ProspectAttendedBy; source?: ProspectSource; listing?: 'prospect' | 'chat' };
 /** A message the prospect wrote, carried by the bot: who, and when they sent it on WhatsApp. `phone` is absent for a WhatsApp group sender whose number WhatsApp hides (a `@lid` contact, fase 1). */
 export type ProspectAuthor = { name: string; phone?: string; sentAt?: string; adTitle?: string };
@@ -62,7 +63,9 @@ function nameOf(raw: unknown): { ok: true; name?: string } | Refusal {
 export function validateProspectState(raw: unknown): { ok: true; state: ProspectState } | Refusal {
   const body = record(raw);
   const phone = digitsOf(body.phone);
-  if (phone.length < PHONE_DIGITS.min || phone.length > PHONE_DIGITS.max) return refuse(`phone lleva de ${PHONE_DIGITS.min} a ${PHONE_DIGITS.max} dígitos.`);
+  // A chat WhatsApp knows only by its LID has no number to give: the prospect comes without one (agentes, 26/11).
+  const hidden = body.hidden_number === true && phone === '';
+  if (!hidden && (phone.length < PHONE_DIGITS.min || phone.length > PHONE_DIGITS.max)) return refuse(`phone lleva de ${PHONE_DIGITS.min} a ${PHONE_DIGITS.max} dígitos (o hidden_number: true sin phone).`);
   if (!isIsoDate(body.last_activity_at)) return refuse('last_activity_at va como fecha ISO.');
   if (body.attended_by !== undefined && body.attended_by !== 'dali' && body.attended_by !== 'human') return refuse('attended_by va como dali o human.');
   if (body.listing !== undefined && body.listing !== 'prospect' && body.listing !== 'chat') return refuse('listing va como prospect o chat.');
@@ -80,8 +83,12 @@ export function validateProspectState(raw: unknown): { ok: true; state: Prospect
   return { ok: true, state: source ? { ...state, source: source.source } : state };
 }
 
+/** What is shown where a prospect's number would go when WhatsApp hides it. */
+export const HIDDEN_NUMBER = 'Número oculto por WhatsApp';
+
 /** «+51 949 123 824» for a Peruvian mobile; any other number with its + and as it came. */
 export function shownProspectPhone(digits: string): string {
+  if (!digits) return HIDDEN_NUMBER;
   if (digits.length === PERU_MOBILE_LENGTH && digits.startsWith('51')) return `+51 ${digits.slice(2, 5)} ${digits.slice(5, 8)} ${digits.slice(8)}`;
   return `+${digits}`;
 }

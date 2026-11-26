@@ -253,7 +253,7 @@ function CardActions(props: CardProps & { draft: boolean; text: string }) {
         </SolidButton>
       ) : null}
       {props.draft && props.edit === undefined ? <OutlineButton testID="editar-seguimiento" onPress={() => desk.edit(prospect.id, props.text)}>Editar</OutlineButton> : null}
-      <CallButton phone={prospect.phone} />
+      {prospect.phone ? <CallButton phone={prospect.phone} /> : null}
       <TextButton testID="reprogramar-seguimiento" tone="neutral" onPress={() => desk.plan(prospect)}>{prospect.nextAction ? 'Reprogramar' : 'Agendar'}</TextButton>
       {levelOf(prospect.score) === 'cold' ? (
         <TextButton testID="cerrar-solo-consulta" tone="neutral" onPress={() => desk.closeAsConsult(prospect)}>

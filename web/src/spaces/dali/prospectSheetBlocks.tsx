@@ -28,9 +28,11 @@ export function ContactCard({ prospect }: { prospect: ProspectView }) {
           <span className="block whitespace-nowrap font-mono text-[13px] text-on-surface-variant">{shownProspectPhone(prospect.phone)}</span>
         </span>
       </div>
-      <a href={`tel:+${prospect.phone}`} data-testid="llamar-prospecto" className="mt-3 flex h-10 items-center justify-center gap-2 rounded-xl bg-primary text-[13px] font-semibold text-on-primary">
-        <Phone size={16} /> Llamar
-      </a>
+      {prospect.phone ? (
+        <a href={`tel:+${prospect.phone}`} data-testid="llamar-prospecto" className="mt-3 flex h-10 items-center justify-center gap-2 rounded-xl bg-primary text-[13px] font-semibold text-on-primary">
+          <Phone size={16} /> Llamar
+        </a>
+      ) : null}
     </Card>
   );
 }

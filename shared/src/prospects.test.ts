@@ -3,6 +3,15 @@ import { PROSPECT_ID, authorKeyOf, contactBadge, prospectAuthorView, prospectCha
 
 /** Dali's prospects (BOTS-API §c-prospectos, José via agentes 16/11): one channel per prospect of a paid ad. */
 describe('validateProspectState', () => {
+  it('a chat WhatsApp knows only by its LID comes without a number when it says hidden_number', () => {
+    const at = '2026-11-26T15:00:00.000Z';
+    const hidden = validateProspectState({ hidden_number: true, name: 'Alonso', last_activity_at: at });
+    expect(hidden.ok && hidden.state.phone).toBe('');
+    expect(validateProspectState({ last_activity_at: at }).ok).toBe(false);
+    expect(validateProspectState({ hidden_number: true, phone: '12', last_activity_at: at }).ok).toBe(false);
+    expect(shownProspectPhone('')).toBe('Número oculto por WhatsApp');
+  });
+
   const now = '2026-11-17T14:02:00.000Z';
 
   it('keeps the phone as digits and defaults to Dali attending', () => {

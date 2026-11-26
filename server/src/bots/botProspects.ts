@@ -46,7 +46,8 @@ const prospectSchema = new Schema<ProspectChannel>(
     prospectId: { type: String, required: true },
     chatId: { type: Schema.Types.ObjectId, required: true },
     name: { type: String },
-    phone: { type: String, required: true },
+    // '' when WhatsApp hides the number (`hidden_number`): Mongoose's `required` would refuse the empty string.
+    phone: { type: String, default: '' },
     lastActivityAt: { type: String, required: true },
     attendedBy: { type: String, enum: ['dali', 'human'], default: 'dali' },
     source: { type: sourceSchema, default: undefined },
@@ -154,7 +155,7 @@ export async function upsertProspectChannel(installation: Installation, prospect
 export async function chatOfProspect(installation: Pick<Installation, 'workspaceId' | 'appId'>, prospectId: string): Promise<{ chatId: Types.ObjectId; author: ProspectAuthor } | ProspectsError> {
   const found = await ProspectChannelModel.findOne({ workspaceId: installation.workspaceId, appId: installation.appId, prospectId }).lean<ProspectChannel | null>();
   if (!found) return fail(404, 'prospect_not_found', `Ese prospecto no tiene canal: manda primero PUT /api/bots/prospects/${prospectId}.`);
-  const author: ProspectAuthor = { name: found.name ?? shownProspectPhone(found.phone), phone: found.phone, ...(found.source?.adTitle ? { adTitle: found.source.adTitle } : {}) };
+  const author: ProspectAuthor = { name: found.name ?? shownProspectPhone(found.phone), ...(found.phone ? { phone: found.phone } : {}), ...(found.source?.adTitle ? { adTitle: found.source.adTitle } : {}) };
   return { chatId: found.chatId, author };
 }
 

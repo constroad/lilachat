@@ -71,9 +71,11 @@ export function ContactCard({ prospect }: { prospect: ProspectView }) {
           {prospect.name ? <Text style={{ fontFamily: MONO_FONT }} className="text-[14px] text-on-surface">{shownProspectPhone(prospect.phone)}</Text> : null}
         </View>
       </View>
-      <View className="mt-3">
-        <SolidButton testID="llamar-prospecto" icon={<Phone size={18} color={colors['on-primary']} />} onPress={() => callProspect(prospect.phone)}>Llamar</SolidButton>
-      </View>
+      {prospect.phone ? (
+        <View className="mt-3">
+          <SolidButton testID="llamar-prospecto" icon={<Phone size={18} color={colors['on-primary']} />} onPress={() => callProspect(prospect.phone)}>Llamar</SolidButton>
+        </View>
+      ) : null}
     </Card>
   );
 }

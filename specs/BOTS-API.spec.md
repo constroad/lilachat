@@ -1503,6 +1503,7 @@ por ahí». Los anuncios de Constroad salen el 17/11. Decisiones (José, por age
   { "name": "Carlos",                       // opcional, hasta 60 (más largo = 400); solo para mostrar. agentes manda el que
                                             // dio el cliente o, si no lo dio, su nombre de perfil de WhatsApp (17/11)
     "phone": "51949123824",                 // obligatorio, 8 a 15 dígitos (con o sin +)
+    // o, sin "phone": "hidden_number": true — WhatsApp oculta el número (chat @lid): «Número oculto por WhatsApp», sin «Llamar» (26/11)
     "source": { "kind": "ctwa", "ad_id": "1203…", "ad_title": "Asfalto en caliente", "ad_url": "https://fb.me/…" },
     "last_activity_at": "2026-11-17T14:02:00.000Z",
     "attended_by": "dali" }                 // dali | human; por defecto dali

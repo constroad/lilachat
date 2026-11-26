@@ -32,6 +32,8 @@
 | Lista del Drive | Copia del disco | igual |
 | **Visita técnica** (datos, entrevista, puntos, fotos y videos, terminar) | **Cola de campo** + copia en el teléfono; ver §3-bis | `spaces/visits/useVisit.ts`, `visitJobs.ts`, `shared/visitOffline.ts` |
 | ⚡ de un chat | La última lista de acciones guardada | `chat/commands/useChatCommands.ts` |
+| **Pendientes y checklist del canal** | El plan guardado; marcar y subir evidencia van por la cola de campo | `chat/workPlan/useWorkPlan.ts`, `evidenceUpload.ts`, `shared/taskOffline.ts` |
+| Informe nuevo de un tipo nunca abierto | Con señal, abrir «Servicios» deja listos los formularios de cada tipo | `reports/reportQueueStore.ts` › `prepareReportTypes` |
 | Informes de campo (secciones y fotos) | Cola propia, ver `obra-informes.md` | `spaces/clients/reports/reportQueueStore.ts` |
 | **Fotos, videos y documentos al Drive del servicio** | **Cola de campo**: se guardan en el teléfono y suben solos | `spaces/clients/fieldQueueStore.ts`, `useDriveUpload.ts`, `shared/fieldQueue.ts` |
 | Vuelta de la red | El socket reconecta en el acto (no espera hasta 30 s) y todas las colas salen | `App.tsx`, `chat/socketClient.ts` › `reconnectNow` |
@@ -71,6 +73,25 @@
   «Descartar» (pregunta antes: borra la foto del teléfono).
 - Al cerrar sesión se borra todo (`forgetFieldQueue`).
 
+### Pendientes sin señal (26/11)
+
+- El plan de etapas se guarda (`lilachat:space-cache:chat:<chat>:stages`) y se muestra sin red.
+- Marcar o reabrir una tarea es un trabajo `task_toggle` que dice el estado que quiere (`done`): el server
+  (`checklistRoutes.ts`) responde igual si ya está así, así que un reenvío nunca la vuelve a cambiar. Un
+  toque nuevo de la misma tarea reemplaza al que esperaba (`supersededTicks`). La lista dibuja los toques
+  en espera (`projectStages`).
+- La evidencia es un trabajo `task_evidence`: el archivo sube como mensaje del canal con la clave del
+  trabajo como `clientKey` (el server devuelve el mismo mensaje en un reenvío) y luego se une a la tarea
+  (el server une un `seq` una sola vez). El `seq` queda guardado: un reintento solo une.
+- Franja de pendientes del canal sobre «Pendientes».
+
+### Formularios de cada tipo de informe (26/11)
+
+Con señal, al abrir «Servicios» se lee una vez por espacio y proceso cada tipo de informe que el
+teléfono nunca abrió (`prepareReportTypes`): leer un informe nuevo no crea nada en Portal (lo crea su
+primera sección). Así un CTL-PIS o un CON-CAP nunca abierto se puede empezar sin red. Las observaciones
+y el IAA tienen sus propios documentos y no entran aquí.
+
 ### Subidas que se reintentan (26/11)
 
 `isRetryableUploadStatus` (`shared/media.ts`): 401, 408, 429, 502, 503 y 504 vuelven a la cola. Antes
@@ -81,11 +102,9 @@ siempre. 400, 403, 413 y el resto siguen siendo «este archivo no va».
 
 | Qué | Por qué hoy falla | Lote |
 | --- | --- | --- |
-| Evidencia y marcar tareas de Pendientes | Subida directa, sin cola | 2 |
 | «Registrar avance» y observaciones del mapa | Formulario de la puerta del mapa en vivo; la foto se sube antes de enviar | 2 |
 | REG-OBS, LEV-OBS e IAA | Sin cola (`useObservations`, `useAreas`) | 2 |
 | Mapa de la obra | El enlace y la lectura del mapa no se guardan | 2 |
-| Informe de un tipo nunca abierto en el teléfono | La cola arma el informe nuevo con la última copia de ese tipo | 2 |
 | Subir con la app en segundo plano | El socket se pausa atrás y todo sale por `alConectar` | 4 |
 | Chats secretos | La clave del otro no se guarda | aparte |
 | Editar y borrar mensajes | Emit sin cola ni tope | aparte |

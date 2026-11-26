@@ -88,8 +88,9 @@ export async function keepFieldFile(file: { uri: string; name: string; mime: str
   return { key, ref, name: file.name, mime: file.mime, ...(file.sizeBytes ? { sizeBytes: file.sizeBytes } : {}), ...(file.seconds ? { seconds: file.seconds } : {}), ...(file.stamp ? { stamp: file.stamp } : {}) };
 }
 
-export async function enqueueFieldWork(job: FieldJob): Promise<void> {
-  await change((current) => enqueueFieldJob(current, job));
+/** `replaces`: waiting jobs this one makes pointless (an older tick of the same task). */
+export async function enqueueFieldWork(job: FieldJob, replaces: readonly string[] = []): Promise<void> {
+  await change((current) => enqueueFieldJob(current.filter((one) => !replaces.includes(one.key)), job));
   kickFieldQueue();
 }
 

@@ -7,6 +7,7 @@ import { ClientAccessRow } from './ClientAccess';
 import { ServiceDetailView } from './ServiceDetailView';
 import { ServiceCard } from './ServiceCard';
 import { prefetchServiceDetails } from './savedServiceAnswers';
+import { prepareReportTypes } from './reports/reportQueueStore';
 import type { ServiceAskTarget } from './useServiceAsk';
 
 /** The parts of a client's channel (design f-03): the archived banner, the note over the composer and «Servicios». */
@@ -140,13 +141,20 @@ export function ClientServices(props: { /** The channel hides its chrome while a
     if (service) { setStartReportId(focusReportId ?? undefined); setOpened(service); }
     onServiceFocused?.();
   }, [focusServiceId, focusReportId, clientServices, onServiceFocused]);
-  // With signal, the open services' details stay on the phone for the next site without it (José 26/11).
+  // With signal, the open services' details and every report type stay on the phone for the next site without it (José 26/11).
   const { target } = props;
+  const chatId = props.client.chat_id;
+  const seesMoney = Boolean(props.client.access?.money);
   useEffect(() => {
     if (!target) return undefined;
-    const idle = requestIdleCallback(() => void prefetchServiceDetails(target, clientServices));
+    const idle = requestIdleCallback(() => {
+      void prefetchServiceDetails(target, clientServices).then(() => {
+        const open = clientServices.find((service) => service.status === 'pending' || service.status === 'in_progress');
+        if (open) void prepareReportTypes({ ...target, chatId, serviceId: open.id }, seesMoney);
+      });
+    });
     return () => cancelIdleCallback(idle);
-  }, [target, clientServices]);
+  }, [target, clientServices, chatId, seesMoney]);
   const showsDetail = Boolean(opened && props.target);
   const { onServiceOpen } = props;
   useEffect(() => {

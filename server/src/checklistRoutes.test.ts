@@ -83,6 +83,18 @@ describe('using it', () => {
     expect(unticked.body.checklist.items[0]).toMatchObject({ doneBy: null, doneAt: null });
   });
 
+  it('a toggle that says the state it wants is idempotent: the queue\'s resend never flips it back (José 26/11)', async () => {
+    const { body } = await create(ana);
+    const { body: read } = await request(app).get(`/api/agenda/checklists/${body.id}`).set(jwtOf(beto));
+    const itemId = read.checklist.items[0].id as string;
+    const path = `/api/agenda/checklists/${body.id}/items/${itemId}/toggle`;
+    expect((await request(app).post(path).set(jwtOf(beto)).send({ done: true })).body.checklist.items[0]).toMatchObject({ doneBy: String(beto) });
+    const again = await request(app).post(path).set(jwtOf(beto)).send({ done: true });
+    expect(again.status).toBe(200);
+    expect(again.body.checklist.items[0]).toMatchObject({ doneBy: String(beto) });
+    expect((await request(app).post(path).set(jwtOf(beto)).send({ done: false })).body.checklist.items[0]).toMatchObject({ doneBy: null });
+  });
+
   it('the others tick and add only if it allows them; the author always', async () => {
     const { body } = await create(ana, { othersCanMark: false, othersCanAdd: false });
     const { body: read } = await request(app).get(`/api/agenda/checklists/${body.id}`).set(jwtOf(beto));

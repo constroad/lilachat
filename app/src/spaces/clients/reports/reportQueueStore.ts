@@ -1,7 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Crypto from 'expo-crypto';
 import * as FileSystem from 'expo-file-system/legacy';
-import { createReportQueue, noticeOf, type FieldDocument, type KeptPhoto, type ReportRef, type ReportSave, type ReportVault, type ReportWire } from '@lilachat/shared';
+import { AREA_TYPE, createReportQueue, fieldPickerReportTypes, isObservationType, noticeOf, reportTypeKeyOf, type FieldDocument, type KeptPhoto, type ReportRef, type ReportSave, type ReportVault, type ReportWire } from '@lilachat/shared';
 import { loadCredential } from '../../../auth/credentialStore';
 import { submitAppForm, uploadFormPhoto } from '../../../chat/commands/commandsApi';
 import { alConectar, getSocket } from '../../../chat/socketClient';
@@ -73,4 +73,29 @@ export async function forgetReportQueue(): Promise<void> {
   const keys = (await AsyncStorage.getAllKeys().catch(() => [] as readonly string[])).filter((key) => key.startsWith(DOCUMENT_PREFIX));
   if (keys.length) await AsyncStorage.multiRemove(keys).catch(() => undefined);
   await FileSystem.deleteAsync(PHOTOS_FOLDER, { idempotent: true }).catch(() => undefined);
+}
+
+/** At most once per process and space: each missing type is one read of Portal, and Portal writes nothing for it. */
+const preparedSpaces = new Set<string>();
+
+/**
+ * Every field report type ready to start without signal (José 26/11): a type this phone never opened has no
+ * forms to fill offline. With signal, the space's first open service reads each missing type once (a new
+ * report's read creates nothing in Portal; the first section does) and the queue keeps it as the type's forms.
+ * Observations and IAA have their own screens and documents: they are not prepared here.
+ */
+export async function prepareReportTypes(ref: Omit<ReportRef, 'type'>, seesMoney: boolean): Promise<void> {
+  if (preparedSpaces.has(ref.spaceId)) return;
+  preparedSpaces.add(ref.spaceId);
+  for (const option of fieldPickerReportTypes(seesMoney)) {
+    if (!option.opensHere || isObservationType(option.code) || option.code === AREA_TYPE) continue;
+    const typed: ReportRef = { ...ref, type: option.code };
+    if (await vault.loadDocument(reportTypeKeyOf(typed))) continue;
+    const opened = await reportQueue.documentOf(typed, null);
+    // A type Portal refuses here is skipped; no signal (only the phone's copy) stops it, and the next visit tries again.
+    if (opened.ok && opened.offline) {
+      preparedSpaces.delete(ref.spaceId);
+      return;
+    }
+  }
 }

@@ -57,7 +57,7 @@ export function TaskDetailSheet(props: Props) {
     props.onChanged();
   };
   const upload = (source: EvidenceSource) => resolved && void run('subir', () => attachEvidence({ jwt: props.jwt, chatId: props.chatId, checklistId: resolved.stage._id, itemId: resolved.item.id, taskText: resolved.item.text, source }));
-  const toggle = () => resolved && void run('marcar', () => toggleTask({ jwt: props.jwt, checklistId: resolved.stage._id, itemId: resolved.item.id }));
+  const toggle = () => resolved && void run('marcar', () => toggleTask({ chatId: props.chatId, checklistId: resolved.stage._id, itemId: resolved.item.id, done: !resolved.item.doneBy }));
   const save = (edit: TaskEdit) => resolved && void run('guardar', async () => {
     const response = await agendaPatch(`/checklists/${resolved.stage._id}/items/${resolved.item.id}`, props.jwt, edit);
     return response.ok ? null : (response.message ?? 'No se pudo guardar la tarea.');

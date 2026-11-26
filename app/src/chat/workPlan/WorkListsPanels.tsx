@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
 import { Camera, CheckCircle2 } from 'lucide-react-native';
-import { pendingTasks, taskActionsFor, taskDueLabel, type PendingTask, type WorkStage } from '@lilachat/shared';
+import { chatScopeId, pendingTasks, taskActionsFor, taskDueLabel, type PendingTask, type WorkStage } from '@lilachat/shared';
 import { attachEvidence, toggleTask } from './evidenceUpload';
 import { useColores } from '../../ui/tema';
+import { FieldQueueStrip } from '../../spaces/clients/FieldQueueStrip';
 import type { OpenTask } from './TaskDetailSheet';
 
 /** Who may tick and photograph a row, and how (José 19/11, design cc-06). */
@@ -32,7 +33,7 @@ function PendingRow(props: { task: PendingTask; index: number; now: Date; nameOf
     access.onChanged();
   };
   const ids = { jwt: access.jwt, checklistId: task.stageId, itemId: task.item.id };
-  const mark = () => void run('mark', () => toggleTask(ids));
+  const mark = () => void run('mark', () => toggleTask({ chatId: access.chatId, checklistId: task.stageId, itemId: task.item.id, done: true }));
   const photo = () => void run('photo', () => attachEvidence({ ...ids, chatId: access.chatId, taskText: task.item.text, source: 'camera' }));
   return (
     <View className={`rounded-2xl border border-l-4 border-l-primary bg-surface ${task.overdue ? 'border-error/40' : 'border-outline/15'}`}>
@@ -76,6 +77,7 @@ export function PendingPanel(props: { stages: readonly WorkStage[]; nameOf: (use
   }
   return (
     <ScrollView testID="pendientes-de-obra" contentContainerStyle={{ padding: 16, gap: 8, paddingBottom: 40 }}>
+      <FieldQueueStrip serviceId={chatScopeId(props.access.chatId)} />
       <Text className="text-[11px] font-bold uppercase tracking-widest text-primary">{`${pending.length} pendientes`}</Text>
       {pending.map((task, index) => <PendingRow key={`${task.stageId}-${task.item.id}`} task={task} index={index} now={now} nameOf={props.nameOf} access={props.access} onOpen={props.onOpen} />)}
     </ScrollView>

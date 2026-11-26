@@ -9,7 +9,7 @@ import type { TimemarkStampAsked } from './appActions.js';
  * comes back. The steps a job already finished (a photo's `mediaId`) are kept,
  * so a retry never repeats them. PURE: the phone gives the disk and the wire.
  */
-export const FIELD_JOB_KINDS = ['drive_file', 'map_progress', 'observation', 'task_evidence', 'visit_section', 'visit_point', 'visit_photo', 'visit_finish'] as const;
+export const FIELD_JOB_KINDS = ['drive_file', 'map_progress', 'observation', 'task_evidence', 'visit_section', 'visit_point', 'visit_photo', 'visit_finish', 'task_toggle'] as const;
 export type FieldJobKind = (typeof FIELD_JOB_KINDS)[number];
 
 export type FieldJobFile = { key: string; ref: string; name: string; mime: string; sizeBytes?: number; seconds?: number; stamp?: TimemarkStampAsked };

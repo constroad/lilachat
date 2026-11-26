@@ -2,7 +2,8 @@ import * as Crypto from 'expo-crypto';
 import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as ImagePicker from 'expo-image-picker';
-import type { TimemarkStampAsked } from '@lilachat/shared';
+import { isUnreachable, supersededTicks, taskJobOf, type FieldJob, type FieldJobVerdict, type TaskJobPayload, type TimemarkStampAsked } from '@lilachat/shared';
+import { enqueueFieldWork, fieldQueueNow, keepFieldFile, registerFieldHandler } from '../../spaces/clients/fieldQueueStore';
 import { agendaDelete, agendaPost } from '../../agenda/agendaApi';
 import { openCamera } from '../camara/cameraRequests';
 import { CAMERA_DENIED } from '../camara/FormCamera';
@@ -39,19 +40,46 @@ async function pick(source: EvidenceSource): Promise<Picked | null> {
   return shrinkPhotoFile(photo);
 }
 
+/** A refusal the person reads, or a retry when nothing came back (or the server was down). */
+const verdictOfReply = (reply: { ok: boolean; status?: number; message?: string }, failed: string, done?: Record<string, string>): FieldJobVerdict => {
+  const steps = done ? { done } : {};
+  if (reply.ok) return { outcome: 'done' };
+  if (isUnreachable(reply) || reply.status === 409 || reply.status === 401) return { outcome: 'retry', reached: reply.status !== undefined, ...steps };
+  return { outcome: 'refuse', message: reply.message ?? failed, ...steps };
+};
+
 /**
- * Evidence of a task (pending 21, design e2-18): the file goes up as a message
- * of the channel with the task in its caption, and then that message is linked
- * to the task. Returns an error to show, or null when it is done or nothing was chosen.
+ * The queue's sender of a task's evidence: the file goes up as a message of the channel (the job's key
+ * is its `clientKey`: the server answers the same message on a resend), then that message is linked to
+ * the task (the server links a `seq` once). The message's `seq` is kept, so a retry only links.
+ */
+async function sendEvidence(job: FieldJob, jwt: string): Promise<FieldJobVerdict> {
+  const payload = job.payload as unknown as Extract<TaskJobPayload, { kind: 'task_evidence' }>;
+  const file = job.files[0];
+  let seq = Number(job.done.seq ?? 0);
+  if (!seq) {
+    if (!file) return { outcome: 'refuse', message: 'El archivo ya no está en el teléfono.' };
+    const uploaded = await uploadMedia({ token: jwt, chatId: job.scope.chatId, clientKey: job.key, uri: file.ref, fileName: file.name, mimeType: file.mime, sizeBytes: file.sizeBytes ?? 0, ...(file.stamp ? { stamp: file.stamp } : {}), caption: `Evidencia · ${payload.taskText}` });
+    if (!uploaded.ok) return uploaded.retryable ? { outcome: 'retry', reached: false } : { outcome: 'refuse', message: uploaded.reason };
+    seq = uploaded.seq;
+  }
+  const linked = await agendaPost<{ ok: boolean }>(`/checklists/${payload.checklistId}/items/${payload.itemId}/evidence`, jwt, { seq });
+  return verdictOfReply(linked, 'El archivo quedó en el chat, pero no se pudo unir a la tarea.', { seq: String(seq) });
+}
+registerFieldHandler('task_evidence', sendEvidence);
+
+/**
+ * Evidence of a task (pending 21, design e2-18): since 26/11 (José, a site without signal) the file is kept on
+ * the phone and goes by the field queue. Returns an error to show, or null when it is queued or nothing was chosen.
  */
 export async function attachEvidence(params: { jwt: string; chatId: string; checklistId: string; itemId: string; taskText: string; source: EvidenceSource; onProgress?: (ratio: number) => void }): Promise<string | null> {
   const file = params.source === 'camera' ? await shoot() : await pick(params.source);
   if (file === 'denied') return CAMERA_DENIED;
   if (!file) return null;
-  const uploaded = await uploadMedia({ token: params.jwt, chatId: params.chatId, clientKey: Crypto.randomUUID(), ...file, caption: `Evidencia · ${params.taskText}`, onProgress: params.onProgress });
-  if (!uploaded.ok) return uploaded.reason;
-  const linked = await agendaPost<{ ok: boolean }>(`/checklists/${params.checklistId}/items/${params.itemId}/evidence`, params.jwt, { seq: uploaded.seq });
-  return linked.ok ? null : (linked.message ?? 'El archivo quedó en el chat, pero no se pudo unir a la tarea.');
+  const kept = await keepFieldFile({ uri: file.uri, name: file.fileName, mime: file.mimeType, ...(file.sizeBytes ? { sizeBytes: file.sizeBytes } : {}), ...(file.stamp ? { stamp: file.stamp } : {}) });
+  const payload: TaskJobPayload = { kind: 'task_evidence', checklistId: params.checklistId, itemId: params.itemId, taskText: params.taskText };
+  await enqueueFieldWork(taskJobOf({ key: Crypto.randomUUID(), chatId: params.chatId, payload, files: [kept], now: Date.now() }));
+  return null;
 }
 
 /** Unlinks it from the task; the message stays in the chat. */
@@ -60,8 +88,17 @@ export async function detachEvidence(params: { jwt: string; checklistId: string;
   return removed.ok ? null : (removed.message ?? 'No se pudo quitar el archivo.');
 }
 
-/** Ticks or reopens a task (the plan's own route: the server checks who may). */
-export async function toggleTask(params: { jwt: string; checklistId: string; itemId: string }): Promise<string | null> {
-  const response = await agendaPost(`/checklists/${params.checklistId}/items/${params.itemId}/toggle`, params.jwt, {});
-  return response.ok ? null : (response.message ?? 'No se pudo marcar la tarea.');
+/** The queue's sender of a tick: it says the state it wants, so a resend never flips it back. */
+async function sendTick(job: FieldJob, jwt: string): Promise<FieldJobVerdict> {
+  const payload = job.payload as unknown as Extract<TaskJobPayload, { kind: 'task_toggle' }>;
+  const response = await agendaPost(`/checklists/${payload.checklistId}/items/${payload.itemId}/toggle`, jwt, { done: payload.done });
+  return verdictOfReply(response, 'No se pudo marcar la tarea.');
+}
+registerFieldHandler('task_toggle', sendTick);
+
+/** Ticks or reopens a task (the plan's own route: the server checks who may), by the field queue since 26/11. */
+export async function toggleTask(params: { chatId: string; checklistId: string; itemId: string; done: boolean }): Promise<string | null> {
+  const job = taskJobOf({ key: Crypto.randomUUID(), chatId: params.chatId, payload: { kind: 'task_toggle', checklistId: params.checklistId, itemId: params.itemId, done: params.done }, files: [], now: Date.now() });
+  await enqueueFieldWork(job, supersededTicks(fieldQueueNow(), job));
+  return null;
 }

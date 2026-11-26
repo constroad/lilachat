@@ -251,6 +251,7 @@ export * from './serviceAsk.js';
 export * from './savedServiceAnswer.js';
 export * from './fieldQueue.js';
 export * from './visitOffline.js';
+export * from './taskOffline.js';
 export * from './emojiShortcode.js';
 export * from './serviceStages.js';
 export * from './muteDuration.js';

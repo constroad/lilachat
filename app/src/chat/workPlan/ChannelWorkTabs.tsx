@@ -70,7 +70,7 @@ export function useChannelWork(params: { enabled: boolean; jwt: string; chatId: 
   const { focusServiceId, focusReportId, clearServiceFocus, openService } = useServiceFocus(setTab);
   const client = useClientOfChat(params.chatId);
   const records = useClientRecords(params.jwt, params.spaceId, client?.id, tab === 'services');
-  const plan = useWorkPlan(params.jwt, params.chatId, params.enabled && Boolean(client));
+  const plan = useWorkPlan(params.jwt, params.chatId, params.enabled && Boolean(client), params.yo);
   // One target per channel, not per render: the screens under it ask Portal again when it changes (the after photo was lost on the way back from the camera, 11/11).
   const clientId = client?.id;
   const target = useMemo<ServiceAskTarget | null>(() => (params.spaceId && clientId ? { jwt: params.jwt, spaceId: params.spaceId, clientId } : null), [params.jwt, params.spaceId, clientId]);

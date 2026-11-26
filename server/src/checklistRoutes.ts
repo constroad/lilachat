@@ -193,6 +193,9 @@ export function buildChecklistRouter(): Router {
     if (task && !canToggleTask({ me: String(userId), createdBy: String(checklist.createdBy), othersCanMark: checklist.othersCanMark, assignee })) {
       return res.status(403).json({ message: assignee ? 'Esta tarea tiene responsable: solo esa persona o quien creó el checklist la marca.' : 'Solo quien lo creó marca las tareas.' });
     }
+    // The phone's offline queue says the state it wants (José 26/11): a resend after a lost answer never flips it back.
+    const wanted: unknown = req.body?.done;
+    if (typeof wanted === 'boolean' && task && Boolean(task.doneBy) === wanted) return res.json({ checklist: view(checklist) });
     const toggled = toggleChecklistItem(view(checklist).items, String(req.params.itemId), String(userId), new Date());
     if (!toggled.ok) return res.status(404).json({ message: toggled.message });
     const item = toggled.items.find((one) => one.id === req.params.itemId)!;

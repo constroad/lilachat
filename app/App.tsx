@@ -38,6 +38,7 @@ import { forgetFieldQueue } from './src/spaces/clients/fieldQueueStore';
 // The field queue's senders register on import: a queue left from before the app closed needs them at the first connect.
 import './src/spaces/clients/useDriveUpload';
 import './src/spaces/visits/visitJobs';
+import './src/chat/workPlan/evidenceUpload';
 import { forgetMySpaces } from './src/spaces/currentSpace';
 import { forgetPendingInChats } from './src/chat/pendingInChats';
 import { avisarMensaje } from './src/chat/avisoLocal';

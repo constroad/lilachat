@@ -1,5 +1,7 @@
 # As-is · Chat: encuestas, eventos, recordatorios, checklists y agenda
 
+
+- **Sin señal (26/11):** el checklist por etapas se guarda en el teléfono; marcar una tarea (con el estado que se quiere, `done`, idempotente en el server) y subir su evidencia van por la cola de campo. Ver `plataforma-sin-senal.md`.
 ## 1. Qué es
 
 Las tarjetas vivas que se publican en un chat: encuesta, evento, recordatorio y checklist.

@@ -74,8 +74,8 @@ describe('visitOfflineDraft', () => {
 describe('projectVisit', () => {
   it('drops Portal\'s «Falta» while this visit has work waiting, and keeps it when nothing waits', () => {
     const base = { ...SAVED, publish: { ...SAVED.publish, missing: ['Escribe a quién visitas'] } };
-    const datos = job({ kind: 'visit_section', visit: REAL, section: 'datos', values: { prospecto: 'QA' } });
-    expect(projectVisit(base, [datos], [REAL]).publish.missing).toEqual([]);
+    const details = job({ kind: 'visit_section', visit: REAL, section: 'datos', values: { prospecto: 'QA' } });
+    expect(projectVisit(base, [details], [REAL]).publish.missing).toEqual([]);
     expect(projectVisit(base, [], [REAL]).publish.missing).toEqual(['Escribe a quién visitas']);
     const other = job({ kind: 'visit_section', visit: '6b08613d847294dd7b9600ff', section: 'datos', values: {} });
     expect(projectVisit(base, [other], [REAL])).toBe(base);

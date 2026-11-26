@@ -165,6 +165,15 @@ export function visitPhotosLabel(figures: VisitFigures): string {
   return figures.videos > 0 ? `${figures.photos} · ${figures.videos} video${figures.videos === 1 ? '' : 's'}` : String(figures.photos);
 }
 
+const plural = (count: number, one: string, many: string) => `${count} ${count === 1 ? one : many}`;
+/** A point's row: «2 fotos · 1 video» (Portal lists the videos among the media since 26/11), or null without media. */
+export function pointMediaLabel(media: readonly VisitMedia[]): string | null {
+  const videos = media.filter((one) => one.mime.startsWith('video/')).length;
+  const photos = media.length - videos;
+  const parts = [...(photos ? [plural(photos, 'foto', 'fotos')] : []), ...(videos ? [plural(videos, 'video', 'videos')] : [])];
+  return parts.length ? parts.join(' · ') : null;
+}
+
 const formsOf = (raw: unknown): Record<string, FormSchema> =>
   Object.fromEntries(Object.entries(record(raw)).filter(([, schema]) => record(schema).type === 'object').map(([key, schema]) => [key, schema as FormSchema]));
 

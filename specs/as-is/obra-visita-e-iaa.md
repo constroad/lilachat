@@ -62,7 +62,7 @@ Si Portal borra la visita, agentes baja la tarjeta (`visita.deleted`,
 - Terminar: dice el primer faltante. El PDF abre con `status: 'ready'`.
 - Abrir croquis: editor de croquis de Portal (`/embed/site-visit/<id>?vista=croquis`,
   token en el `#`, 12 h, nunca se guarda ni se manda en un mensaje).
-- **Sin señal (26/11):** toda escritura de la visita va por la cola de campo y la pantalla lee la copia guardada con la cola encima; una visita nueva nace en el teléfono (`local-<clave>`) y Portal la crea sin duplicar por su `entradaId`. Detalle en `plataforma-sin-senal.md` §3-bis. El PDF y el croquis siguen necesitando red.
+- **Sin señal (26/11):** toda escritura de la visita va por la cola de campo y la pantalla lee la copia guardada con la cola encima; una visita nueva nace en el teléfono (`local-<clave>`) y Portal la crea sin duplicar por su `entradaId`. Detalle en `plataforma-sin-senal.md` §3-bis. El PDF y el croquis siguen necesitando red. La fila de cada punto separa «2 fotos · 1 video» (`pointMediaLabel`): Portal lista los videos entre los medios (pedido 26/11).
 
 **Web/PWA** (`web/src/spaces/visits/`): `VisitScreenWeb.tsx`, `VisitCardBlocks.tsx`,
 `VisitCardActions.tsx` (contexto `visitActionContext.ts`), `MarkPointWeb.tsx` (con mapa

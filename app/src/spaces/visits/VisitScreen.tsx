@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { BackHandler, Pressable, ScrollView, Text, View } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { AlertTriangle, Camera, CheckCircle2, ChevronLeft, ClipboardList, FileText, ImagePlus, MapPin, Plus } from 'lucide-react-native';
-import { DRIVE_VIDEO_SECONDS, formKeyOf, nextPointNumber, pointLine, visitNextStep, visitPhotosLabel, type OpenVisitRow, type VisitCardAction, type VisitDocument } from '@lilachat/shared';
+import { DRIVE_VIDEO_SECONDS, formKeyOf, nextPointNumber, pointLine, pointMediaLabel, visitNextStep, visitPhotosLabel, type OpenVisitRow, type VisitCardAction, type VisitDocument } from '@lilachat/shared';
 import { AppFormSheet } from '../../chat/commands/AppFormSheet';
 import { openCamera } from '../../chat/camara/cameraRequests';
 import { shrinkPhotoFile } from '../../chat/shrinkPhoto';
@@ -161,7 +161,7 @@ function PointRows({ document }: { document: VisitDocument }) {
             <Text className="text-[15px] font-semibold text-on-surface">{pointLine(point)}</Text>
             {point.note ? <Text numberOfLines={1} className="text-[12px] text-on-surface-variant">{point.note}</Text> : null}
           </View>
-          {point.pending ? <Text testID={`visita-punto-${point.n}-sin-enviar`} className="text-[12px] font-semibold text-primary">Sin enviar</Text> : point.media.length ? <Text className="text-[12px] text-on-surface-variant">{`${point.media.length} foto${point.media.length === 1 ? '' : 's'}`}</Text> : <MapPin size={16} color={colors['on-surface-variant']} />}
+          {point.pending ? <Text testID={`visita-punto-${point.n}-sin-enviar`} className="text-[12px] font-semibold text-primary">Sin enviar</Text> : point.media.length ? <Text className="text-[12px] text-on-surface-variant">{pointMediaLabel(point.media)}</Text> : <MapPin size={16} color={colors['on-surface-variant']} />}
         </View>
       ))}
     </View>

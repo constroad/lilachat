@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from 'react';
 import { AlertTriangle, Camera, CheckCircle2, ChevronLeft, ClipboardList, FileText, ImagePlus, Plus } from 'lucide-react';
-import { formKeyOf, nextPointNumber, pointLine, visitNextStep, visitPhotosLabel, type OpenVisitRow, type VisitDocument } from '@lilachat/shared';
+import { formKeyOf, nextPointNumber, pointLine, pointMediaLabel, visitNextStep, visitPhotosLabel, type OpenVisitRow, type VisitDocument } from '@lilachat/shared';
 import { loadPerfil } from '../../api';
 import { AppFormDialog } from '../../chat/commands/AppFormDialog';
 import { EphemeralAnswers } from '../../chat/commands/EphemeralAnswers';
@@ -80,7 +80,7 @@ function PointRows({ document }: { document: VisitDocument }) {
             <p className="text-[15px] font-semibold text-on-surface">{pointLine(point)}</p>
             {point.note ? <p className="truncate text-[12px] text-on-surface-variant">{point.note}</p> : null}
           </div>
-          {point.media.length ? <span className="text-[12px] text-on-surface-variant">{`${point.media.length} foto${point.media.length === 1 ? '' : 's'}`}</span> : null}
+          {point.media.length ? <span className="text-[12px] text-on-surface-variant">{pointMediaLabel(point.media)}</span> : null}
         </div>
       ))}
     </div>

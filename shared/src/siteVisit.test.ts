@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { markedPointOf, nextPointNumber, openVisitRowsOf, pointLine, pointProblem, visitDocumentOf, visitIdOfKey, visitNextStep, visitPhotosLabel, visitSectionForm, visitUploadOf, visitCardActionOf, isSiteVisitShortcut, visitInterviewNotice, pointGpsChip, pointFieldTime } from './siteVisit.js';
+import { markedPointOf, nextPointNumber, openVisitRowsOf, pointLine, pointProblem, visitDocumentOf, visitIdOfKey, visitNextStep, visitPhotosLabel, visitSectionForm, visitUploadOf, visitCardActionOf, isSiteVisitShortcut, visitInterviewNotice, pointGpsChip, pointFieldTime, pointMediaLabel } from './siteVisit.js';
 import { NEW_VISIT, VISIT_WITH_ID } from './siteVisit.fixture.js';
 
 /** The technical visit on the phone (José 13/11, Portal PRIMERA-VISITA §9; designs lv01–lv03). */
@@ -181,5 +181,16 @@ describe('pointFieldTime', () => {
 
   it.each([undefined, 42, '', 'ayer', '2026-11-26T16:06:00.000Z', '2026-10-20T10:00:00.000Z'])('an unbelievable hour is dropped: %s', (raw) => {
     expect(pointFieldTime(raw, NOW)).toBeNull();
+  });
+});
+
+describe('pointMediaLabel', () => {
+  const photo = { url: 'https://lila.constroad.com/m/1.jpg', mime: 'image/jpeg' };
+  const video = { url: 'https://lila.constroad.com/m/2.mp4', mime: 'video/mp4' };
+  it('counts photos and videos apart, each only when there is one', () => {
+    expect(pointMediaLabel([photo, photo, video])).toBe('2 fotos · 1 video');
+    expect(pointMediaLabel([video, video])).toBe('2 videos');
+    expect(pointMediaLabel([photo])).toBe('1 foto');
+    expect(pointMediaLabel([])).toBeNull();
   });
 });

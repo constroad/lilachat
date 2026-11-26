@@ -98,7 +98,10 @@
 - El informe que Portal mandó se guarda (`lilachat:space-cache:<espacio>:field-report:<servicio>:<tipo>`)
   y se muestra sin red; una negativa de Portal gana a la copia. Al llegar un registro, el informe se pide
   otra vez. La franja de la cola sale arriba de las dos pantallas.
-- Editar y quitar un área siguen directos (necesitan señal).
+- Editar y quitar un área también son trabajos `observation`, sin archivos (`isDirectFieldWrite`): solo se
+  lee el «Hecho» de Portal. Editar reescribe la medida entera, así que un reenvío queda igual; quitar dos
+  veces es una negativa de Portal, visible con «Descartar». Mientras esperan, la lista ya los muestra
+  (`projectAreaReport`: el área quitada no sale, la editada sale con su medida, y los totales cuadran).
 
 ### Mapa y «Registrar avance» sin señal (26/11)
 
@@ -138,7 +141,6 @@ siempre. 400, 403, 413 y el resto siguen siendo «este archivo no va».
 
 | Qué | Por qué hoy falla | Lote |
 | --- | --- | --- |
-| Editar o quitar un área (IAA) | Directo, sin cola | 2 |
 | Subir con la app CERRADA (deslizada o matada por el sistema) | Sale al volver a abrirla | — |
 | Chats secretos | La clave del otro no se guarda | aparte |
 | Editar y borrar mensajes | Emit sin cola ni tope | aparte |

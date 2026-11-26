@@ -1,6 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Crypto from 'expo-crypto';
-import { fieldWriteJobOf, fieldWriteKindOf, isUnreachable, watchFieldRun, type ReportFormRequest, writeWithFiles, type EvidenceFile, type FieldJob, type FieldJobVerdict, type FieldWriteName, type FieldWritePayload, type FormFilesWriteDeps } from '@lilachat/shared';
+import { fieldWriteJobOf, fieldWriteKindOf, isDirectFieldWrite, isUnreachable, sendMapTool, watchFieldRun, type ReportFormRequest, writeWithFiles, type EvidenceFile, type FieldJob, type FieldJobVerdict, type FieldWriteName, type FieldWritePayload, type FormFilesWriteDeps } from '@lilachat/shared';
 import { enqueueFieldWork, keepFieldFile, registerFieldHandler } from './fieldQueueStore';
 import { watchedDoor } from './watchedDoor';
 import { sendToDrive, type CapturedEvidence, type DriveFile } from './useDriveUpload';
@@ -10,14 +10,21 @@ import { spaceDiskKey } from '../spaceCache';
 /** Where an observation or an area is written: the client's channel and its service. */
 type WriteTarget = { target: ServiceAskTarget; chatId: string; serviceId: string };
 export const FIELD_WRITE_QUEUED = 'Guardado en el teléfono. Sale solo apenas haya señal.';
+const DIRECT_WRITE_FAILED = 'El Portal no aceptó el cambio del área.';
 
 /** The queue's sender: the same write the screen did, every step told to the watch. */
 async function sendFieldWrite(job: FieldJob, jwt: string): Promise<FieldJobVerdict> {
   const payload = job.payload as unknown as FieldWritePayload;
   const { chatId } = job.scope;
   const watch = watchFieldRun();
+  const door = watchedDoor(job, jwt, watch, payload.request as ReportFormRequest);
+  if (isDirectFieldWrite(payload.request)) {
+    // An area's edit or removal: Portal's «Hecho» is all there is to read.
+    const sent = await sendMapTool(door, payload.values, { sent: '', failed: DIRECT_WRITE_FAILED });
+    return sent.ok ? { outcome: 'done' } : watch.verdictOf(sent);
+  }
   const deps: FormFilesWriteDeps<DriveFile> = {
-    ...watchedDoor(job, jwt, watch, payload.request as ReportFormRequest),
+    ...door,
     send: async (upload, file, clientUploadId) => {
       const sent = await sendToDrive(upload, file, clientUploadId, () => undefined, { jwt, chatId });
       watch.send(sent.status);

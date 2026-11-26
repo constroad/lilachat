@@ -1,9 +1,9 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { AREA_EDIT_FAILED, AREA_EDITED, AREA_REMOVE_FAILED, AREA_REMOVED, AREA_TYPE, areaPlaceValues, areaRemoveRequest, type AreaEditRequest, readAreaDraft, sendMapTool, type AreaCreateRequest, type AreaDocument, type AreaDraftResult } from '@lilachat/shared';
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
+import { AREA_TYPE, areaPlaceValues, areaRemoveRequest, projectAreaReport, type AreaEditRequest, readAreaDraft, type AreaCreateRequest, type AreaDocument, type AreaDraftResult } from '@lilachat/shared';
 import { askReportDraft } from '../reports/reportsApi';
-import { observationWriteDeps, type CapturedEvidence } from '../useDriveUpload';
+import type { CapturedEvidence } from '../useDriveUpload';
 import { enqueueFieldWrite, FIELD_WRITE_QUEUED, keepFieldReport, keptFieldReport } from '../fieldWriteJobs';
-import { onFieldJobDone } from '../fieldQueueStore';
+import { fieldQueueNow, onFieldJobDone, subscribeFieldQueue } from '../fieldQueueStore';
 import type { ObservationTarget } from '../observations/useObservations';
 
 /**
@@ -38,7 +38,9 @@ export function useAreaReport(to: ObservationTarget, reportId: string | null) {
     if (nextId && nextId !== id) setId(nextId);
     else void load(id);
   }, [id, load]);
-  const report: AreaDocument | null = draft?.ok ? draft.document : null;
+  // The queue's waiting edits and removals of this service drawn on top (26/11).
+  const queue = useSyncExternalStore(subscribeFieldQueue, fieldQueueNow);
+  const report: AreaDocument | null = useMemo(() => (draft?.ok ? projectAreaReport(draft.document, queue, to.serviceId) : null), [draft, queue, to.serviceId]);
   return { draft, report, reload };
 }
 
@@ -57,17 +59,21 @@ export function useAreaWrite(to: ObservationTarget) {
   return { ...state, save };
 }
 
-/** «Quitar área» as the web does it: Portal's `quitar` with only the area. */
+const QUEUED = { ok: true as const, message: FIELD_WRITE_QUEUED };
+
+/** «Quitar área» as the web does it (Portal's `quitar` with only the area), by the field queue since 26/11. */
 export function useAreaRemove(to: ObservationTarget, onDone: () => void) {
   return useCallback(async (areaId: string) => {
-    const result = await sendMapTool(observationWriteDeps(to, areaRemoveRequest(areaId)), {}, { sent: AREA_REMOVED, failed: AREA_REMOVE_FAILED });
-    if (result.ok) onDone();
-    return result;
+    await enqueueFieldWrite(to, 'area', areaRemoveRequest(areaId), {}, []);
+    onDone();
+    return QUEUED;
   }, [to, onDone]);
 }
 
-/** «Guardar cambios» (la-06): Portal's `editar` with the zone's whole measure and the two texts (blank keeps Portal's). */
+/** «Guardar cambios» (la-06): Portal's `editar` with the zone's whole measure and the two texts (blank keeps Portal's); by the queue. */
 export function useAreaEdit(to: ObservationTarget) {
-  return useCallback((request: AreaEditRequest, texts: { place: string; note: string }) =>
-    sendMapTool(observationWriteDeps(to, request), areaPlaceValues(texts), { sent: AREA_EDITED, failed: AREA_EDIT_FAILED }), [to]);
+  return useCallback(async (request: AreaEditRequest, texts: { place: string; note: string }) => {
+    await enqueueFieldWrite(to, 'area', request, areaPlaceValues(texts), []);
+    return QUEUED;
+  }, [to]);
 }

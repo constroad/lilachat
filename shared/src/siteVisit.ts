@@ -239,6 +239,15 @@ export function pointLine(point: VisitPoint): string {
   return point.measure ? `${short} · ${String(point.measure.value).replace('.', ',')} ${unit}` : short;
 }
 
+const FIELD_TIME_AHEAD_MS = 5 * 60_000;
+const FIELD_TIME_BACK_MS = 30 * 24 * 3_600_000;
+/** The phone's hour for a point, only when believable: not ahead of the server, not older than 30 days. */
+export function pointFieldTime(raw: unknown, nowMs: number): string | null {
+  if (typeof raw !== 'string') return null;
+  const at = Date.parse(raw);
+  if (Number.isNaN(at) || at > nowMs + FIELD_TIME_AHEAD_MS || at < nowMs - FIELD_TIME_BACK_MS) return null;
+  return new Date(at).toISOString();
+}
 export type VisitPointDraft = { type: string; note?: string; measure?: number; unit?: string; lat: number; lng: number; precisionM?: number };
 
 /** Portal asks a measure and its unit together, within its range. */

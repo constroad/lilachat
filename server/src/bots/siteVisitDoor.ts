@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import mongoose, { Types, type Model } from 'mongoose';
-import { availableTo, canManageMembers, INCOGNITO_COMPOSER, formLevelOf, itemSettingOf, openVisitRowsOf, pointProblem, SITE_VISIT_SHORTCUT, visitDocumentOf, visitSectionForm, type AppForm, type CommandOutcome, type FormSchema, type OpenVisitRow, type VisitDocument, type VisitPointDraft } from '@lilachat/shared';
+import { availableTo, canManageMembers, INCOGNITO_COMPOSER, formLevelOf, itemSettingOf, openVisitRowsOf, pointProblem, SITE_VISIT_SHORTCUT, visitDocumentOf, visitSectionForm, pointFieldTime, VISIT_POINT_FIELD_TIME_READY, type AppForm, type CommandOutcome, type FormSchema, type OpenVisitRow, type VisitDocument, type VisitPointDraft } from '@lilachat/shared';
 import { ChatModel } from '../chatModels.js';
 import { UserModel } from '../models.js';
 import { OUTDATED_FORM_MESSAGE, type CommandError } from './botCommands.js';
@@ -164,6 +164,12 @@ function pointDraftOf(body: Record<string, unknown>): { draft: VisitPointDraft; 
   return { draft, ...(place.precisionM !== undefined ? { precisionM: place.precisionM } : {}) };
 }
 
+/** The hour the point was marked in the field (José 26/11), once Portal declares it (`VISIT_POINT_FIELD_TIME_READY`). */
+function fieldTimeOf(body: Record<string, unknown>): { tomadoEn?: string } {
+  const at = VISIT_POINT_FIELD_TIME_READY ? pointFieldTime(body.taken_at, Date.now()) : null;
+  return at ? { tomadoEn: at } : {};
+}
+
 /** A point is chosen on the phone's own screen (lv02): everything rides as context and the form has nothing to fill. */
 async function pointOpened(workspaceId: string, userId: Types.ObjectId, body: Record<string, unknown>, visitId: string): Promise<Opened | CommandError> {
   const { draft, precisionM } = pointDraftOf(body);
@@ -175,7 +181,7 @@ async function pointOpened(workspaceId: string, userId: Types.ObjectId, body: Re
   if (typeof body.entry_id !== 'string' || !ENTRY_ID.test(body.entry_id)) return fail(400, 'invalid_request', 'Falta la clave del punto.');
   const source = body.source === 'web' ? 'web' : 'apk';
   const measure: Record<string, string | number> = draft.measure !== undefined && draft.unit ? { medida: draft.measure, unidad: draft.unit } : {};
-  return { form: noFields('marcar_punto_de_visita', `Punto ${document.points.length + 1}`, 'Guardar punto'), context: { visitaId: visitId, entradaId: body.entry_id, tipo: draft.type, lat: draft.lat, lng: draft.lng, ...(precisionM !== undefined ? { precisionM } : {}), ...(note ? { nota: note } : {}), ...measure, fuente: source } };
+  return { form: noFields('marcar_punto_de_visita', `Punto ${document.points.length + 1}`, 'Guardar punto'), context: { visitaId: visitId, entradaId: body.entry_id, tipo: draft.type, lat: draft.lat, lng: draft.lng, ...(precisionM !== undefined ? { precisionM } : {}), ...(note ? { nota: note } : {}), ...measure, fuente: source, ...fieldTimeOf(body) } };
 }
 
 const EDITOR_VIEWS = ['croquis', 'hoja'];

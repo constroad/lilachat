@@ -5,6 +5,7 @@ import { AlertTriangle, Camera, CheckCircle2, ChevronLeft, ClipboardList, FileTe
 import { DRIVE_VIDEO_SECONDS, formKeyOf, nextPointNumber, pointLine, visitNextStep, visitPhotosLabel, type OpenVisitRow, type VisitCardAction, type VisitDocument } from '@lilachat/shared';
 import { AppFormSheet } from '../../chat/commands/AppFormSheet';
 import { openCamera } from '../../chat/camara/cameraRequests';
+import { shrinkPhotoFile } from '../../chat/shrinkPhoto';
 import { useColores } from '../../ui/tema';
 import { useMargenes } from '../../ui/useMargenes';
 import { devicePlaceNow } from '../clients/reports/devicePlace';
@@ -95,7 +96,11 @@ async function pickedEvidence(option: VisitEvidenceOption): Promise<PickedEviden
     const asset = picked.canceled ? null : picked.assets[0];
     if (!asset) return null;
     const mime = asset.mimeType ?? (asset.type === 'video' ? 'video/mp4' : 'image/jpeg');
-    return { uri: asset.uri, name: asset.fileName ?? `visita-${Date.now()}.${mime.split('/')[1]}`, mime };
+    const name = asset.fileName ?? `visita-${Date.now()}.${mime.split('/')[1]}`;
+    if (asset.type === 'video') return { uri: asset.uri, name, mime };
+    // A gallery photo leaves at Portal's size, like the Drive's and the chat's (José 26/11: no big files up).
+    const photo = await shrinkPhotoFile({ uri: asset.uri, mimeType: mime, fileName: name, sizeBytes: asset.fileSize ?? 0, width: asset.width, height: asset.height });
+    return { uri: photo.uri, name: photo.fileName, mime: photo.mimeType };
   }
   const shot = await openCamera({ title: option === 'video' ? 'Video de la visita' : 'Foto de la visita', video: { maxSeconds: DRIVE_VIDEO_SECONDS, first: option === 'video' } });
   if (!shot || shot === 'denied') return null;

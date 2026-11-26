@@ -565,3 +565,15 @@ Prototipo: https://claude.ai/artifact/Q83tJwXB2ixdKbsnTQz5Md
 | ped-v2-escritorio-lista | escritorio (claro) | Tabla de despachos | generado 20/11 · `928abd296fd944e5ba52c79f525d1b44` · aprobado 20/11 (chat) |
 | ped-v2-escritorio | escritorio (claro) | Visor de medios del despacho | generado 20/11 · `a40af6aabc5447d283531b5e9c42c8fa` · aprobado 20/11 (chat) |
 | ped-v2-enlace-movil | móvil (oscuro) | Hoja del enlace del servicio | generado 20/11 · `08d4a75c76d34806bce94c36d5d1c8a3` · aprobado 20/11 (chat) |
+
+## Fondo del chat (José 26/11: «el nuestro se ve muy blanco… como Telegram o WhatsApp»)
+
+Proyecto 15540754270713720465. 3 opciones en claro y oscuro para elegir; los textos y tarjetas de las capturas son de Stitch y no van.
+
+| Archivo | Pantalla | Estado |
+| --- | --- | --- |
+| `fc-01a-fondo-chat-{claro,oscuro}-escritorio.png` | A · dibujitos de línea de obra en mosaico (`screens/b68b003147ec47119a6e7f4cb9ecc92e`, `c8150f0611834fe49353bc623759c1cf`) | generado 26/11; ELEGIDO por José 26/11 («más juntos») |
+| `fc-01b-fondo-chat-{claro,oscuro}-escritorio.png` | B · curvas de nivel sobre degradado violeta (`81affc6472d543e4ab0f2aba764f4d31`, `9d260cd13bd942d5a51c3e04ecf7e153`) | generado 26/11; no elegido |
+| `fc-01c-fondo-chat-{claro,oscuro}-escritorio.png` | C · íconos de Lilachat (`577688e1cb994d22b98fc4b38918a922`, `00bb1284aa574b5db89836dd4b5fe447`) | generado 26/11; no elegido |
+| `fc-01a2-fondo-chat-{claro,oscuro}-escritorio.png` | A2 · A más junto (`01bb44da524e4593af17454e576d25c4`, `f79b6eda4f4344589d8d57b8a3d312a4`) | Stitch no dibujó el patrón: descartado |
+| `fc-01a-denso-vista-previa.{html,png}` | A más junto armado en código con los colores reales del chat, claro y oscuro | aprobado por José 26/11; implementado (`shared/chatWallpaper.ts`, web y APK) |

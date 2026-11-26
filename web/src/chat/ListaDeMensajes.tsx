@@ -1,7 +1,8 @@
 import { useContext, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { ChevronDown } from 'lucide-react';
-import { albumLayout, followsMyNewRow, formatDayLabel, unreadBelow } from '@lilachat/shared';
+import { albumLayout, followsMyNewRow, formatDayLabel, unreadBelow, wallpaperCssUrl } from '@lilachat/shared';
+import { useDarkClass } from '../ui/useDarkClass';
 import { BurbujaDeMensaje } from './BurbujaDeMensaje';
 import { seqParaAcusar } from './acuseDeLeido';
 import { estaCercaDelFinal, filasDeLaConversacion, sigueEnElFinal } from './filasDeLaConversacion';
@@ -42,6 +43,7 @@ export function ListaDeMensajes(props: Props) {
   const { mensajes, yo, chat } = props;
   const flat = useContext(ConversacionContext)?.flat ?? false;
   const contenedor = useRef<HTMLDivElement>(null);
+  const oscuro = useDarkClass();
   // In a window the list does not follow the end: its end is not the conversation's.
   const pegado = useRef(!props.ventana);
   /** Cuándo fue el último gesto de la persona sobre la lista (rueda, toque, tecla). */
@@ -101,7 +103,8 @@ export function ListaDeMensajes(props: Props) {
   };
 
   return (
-    <div className="relative min-h-0 flex-1">
+    // The wallpaper stays put behind the scroll, as in WhatsApp (José 26/11: road works doodles).
+    <div className="chat-fondo relative min-h-0 flex-1" style={{ backgroundImage: wallpaperCssUrl(oscuro ? 'dark' : 'light') }}>
       <div
         ref={contenedor}
         onScroll={alScrollear}
@@ -110,7 +113,7 @@ export function ListaDeMensajes(props: Props) {
         onKeyDown={anotarGesto}
         onPointerDown={anotarGesto}
         data-testid="lista-mensajes"
-        className="chat-fondo h-full overflow-y-auto px-4 py-4"
+        className="h-full overflow-y-auto px-4 py-4"
       >
         {!props.hayAnteriores && filas.length > 0 ? (
           <p className="pb-2 text-center text-[11px] text-on-surface-variant">Este es el principio de la conversación</p>

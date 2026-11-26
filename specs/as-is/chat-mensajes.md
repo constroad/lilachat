@@ -27,6 +27,12 @@ la búsqueda y las tarjetas de enlace. Hilos, medios, agenda y stickers tienen s
 - Tarjeta de documento como la de WhatsApp (25/11, segunda vuelta): una franja baja de la primera página pegada arriba (alto 0,42 del ancho, desde el encabezado), debajo un panel más oscuro (`bg-black/15`) con el nombre en peso normal en dos líneas y «5 páginas · 1.5 MB · PDF». Sin borde ni tarjeta dentro de la burbuja; sin icono cuando hay página. En el APK mide el 72 % de la pantalla, hasta 300 dp (`TarjetaDeArchivo.tsx`); en la web, hasta 300 px (`PdfCardWeb.tsx`).
 - En la web la hora y los checks van DENTRO de cada burbuja, abajo a la derecha (antes iban debajo, en un renglón aparte por bloque); entre mensajes, 2 px dentro del bloque y 8 px entre bloques. El sticker, sin burbuja, la lleva debajo.
 - Tamaño de letra del chat (`settings/ChatFontSetting.tsx`) y fondo (`FondoDelChat.tsx`).
+- Fondo de la conversación (José 26/11: «se ve muy blanco… como Telegram o WhatsApp»; eligió los dibujitos de obra,
+  más juntos): `shared/src/chatWallpaper.ts` arma un mosaico de 256 px con 64 dibujos de línea (íconos de Lucide,
+  licencia ISC: casco, cono, camión, tractor, termómetro, wincha, pala…), girados y a ~12 px uno de otro, en violeta
+  al 13 % en claro y lila al 10 % en oscuro. Va en chats, canales y grupos: la web lo pone de `background-image` en
+  el contenedor de `ListaDeMensajes` (no se mueve con el scroll) y la APK lo dibuja como patrón SVG en
+  `FondoDelChat.tsx`. Diseños: `design/stitch/fc-01*` (Stitch) y `fc-01a-denso-vista-previa` (el aprobado).
 - Línea «Reenviado» (`ForwardedLabel.tsx`, 13/11).
 
 **Compositor**

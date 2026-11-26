@@ -74,12 +74,12 @@
 }
 .wink-pop { animation: wink-pop 480ms ease-in-out; }
 
-/* The conversation's background, like the app's (`FondoDelChat`): a dot pattern
-   barely visible over the chat tone (José, 21/10: «la web va lisa»). */
+/* The conversation's background, like the app's (`FondoDelChat`): the road works doodles of
+   `shared/chatWallpaper` (José 26/11), set inline by mode over the chat tone; it does not scroll. */
 .chat-fondo {
   background-color: rgb(var(--c-chat-bg));
-  background-image: radial-gradient(rgb(var(--c-primary) / 0.09) 1.2px, transparent 1.5px);
-  background-size: 22px 22px;
+  background-repeat: repeat;
+  background-size: 256px 256px;
 }
 
 /* The emoji picker on our tokens (José, 21/10: in dark mode it was a white box).

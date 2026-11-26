@@ -39,6 +39,7 @@
 | Informe nuevo de un tipo nunca abierto | Con señal, abrir «Servicios» deja listos los formularios de cada tipo | `reports/reportQueueStore.ts` › `prepareReportTypes` |
 | Informes de campo (secciones y fotos) | Cola propia, ver `obra-informes.md` | `spaces/clients/reports/reportQueueStore.ts` |
 | **Fotos, videos y documentos al Drive del servicio** | **Cola de campo**: se guardan en el teléfono y suben solos | `spaces/clients/fieldQueueStore.ts`, `useDriveUpload.ts`, `shared/fieldQueue.ts` |
+| **Subir con la app atrás** | Con algo pendiente, el socket no se pausa y el servicio en primer plano lo sostiene hasta terminar | `chat/useUploadHold.ts`, `uploadHold.ts` |
 | Vuelta de la red | El socket reconecta en el acto (no espera hasta 30 s) y todas las colas salen | `App.tsx`, `chat/socketClient.ts` › `reconnectNow` |
 
 ### Detalle del servicio guardado (26/11)
@@ -117,6 +118,16 @@ teléfono nunca abrió (`prepareReportTypes`): leer un informe nuevo no crea nad
 primera sección). Así un CTL-PIS o un CON-CAP nunca abierto se puede empezar sin red. Las observaciones
 y el IAA tienen sus propios documentos y no entran aquí.
 
+### Subir con la app atrás (26/11)
+
+- Sin «Conexión permanente» el socket se pausa al ir atrás (así llega el push) y las colas solo salen
+  con el socket. Desde el 26/11, mientras haya algo pendiente (cola de campo, informes, archivos y
+  textos del chat, sin contar lo rechazado), el servicio en primer plano se enciende **con la app
+  adelante** (Android no deja encenderlo desde atrás) y al ir atrás el socket no se pausa. Cuando no
+  queda nada, el servicio se apaga y el socket se pausa como siempre.
+- Mientras sostiene, el server ve a la persona en línea y no manda push: es solo el rato de la subida.
+- Con la app cerrada del todo no sube nada; sale al volver a abrirla (`alConectar`).
+
 ### Subidas que se reintentan (26/11)
 
 `isRetryableUploadStatus` (`shared/media.ts`): 401, 408, 429, 502, 503 y 504 vuelven a la cola. Antes
@@ -128,7 +139,7 @@ siempre. 400, 403, 413 y el resto siguen siendo «este archivo no va».
 | Qué | Por qué hoy falla | Lote |
 | --- | --- | --- |
 | Editar o quitar un área (IAA) | Directo, sin cola | 2 |
-| Subir con la app en segundo plano | El socket se pausa atrás y todo sale por `alConectar` | 4 |
+| Subir con la app CERRADA (deslizada o matada por el sistema) | Sale al volver a abrirla | — |
 | Chats secretos | La clave del otro no se guarda | aparte |
 | Editar y borrar mensajes | Emit sin cola ni tope | aparte |
 | Publicar un informe, PDF, «Terminar unidad» | Los hace Portal en el momento: exigen red y lo dicen | queda así |

@@ -31,6 +31,7 @@ import { conCredencialNueva, entraSinEsperar, withRefreshedSession } from './src
 import { useSessionRenewal } from './src/auth/useSessionRenewal';
 import { connectSocket, disconnectSocket, pauseSocket, resumeSocket } from './src/chat/socketClient';
 import { useReconnectWhenNetworkReturns, useRehydrateOnConnect } from './src/chat/useConnectionRecovery';
+import { useUploadHold } from './src/chat/useUploadHold';
 import { leerChatsGuardados, olvidarChats } from './src/chat/chatsGuardados';
 import { forgetAllSpaces } from './src/spaces/spaceCache';
 import { forgetClientsOfChats } from './src/spaces/clients/useSpaceClients';
@@ -236,20 +237,22 @@ function Contenido() {
    * (José, 30/08/2026). Con «Conexión permanente» encendida se queda conectado
    * a propósito, para recibir por socket sin depender del push.
    */
+  // With uploads pending, the back does not pause the socket until they went up (José 26/11).
+  const uploadHold = useUploadHold(haySesion, segundoPlano === true);
   useEffect(() => {
     if (!haySesion) return;
     const permanente = segundoPlano === true;
     const sub = AppState.addEventListener('change', (estado) => {
       if (estado === 'active') resumeSocket();
-      else if (!permanente) pauseSocket();
+      else if (!permanente && uploadHold.shouldPause()) pauseSocket();
     });
     // Y aplicar el estado ACTUAL al montar/cambiar la preferencia.
     if (AppState.currentState === 'active') resumeSocket();
     // A live location the system killed starts again, only in the foreground (Android refuses it from the back).
     if (AppState.currentState === 'active') void resumeLiveSharing();
-    else if (!permanente) pauseSocket();
+    else if (!permanente && uploadHold.shouldPause()) pauseSocket();
     return () => sub.remove();
-  }, [haySesion, segundoPlano]);
+  }, [haySesion, segundoPlano, uploadHold]);
 
   useReconnectWhenNetworkReturns(haySesion);
 

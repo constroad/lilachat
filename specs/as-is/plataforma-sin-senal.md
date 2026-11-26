@@ -30,6 +30,8 @@
 | Pestaña «Servicios» de un chat abierto sin pasar por la lista del espacio | El cliente sale de las listas guardadas de todos los espacios | `spaces/clients/useSpaceClients.ts` |
 | **Detalle de un servicio** (pedidos, informes, mapa, Drive) | **Copia del disco** con la línea «Sin señal · datos guardados el …» y «Reintentar» | `spaces/clients/useServiceAsk.ts`, `savedServiceAnswers.ts`, `shared/savedServiceAnswer.ts` |
 | Lista del Drive | Copia del disco | igual |
+| **Visita técnica** (datos, entrevista, puntos, fotos y videos, terminar) | **Cola de campo** + copia en el teléfono; ver §3-bis | `spaces/visits/useVisit.ts`, `visitJobs.ts`, `shared/visitOffline.ts` |
+| ⚡ de un chat | La última lista de acciones guardada | `chat/commands/useChatCommands.ts` |
 | Informes de campo (secciones y fotos) | Cola propia, ver `obra-informes.md` | `spaces/clients/reports/reportQueueStore.ts` |
 | **Fotos, videos y documentos al Drive del servicio** | **Cola de campo**: se guardan en el teléfono y suben solos | `spaces/clients/fieldQueueStore.ts`, `useDriveUpload.ts`, `shared/fieldQueue.ts` |
 | Vuelta de la red | El socket reconecta en el acto (no espera hasta 30 s) y todas las colas salen | `App.tsx`, `chat/socketClient.ts` › `reconnectNow` |
@@ -84,47 +86,51 @@ siempre. 400, 403, 413 y el resto siguen siendo «este archivo no va».
 | REG-OBS, LEV-OBS e IAA | Sin cola (`useObservations`, `useAreas`) | 2 |
 | Mapa de la obra | El enlace y la lectura del mapa no se guardan | 2 |
 | Informe de un tipo nunca abierto en el teléfono | La cola arma el informe nuevo con la última copia de ese tipo | 2 |
-| Visita técnica | El id de la visita lo da Portal; el server exige su copia del documento; la clave de cada sección la crea el server | 3 (toca server) |
 | Subir con la app en segundo plano | El socket se pausa atrás y todo sale por `alConectar` | 4 |
 | Chats secretos | La clave del otro no se guarda | aparte |
 | Editar y borrar mensajes | Emit sin cola ni tope | aparte |
 | Publicar un informe, PDF, «Terminar unidad» | Los hace Portal en el momento: exigen red y lo dicen | queda así |
 
-## 3-bis. Diseño del lote 3: la visita técnica sin señal (por hacer)
+## 3-bis. La visita técnica sin señal (26/11)
 
-Hechos verificados el 26/11 en Portal `main` (`portalSiteVisitTools.ts`, `site-visit.repository.ts`):
+Hechos verificados en Portal `main` (`portalSiteVisitTools.ts`, `site-visit.repository.ts`): crear la
+visita (`guardar_visita` de «Datos» sin `visitaId`) se deduplica por `entradaId` (`entryKey =
+visita:<entradaId>`, índice único); un punto, por `entradaId` dentro de la visita; una foto, por
+`clientUploadId` (en serie). La foto guarda su `takenAt`; **el punto no** (Portal le pone la hora del
+server: hace falta un campo nuevo en `MARK_VISIT_POINT_ARGS`, decisión de José). Leer el borrador sin
+visita no escribe nada.
 
-- Crear la visita (`guardar_visita` de «Datos» sin `visitaId`) **se deduplica por `entradaId`**
-  (`entryKey = visita:<entradaId>`, índice único `{companyId, entryKey}`): el reenvío devuelve la misma
-  visita. Desde `2566f9fe` nuestro server deja pasar el `entry_id` del teléfono en una sección.
-- Un punto se deduplica por `entradaId` dentro de la visita. Una foto, por `clientUploadId` (en serie).
-- La foto acepta `takenAt`, `lat`, `lng`, `precisionM`: conserva su hora real. **El punto no**: Portal
-  le pone la hora del server (`createdAt: new Date()`); para guardar la hora del campo hace falta un
-  campo nuevo en `MARK_VISIT_POINT_ARGS` (decisión de José).
-- Leer el borrador sin visita no escribe nada (`showSiteVisit`).
-
-El diseño:
-
-1. **Plantilla:** cada `visits/draft` que responde bien guarda el documento como plantilla del espacio
-   (`lilachat:space-cache:<spaceId>:visit-template`), igual que `blankDocumentOf` de los informes. Los
-   formularios de cada sección salen de `VisitDocument.forms` (`visitSectionForm`).
-2. **Visita local:** `localId` = el `entradaId` de su «Datos». Se guarda la visita en el teléfono con
-   lo hecho (secciones, puntos, fotos) para que la pantalla lo muestre sin red.
-3. **Trabajos nuevos de la cola de campo:** `visit_section`, `visit_point`, `visit_photo`,
-   `visit_finish`, con `payload.visit` = `localId` o el id real. El motor suma `waitsFor` (un id local
-   sin resolver) y un mapa `localId → visitaId` en disco: «Datos» sale primero y crea; el resto espera;
-   «Terminar» sale último, cuando no queda nada de esa visita.
-4. **Al salir cada trabajo:** `visits/draft` (refresca la copia del server, 24 h) → abrir con
-   `entry_id` = clave del trabajo → enviar los valores capturados sin red. La foto del punto usa la
-   clave del trabajo como `clientUploadId`.
-5. **Con red siempre por la cola** (una sola manera de escribir), como el Drive.
-6. Siguen necesitando red y lo dicen: el PDF y «Abrir croquis» (editor de Portal).
-7. Por verificar al empezar: si el ⚡ («Visita técnica») y la tarjeta lv01 se abren sin red.
+- **Toda escritura va por la cola de campo**, con señal o sin ella: «Datos», entrevista, conclusión
+  (`visit_section`), punto con su foto (`visit_point`), foto o video suelto (`visit_photo`) y
+  «Terminar» (`visit_finish`). Motor `shared/visitOffline.ts`; envíos `app/spaces/visits/visitJobs.ts`.
+- **Visita nueva sin señal:** «Crear visita» abre «Datos» desde la plantilla del espacio y la visita
+  nace en el teléfono como `local-<clave>`; la clave es el `entradaId` de su «Datos» (nuestro server
+  la deja pasar desde `2566f9fe`). Sale primero; lo demás de esa visita espera su id de Portal
+  (`visitJobBlocked`) y la pantalla cambia sola a ella (`resolveLocalVisit`, `lilachat:field-visit-ids`).
+  «Terminar» sale último, cuando no queda nada más de la visita; si Portal dice «Falta: …», queda
+  rechazado a la vista con eso.
+- **Lectura:** lo que manda el server se guarda (`visitCopies.ts`: la plantilla y cada visita por id) y
+  la pantalla dibuja la cola encima (`projectVisit`): el punto nuevo con su número, lugar, hora y
+  «Sin enviar»; fotos, videos y respuestas en sus cifras. Sin señal: la copia guardada o la plantilla.
+  Una visita nueva sin enviar sale en «Visitas abiertas» (`localVisitRows`).
+- **Plantilla lista antes de salir:** al cargar el ⚡ de un chat que ofrece «Visita técnica» se pide
+  la visita sin id (no escribe en Portal) y se guarda, como mucho cada 6 h por espacio.
+- **El ⚡ sin señal:** la lista de acciones de cada chat se guarda (`useChatCommands`); sin red el ⚡
+  muestra la última.
+- Las secciones se llenan con el formulario dibujado en el teléfono desde el esquema de la visita
+  (`visitSectionForm`), no con una corrida de la app de Portal.
+- Siguen necesitando red y lo dicen: «Ver PDF» y «Abrir croquis»; en una visita que todavía no llegó
+  al Portal dicen «Primero la visita tiene que llegar al Portal…».
+- Descartar la creación de una visita nueva se lleva todo su trabajo (`keysGoingWith`).
+- Franja de la visita (`FieldQueueStrip` con su id local y el real).
 
 ## 4. Pruebas
 
 - **Shared:** `savedServiceAnswer.test.ts` (copia fresca, sin señal, negativa, copia rota, precarga,
   línea), `media.test.ts` (`isRetryableUploadStatus`).
+- **Shared:** `visitOffline.test.ts` (ids locales, plantilla, proyección, orden de salida, descartar), `fieldQueue.test.ts` (`blocked`).
+- **Server:** `siteVisitDoor.test.ts` (la sección conserva el `entry_id` del teléfono).
+- **E2E 26/11 (emulador, Test):** detalle guardado sin red, foto al Drive en cola y subida al volver la red, lista de chats sin red: pasan. Falta el E2E de la visita sin señal.
 - **APK:** `chat/networkReturn.test.ts` (en línea, vuelta de la red, hidratador cada 10 min).
 - **E2E sin red:** pendiente en el emulador (`adb shell svc data disable` + `svc wifi disable` con la
   app ya abierta, `rn-app-loop` §4b).

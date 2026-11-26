@@ -17,10 +17,12 @@ function askDiscard(key: string, label: string): void {
  * What of this service waits on the phone (José 26/11): «3 por subir · se suben solos con señal»,
  * and each refused one with Portal's words, «Reintentar» and «Descartar». Nothing when it is empty.
  */
-export function FieldQueueStrip({ serviceId }: { serviceId: string }) {
+export function FieldQueueStrip({ serviceId, alsoIds = [] }: { serviceId: string; /** Other «services» of the same thing (a visit's local id). */ alsoIds?: readonly string[] }) {
   const colors = useColores();
   const jobs = useSyncExternalStore(subscribeFieldQueue, fieldQueueNow);
-  const { waiting, refused } = fieldJobsOfService(jobs, serviceId);
+  const summaries = [...new Set([serviceId, ...alsoIds])].map((id) => fieldJobsOfService(jobs, id));
+  const waiting = summaries.reduce((total, one) => total + one.waiting, 0);
+  const refused = summaries.flatMap((one) => one.refused);
   if (!waiting && !refused.length) return null;
   return (
     <View testID="cola-de-campo" className="gap-2 rounded-xl border border-outline/15 bg-surface-variant px-3 py-2">

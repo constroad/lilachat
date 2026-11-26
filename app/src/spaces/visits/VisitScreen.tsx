@@ -4,12 +4,12 @@ import * as ImagePicker from 'expo-image-picker';
 import { AlertTriangle, Camera, CheckCircle2, ChevronLeft, ClipboardList, FileText, ImagePlus, MapPin, Plus } from 'lucide-react-native';
 import { DRIVE_VIDEO_SECONDS, formKeyOf, nextPointNumber, pointLine, visitNextStep, visitPhotosLabel, type OpenVisitRow, type VisitCardAction, type VisitDocument } from '@lilachat/shared';
 import { AppFormSheet } from '../../chat/commands/AppFormSheet';
-import { EphemeralAnswers } from '../../chat/commands/EphemeralAnswers';
 import { openCamera } from '../../chat/camara/cameraRequests';
 import { useColores } from '../../ui/tema';
 import { useMargenes } from '../../ui/useMargenes';
 import { devicePlaceNow } from '../clients/reports/devicePlace';
 import { useFileViewer } from '../clients/useFileViewer';
+import { FieldQueueStrip } from '../clients/FieldQueueStrip';
 import { MarkPointSheet } from './MarkPointSheet';
 import { VisitCroquis } from './VisitCroquis';
 import { VisitEvidenceSheet, type VisitEvidenceOption } from './VisitEvidenceSheet';
@@ -19,6 +19,11 @@ import type { VisitPlaceRef } from './visitsApi';
 /** `startAction`: the visit card's button that opened it (lv01); it runs once the visit is read. */
 /** Above the chat's header (zIndex 2) and list (1): with no layer the screen drew under them (APK 14/11). */
 const VISIT_SCREEN_LAYER = 10;
+
+/** The PDF and the croquis are Portal's: a visit still on the phone has neither yet. */
+const NEEDS_PORTAL = 'Primero la visita tiene que llegar al Portal: se envía sola apenas haya señal.';
+const NO_PHOTO_FIELD = 'Esta parte no lleva fotos.';
+const stringValues = (values: Record<string, unknown>): Record<string, string> => Object.fromEntries(Object.entries(values).map(([key, value]) => [key, typeof value === 'string' ? value : value === undefined || value === null ? '' : String(value)]));
 
 type Props = { place: VisitPlaceRef; visitId?: string | null; startAction?: VisitCardAction; onClose: () => void };
 type Visit = ReturnType<typeof useVisit>;
@@ -75,12 +80,12 @@ function Actions({ document, visit, onMark, onPdf, onEvidence }: { document: Vis
       <ActionButton testID="visita-marcar-punto" label="Marcar punto" icon={<Camera size={18} color={colors['on-primary']} />} primary disabled={busy} onPress={onMark} />
       <ActionButton testID="visita-abrir-entrevista" label="Entrevista" icon={<ClipboardList size={18} color={colors.primary} />} disabled={busy} onPress={() => void visit.openSection('entrevista')} />
       <ActionButton testID="visita-foto-suelta" label="Foto suelta" icon={<ImagePlus size={18} color={colors.primary} />} disabled={busy} onPress={onEvidence} />
-      <ActionButton testID="visita-terminar" label="Terminar" icon={<CheckCircle2 size={18} color={colors.primary} />} disabled={busy} onPress={() => void visit.screen.finish()} />
+      <ActionButton testID="visita-terminar" label="Terminar" icon={<CheckCircle2 size={18} color={colors.primary} />} disabled={busy} onPress={() => void visit.finish()} />
     </View>
   );
 }
 
-type PickedEvidence = { uri: string; name: string; mime: string; stamp?: Parameters<Visit['screen']['addPhoto']>[0]['stamp'] };
+type PickedEvidence = Parameters<Visit['addPhoto']>[0];
 
 /** Foto, video or a file already in the gallery (Portal 23/11): a fresh ticket for each, one after another. */
 async function pickedEvidence(option: VisitEvidenceOption): Promise<PickedEvidence | null> {
@@ -102,7 +107,7 @@ async function addEvidence(visit: Visit, option: VisitEvidenceOption) {
   const file = await pickedEvidence(option);
   if (!file) return;
   const where = await devicePlaceNow();
-  await visit.screen.addPhoto(file, undefined, { lat: where.lat, lng: where.lng, takenAt: where.at });
+  await visit.addPhoto(file, { lat: where.lat, lng: where.lng, takenAt: file.stamp?.takenAt ?? where.at });
 }
 
 /** The card's button runs once the visit is read: a point opens its sheet, the rest do their step. */
@@ -116,7 +121,7 @@ function useStartAction(action: VisitCardAction | undefined, visit: Visit, run: 
       point: run.mark,
       interview: () => void visit.openSection('entrevista'),
       photo: run.evidence,
-      finish: () => void visit.screen.finish(),
+      finish: () => void visit.finish(),
       pdf: run.pdf,
       croquis: run.croquis,
     };
@@ -151,7 +156,7 @@ function PointRows({ document }: { document: VisitDocument }) {
             <Text className="text-[15px] font-semibold text-on-surface">{pointLine(point)}</Text>
             {point.note ? <Text numberOfLines={1} className="text-[12px] text-on-surface-variant">{point.note}</Text> : null}
           </View>
-          {point.media.length ? <Text className="text-[12px] text-on-surface-variant">{`${point.media.length} foto${point.media.length === 1 ? '' : 's'}`}</Text> : <MapPin size={16} color={colors['on-surface-variant']} />}
+          {point.pending ? <Text testID={`visita-punto-${point.n}-sin-enviar`} className="text-[12px] font-semibold text-primary">Sin enviar</Text> : point.media.length ? <Text className="text-[12px] text-on-surface-variant">{`${point.media.length} foto${point.media.length === 1 ? '' : 's'}`}</Text> : <MapPin size={16} color={colors['on-surface-variant']} />}
         </View>
       ))}
     </View>
@@ -221,6 +226,7 @@ export function VisitScreen(props: Props) {
   const [marking, setMarking] = useState(false);
   const [croquis, setCroquis] = useState(false);
   const [evidenceOpen, setEvidenceOpen] = useState(false);
+  const [localNotice, setLocalNotice] = useState('');
   const document = visit.draft?.ok ? visit.draft.document : null;
   const { onClose } = props;
   useEffect(() => {
@@ -232,24 +238,26 @@ export function VisitScreen(props: Props) {
     return () => subscription.remove();
   }, [marking, onClose]);
   const pdf = async () => {
+    if (visit.isLocal) return setLocalNotice(NEEDS_PORTAL);
     const url = await visit.screen.pdf();
     if (url && document) files.open({ url, name: `${document.code}.pdf`, mime: 'application/pdf' });
   };
-  useStartAction(props.startAction, visit, { mark: () => setMarking(true), pdf: () => void pdf(), croquis: () => setCroquis(true), evidence: () => setEvidenceOpen(true) });
-  const openForm = visit.answers.openForm;
+  const openCroquis = () => (visit.isLocal ? setLocalNotice(NEEDS_PORTAL) : setCroquis(true));
+  useStartAction(props.startAction, visit, { mark: () => setMarking(true), pdf: () => void pdf(), croquis: openCroquis, evidence: () => setEvidenceOpen(true) });
+  const openForm = visit.localForm;
   return (
     <View testID="visita-pantalla" className="absolute inset-0 bg-background" style={{ paddingTop: margins.cabecera, zIndex: VISIT_SCREEN_LAYER, elevation: VISIT_SCREEN_LAYER }}>
       <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ padding: 16, gap: 12, paddingBottom: margins.pie + 24 }}>
         <Header document={document} onBack={onClose} />
-        <EphemeralAnswers answers={visit.answers.answers} onDismiss={visit.answers.dismiss} onOpenForm={visit.answers.showForm} chatId={props.place.chatId} jwt={props.place.jwt} embedded />
+        {document?.id ? <FieldQueueStrip serviceId={`visit:${document.id}`} alsoIds={visit.visitScopes} /> : null}
         <Body visit={visit} onMark={() => setMarking(true)} onPdf={() => void pdf()} onEvidence={() => setEvidenceOpen(true)} />
         {visit.busy ? <Text testID="visita-ocupada" className="text-center text-[13px] text-on-surface-variant">{visit.busy}</Text> : null}
-        {visit.notice || files.notice ? <Text testID="visita-aviso" className="text-center text-[13px] text-on-surface">{visit.notice || files.notice}</Text> : null}
+        {localNotice || visit.notice || files.notice ? <Text testID="visita-aviso" className="text-center text-[13px] text-on-surface">{localNotice || visit.notice || files.notice}</Text> : null}
       </ScrollView>
-      {marking && document ? <MarkPointSheet document={document} n={nextPointNumber(document)} onClose={() => setMarking(false)} onSave={(point, photo) => { setMarking(false); void visit.screen.markPoint(point, photo); }} /> : null}
-      {openForm ? <AppFormSheet key={formKeyOf(openForm)} answer={openForm} onSubmit={(values) => visit.answers.submitForm(openForm, values)} onUpload={(photo, stamp) => visit.answers.uploadPhoto(openForm.commandId, photo, stamp)} onClose={() => visit.answers.dismiss(openForm.commandId)} /> : null}
+      {marking && document ? <MarkPointSheet document={document} n={nextPointNumber(document)} onClose={() => setMarking(false)} onSave={(point, photo) => { setMarking(false); void visit.markPoint(point, photo); }} /> : null}
+      {openForm ? <AppFormSheet key={formKeyOf(openForm)} answer={openForm} onSubmit={async (values) => { await visit.submitSection(stringValues(values)); return { done: true, answer: null }; }} onUpload={async () => ({ ok: false, message: NO_PHOTO_FIELD })} onClose={visit.closeForm} /> : null}
       {files.viewer}
-      {croquis && document ? <VisitCroquis visit={visit} document={document} onClose={() => setCroquis(false)} /> : null}
+      {croquis && document && !visit.isLocal ? <VisitCroquis visit={visit} document={document} onClose={() => setCroquis(false)} /> : null}
       <VisitEvidenceSheet visible={evidenceOpen} onClose={() => setEvidenceOpen(false)} onPick={(option) => void addEvidence(visit, option)} />
     </View>
   );

@@ -9,7 +9,7 @@ import type { TimemarkStampAsked } from './appActions.js';
  * comes back. The steps a job already finished (a photo's `mediaId`) are kept,
  * so a retry never repeats them. PURE: the phone gives the disk and the wire.
  */
-export const FIELD_JOB_KINDS = ['drive_file', 'map_progress', 'observation', 'task_evidence'] as const;
+export const FIELD_JOB_KINDS = ['drive_file', 'map_progress', 'observation', 'task_evidence', 'visit_section', 'visit_point', 'visit_photo', 'visit_finish'] as const;
 export type FieldJobKind = (typeof FIELD_JOB_KINDS)[number];
 
 export type FieldJobFile = { key: string; ref: string; name: string; mime: string; sizeBytes?: number; seconds?: number; stamp?: TimemarkStampAsked };
@@ -49,8 +49,9 @@ export function newFieldJob(input: Pick<FieldJob, 'key' | 'kind' | 'scope' | 'la
 /** Idempotent by key: a double tap is one job. */
 export const enqueueFieldJob = (queue: readonly FieldJob[], job: FieldJob): FieldJob[] => (queue.some((one) => one.key === job.key) ? [...queue] : [...queue, job]);
 
-/** The oldest ready job; one waiting its retry or refused never blocks the rest. */
-export const nextFieldJob = (queue: readonly FieldJob[], now: number): FieldJob | null => queue.find((one) => !one.refusal && one.nextAt <= now) ?? null;
+/** The oldest ready job; one waiting its retry, refused or `blocked` (waiting for another, e.g. a visit's creation) never blocks the rest. */
+export const nextFieldJob = (queue: readonly FieldJob[], now: number, blocked: (job: FieldJob) => boolean = () => false): FieldJob | null =>
+  queue.find((one) => !one.refusal && one.nextAt <= now && !blocked(one)) ?? null;
 
 function settled(job: FieldJob, verdict: Exclude<FieldJobVerdict, { outcome: 'done' }>, now: number): FieldJob {
   const done = { ...job.done, ...(verdict.done ?? {}) };

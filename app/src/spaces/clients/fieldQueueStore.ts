@@ -1,7 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Crypto from 'expo-crypto';
 import * as FileSystem from 'expo-file-system/legacy';
-import { discardFieldJob, enqueueFieldJob, fieldJobsWakeAt, nextFieldJob, retryFieldJob, settleFieldJob, type FieldJob, type FieldJobFile, type FieldJobKind, type FieldJobVerdict } from '@lilachat/shared';
+import { discardFieldJob, enqueueFieldJob, fieldJobsWakeAt, nextFieldJob, retryFieldJob, settleFieldJob, keysGoingWith, visitJobBlocked, type FieldJob, type FieldJobFile, type FieldJobKind, type FieldJobVerdict, type ResolvedVisits } from '@lilachat/shared';
 import { loadCredential } from '../../auth/credentialStore';
 import { alConectar, getSocket } from '../../chat/socketClient';
 import { reportarError } from '../../ui/reportarError';
@@ -15,6 +15,8 @@ import { reportarError } from '../../ui/reportarError';
  * The JWT is read from the keychain at each run and never stored.
  */
 const QUEUE_KEY = 'lilachat:field-queue';
+/** A visit created without signal → Portal's id, once its «Datos» landed (`shared/visitOffline`). */
+const VISIT_IDS_KEY = 'lilachat:field-visit-ids';
 const FILES_FOLDER = `${FileSystem.documentDirectory ?? ''}field-queue/`;
 /** Between two jobs: a backlog of 40 photos must not hit Portal in one burst. */
 const GAP_MS = 1_500;
@@ -30,7 +32,29 @@ const listeners = new Set<() => void>();
 /** Who wants to know a job landed (the Drive asks its list again). */
 const doneListeners = new Set<(job: FieldJob) => void>();
 
+let resolved: Record<string, string> = {};
+let resolvedRead: Promise<void> | null = null;
+const readResolved = () => (resolvedRead ??= AsyncStorage.getItem(VISIT_IDS_KEY).then((raw) => {
+  try {
+    resolved = raw ? (JSON.parse(raw) as Record<string, string>) : {};
+  } catch {
+    resolved = {};
+  }
+}).catch(() => undefined));
+
+/** What is known of the visits created without signal; read before any drain. */
+export const resolvedVisitsNow = (): ResolvedVisits => resolved;
+
+/** A local visit got Portal's id: its waiting work can go, and its screen switches to it. */
+export async function resolveLocalVisit(localId: string, realId: string): Promise<void> {
+  await readResolved();
+  resolved = { ...resolved, [localId]: realId };
+  listeners.forEach((listener) => listener());
+  await AsyncStorage.setItem(VISIT_IDS_KEY, JSON.stringify(resolved)).catch((error: unknown) => reportarError('fieldQueueStore.resolveLocalVisit', error));
+}
+
 async function loaded(): Promise<FieldJob[]> {
+  await readResolved();
   if (queue) return queue;
   const raw = await AsyncStorage.getItem(QUEUE_KEY).catch(() => null);
   try {
@@ -75,7 +99,8 @@ let timer: ReturnType<typeof setTimeout> | null = null;
 function scheduleWake(current: readonly FieldJob[]): void {
   if (timer) clearTimeout(timer);
   timer = null;
-  const wakeAt = fieldJobsWakeAt(current);
+  // A job waiting for another (a visit's creation) wakes nothing: its creation's own retry does.
+  const wakeAt = fieldJobsWakeAt(current.filter((one) => !visitJobBlocked(one, current, resolved)));
   if (wakeAt !== null) timer = setTimeout(kickFieldQueue, Math.max(GAP_MS, wakeAt - Date.now()));
 }
 
@@ -96,7 +121,8 @@ async function runOne(job: FieldJob): Promise<void> {
 async function drain(): Promise<void> {
   for (;;) {
     if (!getSocket()?.connected) return;
-    const job = nextFieldJob(await loaded(), Date.now());
+    const current = await loaded();
+    const job = nextFieldJob(current, Date.now(), (one) => visitJobBlocked(one, current, resolved));
     if (!job) return;
     await runOne(job);
     await new Promise((resolve) => setTimeout(resolve, GAP_MS));
@@ -137,16 +163,19 @@ export async function retryFieldWork(key: string): Promise<void> {
   kickFieldQueue();
 }
 
-/** «Descartar»: out of the queue, its files deleted. */
+/** «Descartar»: out of the queue, its files deleted; a new visit's creation takes its whole visit along. */
 export async function discardFieldWork(key: string): Promise<void> {
-  let dropped: FieldJob | null = null;
+  const gone: FieldJob[] = [];
   await change((current) => {
-    const result = discardFieldJob(current, key);
-    dropped = result.dropped;
-    return result.queue;
+    const job = current.find((one) => one.key === key);
+    const keys = job ? keysGoingWith(job, current) : [key];
+    return keys.reduce((rest, one) => {
+      const result = discardFieldJob(rest, one);
+      if (result.dropped) gone.push(result.dropped);
+      return result.queue;
+    }, current);
   });
-  const gone = dropped as FieldJob | null;
-  if (gone) await dropFiles(gone.files);
+  await dropFiles(gone.flatMap((job) => job.files));
 }
 
 /** On logout: what was not sent belongs to whoever left. */
@@ -154,5 +183,7 @@ export async function forgetFieldQueue(): Promise<void> {
   if (timer) clearTimeout(timer);
   timer = null;
   await change(() => []);
+  resolved = {};
+  await AsyncStorage.removeItem(VISIT_IDS_KEY).catch(() => undefined);
   await FileSystem.deleteAsync(FILES_FOLDER, { idempotent: true }).catch(() => undefined);
 }

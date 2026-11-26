@@ -62,7 +62,7 @@ export const VISIT_MEASURE_UNITS: readonly { value: VisitMeasureUnit; label: str
 ];
 
 export type VisitMedia = { url: string; thumbUrl?: string; mime: string };
-export type VisitPoint = { id: string; n: number; type: string; typeLabel: string; note?: string; measure?: { value: number; unit: string }; lat: number; lng: number; at: string | null; precisionM?: number; approximate?: true; media: VisitMedia[] };
+export type VisitPoint = { id: string; n: number; type: string; typeLabel: string; note?: string; measure?: { value: number; unit: string }; lat: number; lng: number; at: string | null; precisionM?: number; approximate?: true; media: VisitMedia[]; /** Marked on the phone, still in the queue (offline, José 26/11). */ pending?: true };
 export type VisitSection = { id: string; title: string; required: boolean; state: VisitSectionState; summary: string[]; form?: string; tool?: string; values: Record<string, string> };
 export type VisitDetails = { prospect: string; contact?: string; phone?: string; place: string; lat?: number; lng?: number; precisionM?: number; approximate?: true; date: string | null; engineer: string };
 export type VisitFigures = { points: number; photos: number; videos: number; questions: number; answered: number };

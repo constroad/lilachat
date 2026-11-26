@@ -1,5 +1,7 @@
 # As-is · Comandos «/», acciones ⚡, formularios y horarios de las apps
 
+
+- **Sin señal (26/11):** la lista de acciones de cada chat (el ⚡) se guarda en el teléfono (`lilachat:space-cache:<espacio>:commands:<chat>`) y se muestra sin red; si ofrece «Visita técnica», se guarda también la plantilla de la visita (`plataforma-sin-senal.md`).
 ## 1. Qué es
 
 Es cómo una persona le pide algo a una app instalada.

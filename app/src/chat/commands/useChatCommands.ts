@@ -1,8 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { channelButtonRows, commandOf, matchCommands, parseSlashInput, quickActionRows, slashQuery, unknownCommandMessage, type CardContext, type CommandGroup } from '@lilachat/shared';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { channelButtonRows, commandOf, isSiteVisitShortcut, matchCommands, parseSlashInput, quickActionRows, slashQuery, unknownCommandMessage, visitDraftResultOf, type CardContext, type CommandGroup } from '@lilachat/shared';
 import { getSocket } from '../socketClient';
 import { runAnswerCommand, runCardCommand, runCommand, shareCommandAnswer, spaceCommands } from './commandsApi';
 import { useAppAnswers } from './useAppAnswers';
+import { spaceDiskKey } from '../../spaces/spaceCache';
+import { prefetchVisitTemplate } from '../../spaces/visits/visitCopies';
+import { askVisitDraft } from '../../spaces/visits/visitsApi';
 
 export type ChatCommands = ReturnType<typeof useChatCommands>;
 
@@ -11,6 +15,17 @@ export type ChatCommands = ReturnType<typeof useChatCommands>;
  * time a line starts with a slash (never polled); the answers only I see live
  * here and die with the screen, like Slack's.
  */
+/** A saved list, or `null` when missing or broken. */
+function savedGroupsOf(raw: string | null): CommandGroup[] | null {
+  if (!raw) return null;
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    return Array.isArray(parsed) ? (parsed as CommandGroup[]) : null;
+  } catch {
+    return null;
+  }
+}
+
 export function useChatCommands(params: { jwt: string; chatId: string; workspaceId?: string | null; /** A channel or a group: what only I saw can be sent there. */ shareable?: boolean }) {
   const { jwt, chatId, workspaceId } = params;
   const [groups, setGroups] = useState<CommandGroup[]>([]);
@@ -24,11 +39,24 @@ export function useChatCommands(params: { jwt: string; chatId: string; workspace
   const load = useCallback(async (): Promise<CommandGroup[] | null> => {
     if (!workspaceId) return null;
     if (loaded.current) return loaded.current;
-    inflight.current ??= spaceCommands(jwt, workspaceId, { chatId }).then((result) => {
+    inflight.current ??= spaceCommands(jwt, workspaceId, { chatId }).then(async (result) => {
       inflight.current = null; // a failure asks again on the next slash
-      if (!result.ok) return null;
+      const savedKey = spaceDiskKey(`${workspaceId}:commands:${chatId}`);
+      if (!result.ok) {
+        // Without signal the ⚡ shows what this chat offered last time (José 26/11: «Visita técnica» at the site).
+        const saved = savedGroupsOf(await AsyncStorage.getItem(savedKey).catch(() => null));
+        if (saved) setGroups(saved);
+        return saved;
+      }
       loaded.current = result.data.groups;
       setGroups(result.data.groups);
+      AsyncStorage.setItem(savedKey, JSON.stringify(result.data.groups)).catch(() => undefined);
+      if (quickActionRows(result.data.groups).some(isSiteVisitShortcut)) {
+        prefetchVisitTemplate(workspaceId, () => askVisitDraft({ jwt, spaceId: workspaceId, chatId }, null), (reply) => {
+          const draft = visitDraftResultOf(reply);
+          return draft.ok ? draft.document : null;
+        });
+      }
       return result.data.groups;
     });
     return inflight.current;

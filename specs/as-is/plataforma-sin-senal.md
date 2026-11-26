@@ -189,13 +189,22 @@ visita no escribe nada.
   las genera el almacenamiento de Portal al recibir.
 - Franja de la visita (`FieldQueueStrip` con su id local y el real).
 
+- **E2E 26/11 (emulador, Test, `.e2e-visit-report.md`):** crear la visita sin señal, punto con foto, foto
+  suelta, video y «Terminar» en cola; al volver la red la pantalla pasa sola a VIS-2026-0091 y todo sale
+  en orden; dos cortes en pleno envío: una sola visita y ninguna foto doble. Arreglado tras el E2E: una
+  lectura de la visita sin respuesta de agentes (`visit_draft_failed`) se reintenta, no se rechaza
+  (`visitReadPasses`); el «Falta: …» de Portal no se muestra mientras la visita tiene algo en cola (solo
+  Portal lo puede volver a decir); «Guardado en el teléfono» se va cuando ya no queda nada de la visita.
+  Abierto: el video sube (Portal responde < 300) pero el documento de la visita no lo lista ni lo cuenta
+  (`cifras.videos`): pedido a la sesión de Portal.
+
 ## 4. Pruebas
 
 - **Shared:** `savedServiceAnswer.test.ts` (copia fresca, sin señal, negativa, copia rota, precarga,
   línea), `media.test.ts` (`isRetryableUploadStatus`).
 - **Shared:** `visitOffline.test.ts` (ids locales, plantilla, proyección, orden de salida, descartar), `fieldQueue.test.ts` (`blocked`).
 - **Server:** `siteVisitDoor.test.ts` (la sección conserva el `entry_id` del teléfono).
-- **E2E 26/11 (emulador, Test):** detalle guardado sin red, foto al Drive en cola y subida al volver la red, lista de chats sin red: pasan. Falta el E2E de la visita sin señal.
+- **E2E 26/11 (emulador, Test):** detalle guardado sin red, foto al Drive en cola y subida al volver la red, lista de chats sin red: pasan. La visita sin señal: §3-bis.
 - **APK:** `chat/networkReturn.test.ts` (en línea, vuelta de la red, hidratador cada 10 min).
 - **E2E sin red:** pendiente en el emulador (`adb shell svc data disable` + `svc wifi disable` con la
   app ya abierta, `rn-app-loop` §4b).

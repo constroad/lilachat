@@ -55,6 +55,14 @@ export function visitDraftResultOf(reply: Reply): VisitDraftResult {
   return document ? { ok: true, document, visits } : { ok: false, message: VISIT_OPEN_FAILED };
 }
 
+/**
+ * A read our server answered without agentes' own word (`visit_draft_failed`: agentes slow or down for a
+ * moment). A queued job tries it again; only agentes' refusal (its own code, e.g. visits off) is final (E2E 26/11).
+ */
+export function visitReadPasses(reply: Reply): boolean {
+  return reply.ok && record(reply.data).error === 'visit_draft_failed';
+}
+
 /** The visit saving its details created (asked to agentes 14/11; `id` read too until it answers). */
 export function createdVisitIdOf(data: unknown): string | null {
   const one = record(data);

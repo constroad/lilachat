@@ -1,4 +1,4 @@
-import { addVisitPhoto, createdVisitIdOf, finishVisit, formRunAnswer, markVisitPoint, noticeOf, realVisitIdOf, visitDraftResultOf, visitPointRequest, watchFieldRun, type FieldJob, type FieldJobVerdict, type FieldRunWatch, type VisitFlowDeps, type VisitJobPayload } from '@lilachat/shared';
+import { addVisitPhoto, createdVisitIdOf, finishVisit, formRunAnswer, markVisitPoint, noticeOf, realVisitIdOf, visitDraftResultOf, visitPointRequest, visitReadPasses, watchFieldRun, type FieldJob, type FieldJobVerdict, type FieldRunWatch, type VisitFlowDeps, type VisitJobPayload } from '@lilachat/shared';
 import { submitAppForm } from '../../chat/commands/commandsApi';
 import { getSocket } from '../../chat/socketClient';
 import { registerFieldHandler, resolveLocalVisit, resolvedVisitsNow } from '../clients/fieldQueueStore';
@@ -41,13 +41,15 @@ function visitDeps(ref: VisitPlaceRef, watch: FieldRunWatch, fileKey: string): V
 }
 
 /** The visit as our server reads it now (it opens the forms from that copy); the phone's copy is refreshed too. */
-async function readVisit(ref: VisitPlaceRef, visitId: string | null, watch: FieldRunWatch): Promise<{ ok: true } | { ok: false; message: string }> {
+async function readVisit(ref: VisitPlaceRef, visitId: string | null, watch: FieldRunWatch): Promise<FieldJobVerdict | null> {
   const reply = await askVisitDraft(ref, visitId);
   watch.open({ ok: reply.ok, status: status(reply) });
+  // Agentes did not answer this time: again later, never a refusal the person has to clear.
+  if (visitReadPasses(reply)) return { outcome: 'retry', reached: true };
   const draft = visitDraftResultOf(reply);
-  if (!draft.ok) return draft;
+  if (!draft.ok) return watch.verdictOf(draft);
   keepVisitCopy(ref.spaceId, draft.document);
-  return { ok: true };
+  return null;
 }
 
 const fileOf = (job: FieldJob): DriveFile | null => {
@@ -87,8 +89,8 @@ async function sendVisitJob(job: FieldJob, jwt: string): Promise<FieldJobVerdict
   const ref: VisitPlaceRef = { jwt, spaceId: job.scope.spaceId, chatId: job.scope.chatId };
   const watch = watchFieldRun();
   const visitId = payload.kind === 'visit_section' && payload.creates ? null : realVisitIdOf(payload.visit, resolvedVisitsNow());
-  const read = await readVisit(ref, visitId, watch);
-  if (!read.ok) return watch.verdictOf(read);
+  const failed = await readVisit(ref, visitId, watch);
+  if (failed) return failed;
   if (payload.kind === 'visit_section') return sendSection(job, ref, payload, visitId, watch);
   if (!visitId) return { outcome: 'retry', reached: false };
   if (payload.kind === 'visit_point') return sendPoint(job, ref, payload, visitId, watch);

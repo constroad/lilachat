@@ -79,6 +79,9 @@ export function useVisit(ref: VisitPlaceRef, startId: string | null) {
   useEffect(() => subscribeFieldQueue(() => {
     const current = visitIdRef.current;
     const real = current && isLocalVisitId(current) ? realVisitIdOf(current, resolvedVisitsNow()) : null;
+    // «Guardado en el teléfono» goes once nothing of this visit waits (E2E 26/11: it stayed after the upload).
+    const scopes = current ? idsOf(current).map((id) => `visit:${id}`) : [];
+    if (!fieldQueueNow().some((job) => scopes.includes(job.scope.serviceId))) setNotice('');
     if (real) void screen.choose(real);
     else void screen.reload();
   }), [screen]);

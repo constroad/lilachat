@@ -100,15 +100,21 @@ function withPhoto(document: VisitDocument, job: FieldJob): VisitDocument {
   return { ...document, figures: video ? { ...figures, videos: figures.videos + 1 } : { ...figures, photos: figures.photos + 1 } };
 }
 
-/** The visit as it will be once its queue lands: each pending job of THIS visit drawn on top, in order. */
+/**
+ * The visit as it will be once its queue lands: each pending job of THIS visit drawn on top, in order.
+ * Portal's «Falta: …» is dropped while anything waits: only Portal can say it again (E2E 26/11: it still
+ * asked for Datos already filled), and «Terminar» goes last and hears Portal's own refusal.
+ */
 export function projectVisit(base: VisitDocument, queue: readonly FieldJob[], visitIds: readonly string[]): VisitDocument {
-  return queue.filter((job) => isVisitJob(job) && visitIds.includes(payloadOf(job).visit)).reduce((document, job) => {
+  const pending = queue.filter((job) => isVisitJob(job) && visitIds.includes(payloadOf(job).visit));
+  if (!pending.length) return base;
+  return pending.reduce<VisitDocument>((document, job) => {
     const payload = payloadOf(job);
     if (payload.kind === 'visit_section') return withSection(document, payload);
     if (payload.kind === 'visit_point') return withPoint(document, job, payload);
     if (payload.kind === 'visit_photo') return withPhoto(document, job);
     return document;
-  }, base);
+  }, { ...base, publish: { ...base.publish, missing: [] } });
 }
 
 /** A new visit before Portal has it: the template's forms and questions, nothing filled. */

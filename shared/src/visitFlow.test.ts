@@ -4,7 +4,7 @@ import type { FormSubmitReply } from './appActions.js';
 import { NEW_VISIT, VISIT_WITH_ID } from './siteVisit.fixture.js';
 import { openVisitRowsOf, visitDocumentOf } from './siteVisit.js';
 import { isPortalUploadTicket } from './driveUpload.js';
-import { addVisitPhoto, finishVisit, markVisitPoint, visitDraftResultOf, visitPdf, visitPhotoFields, visitPointRequest, createdVisitIdOf, saveVisitAnswers, visitCroquis, type VisitFlowDeps } from './visitFlow.js';
+import { addVisitPhoto, finishVisit, markVisitPoint, visitDraftResultOf, visitReadPasses, visitPdf, visitPhotoFields, visitPointRequest, createdVisitIdOf, saveVisitAnswers, visitCroquis, type VisitFlowDeps } from './visitFlow.js';
 
 const VISIT = '65f0000000000000000000a1';
 const POINT = '0b6f1a4e-2c3d-4e5f-8a9b-1c2d3e4f5a6b';
@@ -139,5 +139,14 @@ describe('an interview answer (lv03)', () => {
     expect(deps.open).toHaveBeenCalledWith({ kind: 'section', section: 'entrevista', visit_id: VISIT });
     expect(deps.submit).toHaveBeenCalledWith('c1', { r02: 'Arena' });
     expect(saved).toEqual({ ok: true, message: 'Guardado.' });
+  });
+});
+
+describe('visitReadPasses', () => {
+  it('only our server\'s own «agentes did not answer» is tried again', () => {
+    expect(visitReadPasses({ ok: true, data: { error: 'visit_draft_failed', message: 'No se pudo abrir la visita.' } })).toBe(true);
+    expect(visitReadPasses({ ok: true, data: { error: 'visitas_apagadas', message: 'Las visitas están apagadas.' } })).toBe(false);
+    expect(visitReadPasses({ ok: true, data: { document: {} } })).toBe(false);
+    expect(visitReadPasses({ ok: false, message: 'Sin conexión.' })).toBe(false);
   });
 });

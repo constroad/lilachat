@@ -72,6 +72,15 @@ describe('visitOfflineDraft', () => {
 });
 
 describe('projectVisit', () => {
+  it('drops Portal\'s «Falta» while this visit has work waiting, and keeps it when nothing waits', () => {
+    const base = { ...SAVED, publish: { ...SAVED.publish, missing: ['Escribe a quién visitas'] } };
+    const datos = job({ kind: 'visit_section', visit: REAL, section: 'datos', values: { prospecto: 'QA' } });
+    expect(projectVisit(base, [datos], [REAL]).publish.missing).toEqual([]);
+    expect(projectVisit(base, [], [REAL]).publish.missing).toEqual(['Escribe a quién visitas']);
+    const other = job({ kind: 'visit_section', visit: '6b08613d847294dd7b9600ff', section: 'datos', values: {} });
+    expect(projectVisit(base, [other], [REAL])).toBe(base);
+  });
+
   it('a queued point is drawn with the next number, its place and the hour it was taken', () => {
     const point = job({ kind: 'visit_point', visit: REAL, point: { type: 'BACHE', lat: -11.59, lng: -77.21, note: 'Bache grande', measure: 4, unit: 'm2' }, takenAt: '2026-11-24T15:30:00.000Z' }, [PHOTO]);
     const document = projectVisit(SAVED, [point], [REAL]);

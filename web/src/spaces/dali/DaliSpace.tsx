@@ -15,6 +15,7 @@ import { DaliReview } from './DaliReview';
 import { SheetInColumn } from './daliParts';
 import { FollowUpsSheet } from './FollowUpsSheet';
 import { ProspectSheet, type SheetProps } from './ProspectSheet';
+import { ResizableAside } from './ResizableAside';
 import { useProspects } from './useProspects';
 
 export type DaliTab = 'inbox' | 'chats' | 'funnel' | 'panel' | 'review';
@@ -209,14 +210,14 @@ function InboxTab(props: Props & { tab: 'inbox' | 'chats'; directChats: ChatSumm
   const sheetInColumn = props.tab === 'inbox' && props.width >= SHEET_COLUMN_MIN_WIDTH && props.selectedProspect !== null;
   return (
     <>
-      <aside className="w-[380px] shrink-0 overflow-y-auto border-r border-outline/15 bg-list">{aside}</aside>
+      <ResizableAside storageKey={`dali-lista-${props.tab}`} side="left" defaultWidth={380} minWidth={280} maxWidth={560} label="Mostrar la lista" testId="columna-lista" className="bg-list">{aside}</ResizableAside>
       <div className="flex min-w-0 flex-1">
         <SheetInColumn.Provider value={sheetInColumn}>{props.conversation ?? <PickOne />}</SheetInColumn.Provider>
       </div>
       {sheetInColumn && props.selectedProspect ? (
-        <aside data-testid="columna-ficha" className="w-[360px] shrink-0 border-l border-outline/15">
+        <ResizableAside storageKey="dali-ficha" side="right" defaultWidth={360} minWidth={300} maxWidth={520} label="Mostrar la ficha" testId="columna-ficha">
           <ProspectSheet {...props.sheetProps} prospect={props.selectedProspect} resultInHeader />
-        </aside>
+        </ResizableAside>
       ) : null}
     </>
   );

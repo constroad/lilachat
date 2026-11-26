@@ -89,7 +89,8 @@ function HeaderActions(props: { phone?: boolean; withSheet: boolean; prospect: P
   const dial = `tel:+${prospect.phone}`;
   return (
     <>
-      {!prospect.phone ? null : props.phone ? (
+      {/* With the ficha beside it, «Llamar» is already there: only one call button on the screen. */}
+      {!prospect.phone || props.withSheet ? null : props.phone ? (
         <a href={dial} data-testid="cabecera-llamar" aria-label="Llamar" className="grid h-10 w-10 place-items-center rounded-full border border-outline/30 text-primary hover:bg-background"><Phone size={18} /></a>
       ) : (
         <a href={dial} data-testid="cabecera-llamar" className="inline-flex h-10 items-center gap-1.5 rounded-xl border border-outline/30 px-3 text-[13px] font-semibold hover:bg-background"><Phone size={16} /> Llamar</a>

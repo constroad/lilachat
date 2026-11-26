@@ -166,7 +166,7 @@ function CardButtons(props: { actions: CardAction[]; sent: SentAction; onPress: 
   const stacked = layout === 'stacked';
   const classOf = (action: CardAction) => {
     if (!stacked) return `min-h-9 flex-auto whitespace-nowrap rounded-full px-3 text-[13px] font-semibold ${ACTION[action.style]}`;
-    return action.style === 'primary' ? 'h-11 w-full rounded-xl bg-primary px-4 text-[15px] font-bold text-on-primary hover:opacity-90' : 'h-9 w-full rounded-lg px-4 text-[13px] font-semibold text-on-surface-variant hover:bg-background';
+    return action.style === 'primary' ? 'h-11 w-full rounded-xl bg-primary px-4 text-[15px] font-bold text-on-primary hover:opacity-90' : 'min-h-9 w-full rounded-lg px-4 py-1.5 text-[13px] font-semibold leading-snug text-on-surface-variant hover:bg-background';
   };
   return (
     <div data-testid={stacked ? 'tarjeta-acciones-apiladas' : undefined} className={`border-t border-outline/10 px-3.5 ${stacked ? 'flex flex-col gap-1 pb-1.5 pt-3' : 'flex flex-wrap gap-2 py-2.5'}`}>

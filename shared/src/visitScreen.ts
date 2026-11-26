@@ -54,7 +54,8 @@ export function createVisitScreen<F>(deps: VisitScreenDeps<F>, startId: string |
     },
     markPoint: (point: VisitPointInput, photo: F | null) => run('Guardando el punto…', async (visitId) => {
       if (point.lat === undefined || point.lng === undefined) return VISIT_NO_GPS;
-      const marked = await markVisitPoint(deps, visitPointRequest(visitId, deps.newKey(), { ...point, lat: point.lat, lng: point.lng }, deps.source), photo);
+      const takenAt = new Date().toISOString();
+      const marked = await markVisitPoint(deps, visitPointRequest(visitId, deps.newKey(), { ...point, lat: point.lat, lng: point.lng }, deps.source, takenAt), photo, takenAt);
       if (!marked.ok) return marked.message;
       return marked.photoFailed ? `Punto ${marked.n} guardado. ${marked.photoFailed}` : `Punto ${marked.n} guardado.`;
     }),

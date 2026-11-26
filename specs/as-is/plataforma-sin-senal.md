@@ -182,6 +182,9 @@ visita no escribe nada.
   `marcar_punto_de_visita` (ee4028fff, en producción 16:48Z; un valor que no parsea rechaza el punto, uno
   fuera de rango toma la hora del server, un reenvío conserva la guardada). Su huella cambió: hasta que
   José la reaprueba en Agentes → Herramientas, todo punto falla con `tool_unavailable`, con hora o sin ella.
+  José la reaprobó el 26/11. El E2E de ese día mostró que el pedido del punto no llevaba `taken_at` (solo la
+  foto tenía la hora): desde el 26/11 `visitPointRequest` lo pone, en la cola con la hora guardada y con señal
+  con la del momento; `siteVisitDoor.test.ts` cubre que llegue como `tomadoEn` y que una hora futura no pase.
 - **Compresión:** las tomas de la cámara van enteras y nuestro server las achica una vez al quemar el
   sello (foto con sharp, video con ffmpeg, `stampedForward.ts`); las fotos de galería se achican en el
   teléfono (`shrinkPhotoFile`) antes de entrar a la cola, en el Drive y desde el 26/11 también en la

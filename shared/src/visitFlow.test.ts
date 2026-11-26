@@ -49,6 +49,11 @@ describe('marking a point', () => {
     // Assert
     expect(request).toEqual({ kind: 'point', visit_id: VISIT, entry_id: POINT, type: 'GIBA', lat: -12.02, lng: -76.88, precision_m: 6, measure: 4, unit: 'm', note: 'Frente al 120', source: 'apk' });
   });
+  it('carries the field hour as taken_at, so a point sent later keeps it (E2E 26/11)', () => {
+    const request = visitPointRequest(VISIT, POINT, { type: 'BACHE', lat: -12.02, lng: -76.88 }, 'apk', '2026-11-26T17:12:46.929Z');
+    expect(request.taken_at).toBe('2026-11-26T17:12:46.929Z');
+    expect(visitPointRequest(VISIT, POINT, { type: 'BACHE', lat: -12.02, lng: -76.88 }, 'apk')).not.toHaveProperty('taken_at');
+  });
   it('saved, its photo goes to Portal\'s ticket with its own upload key', async () => {
     // Arrange
     const send = vi.fn(async () => ({ status: 201 }));

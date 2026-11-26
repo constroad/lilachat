@@ -16,7 +16,7 @@ export type VisitSource = 'apk' | 'web';
 export type VisitSectionId = 'datos' | 'entrevista' | 'conclusion';
 export type VisitFormRequest =
   | { kind: 'section'; section: VisitSectionId; visit_id?: string; lat?: number; lng?: number; precision_m?: number; /** The phone's own key (offline queue, José 26/11): Portal dedupes the visit's creation by it. */ entry_id?: string }
-  | { kind: 'point'; visit_id: string; entry_id: string; type: string; lat: number; lng: number; precision_m?: number; note?: string; measure?: number; unit?: string; source: VisitSource }
+  | { kind: 'point'; visit_id: string; entry_id: string; type: string; lat: number; lng: number; precision_m?: number; note?: string; measure?: number; unit?: string; source: VisitSource; /** When it was marked in the field (ISO); our server passes it as `tomadoEn`. */ taken_at?: string }
   | { kind: 'photo'; visit_id: string; point_id?: string }
   | { kind: 'finish'; visit_id: string }
   | { kind: 'pdf'; visit_id: string }
@@ -70,10 +70,13 @@ export function createdVisitIdOf(data: unknown): string | null {
   return typeof id === 'string' && VISIT_ID.test(id) ? id : null;
 }
 
-/** «Guardar punto»: the draft as the server checks it; `entryId` makes a repeat the same point. */
-export function visitPointRequest(visitId: string, entryId: string, draft: VisitPointDraft, source: VisitSource): VisitPointRequest {
+/**
+ * «Guardar punto»: the draft as the server checks it; `entryId` makes a repeat the same point. `takenAt`: when it was
+ * marked in the field, so a point queued without signal keeps its hour (E2E 26/11: it took the upload's).
+ */
+export function visitPointRequest(visitId: string, entryId: string, draft: VisitPointDraft, source: VisitSource, takenAt?: string): VisitPointRequest {
   const { type, lat, lng, precisionM, note, measure, unit } = draft;
-  return { kind: 'point', visit_id: visitId, entry_id: entryId, type, lat, lng, ...(precisionM !== undefined ? { precision_m: precisionM } : {}), ...(measure !== undefined ? { measure } : {}), ...(unit !== undefined ? { unit } : {}), ...(note ? { note } : {}), source };
+  return { kind: 'point', visit_id: visitId, entry_id: entryId, type, lat, lng, ...(precisionM !== undefined ? { precision_m: precisionM } : {}), ...(measure !== undefined ? { measure } : {}), ...(unit !== undefined ? { unit } : {}), ...(note ? { note } : {}), source, ...(takenAt ? { taken_at: takenAt } : {}) };
 }
 
 export type VisitFlowDeps<F> = {

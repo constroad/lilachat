@@ -79,7 +79,7 @@ async function sendPoint(job: FieldJob, ref: VisitPlaceRef, payload: Extract<Vis
     // The point landed on an earlier run: only its photo is left.
     return file ? watch.verdictOf(await addVisitPhoto(deps, visitId, file, marked, place), { point: marked }) : { outcome: 'done' };
   }
-  const result = await markVisitPoint(deps, visitPointRequest(visitId, job.key, payload.point, 'apk'), file, payload.takenAt);
+  const result = await markVisitPoint(deps, visitPointRequest(visitId, job.key, payload.point, 'apk', payload.takenAt), file, payload.takenAt);
   if (!result.ok) return watch.verdictOf(result);
   return result.photoFailed ? watch.verdictOf({ ok: false, message: result.photoFailed }, { point: result.pointId }) : { outcome: 'done' };
 }

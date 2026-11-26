@@ -159,6 +159,17 @@ describe('a visit\'s writes', () => {
     const submitted = received.find((event) => event.type === 'form.submitted')!;
     expect(submitted.data).toMatchObject({ form_id: 'marcar_punto_de_visita', channel_id: String(visitsChannel), place: 'channel', values: { visitaId: VISIT, entradaId: ENTRY, tipo: 'BACHE', lat: -12.0217, lng: -76.8817, precisionM: 6, fuente: 'apk' } });
   });
+  it('a point carries the hour it was marked in the field as tomadoEn; an unbelievable one is left out (E2E 26/11)', async () => {
+    // Arrange
+    await draftOf({ chat_id: String(visitsChannel), visit_id: VISIT }).expect(200);
+    const markedAt = new Date(Date.now() - 4 * 60_000).toISOString();
+    // Act
+    const opened = await openOf({ chat_id: String(visitsChannel), ...point, taken_at: markedAt }).expect(200);
+    const future = await openOf({ chat_id: String(visitsChannel), ...point, taken_at: new Date(Date.now() + 3_600_000).toISOString() }).expect(200);
+    // Assert
+    expect((await BotCommandRunModel.findById(opened.body.commandId).lean())?.context).toMatchObject({ tomadoEn: markedAt });
+    expect((await BotCommandRunModel.findById(future.body.commandId).lean())?.context).not.toHaveProperty('tomadoEn');
+  });
   it('a point without GPS, without type or without its key is refused before reaching agentes', async () => {
     await draftOf({ chat_id: String(visitsChannel), visit_id: VISIT }).expect(200);
     expect((await openOf({ chat_id: String(visitsChannel), ...point, lat: undefined }).expect(400)).body.message).toBe('Falta la ubicación del GPS.');

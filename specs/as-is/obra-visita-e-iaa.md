@@ -60,7 +60,7 @@ Si Portal borra la visita, agentes baja la tarjeta (`visita.deleted`,
 - Terminar: dice el primer faltante. El PDF abre con `status: 'ready'`.
 - Abrir croquis: editor de croquis de Portal (`/embed/site-visit/<id>?vista=croquis`,
   token en el `#`, 12 h, nunca se guarda ni se manda en un mensaje).
-- Sin cola sin señal: la visita necesita señal y lo dice.
+- Sin cola sin señal: la visita necesita señal y lo dice. **26/11:** el server ya acepta el `entry_id` del teléfono también en una sección (`sectionOpened`); Portal deduplica la creación de la visita por `entradaId` (`entryKey = visita:<entradaId>`, índice único), así que la cola sin señal de la visita (lote 3 de `plataforma-sin-senal.md`) puede reenviar «Datos» sin duplicar la visita.
 
 **Web/PWA** (`web/src/spaces/visits/`): `VisitScreenWeb.tsx`, `VisitCardBlocks.tsx`,
 `VisitCardActions.tsx` (contexto `visitActionContext.ts`), `MarkPointWeb.tsx` (con mapa

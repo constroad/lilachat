@@ -15,7 +15,7 @@ export const visitFormsPath = (spaceId: string): string => `/workspaces/${spaceI
 export type VisitSource = 'apk' | 'web';
 export type VisitSectionId = 'datos' | 'entrevista' | 'conclusion';
 export type VisitFormRequest =
-  | { kind: 'section'; section: VisitSectionId; visit_id?: string; lat?: number; lng?: number; precision_m?: number }
+  | { kind: 'section'; section: VisitSectionId; visit_id?: string; lat?: number; lng?: number; precision_m?: number; /** The phone's own key (offline queue, José 26/11): Portal dedupes the visit's creation by it. */ entry_id?: string }
   | { kind: 'point'; visit_id: string; entry_id: string; type: string; lat: number; lng: number; precision_m?: number; note?: string; measure?: number; unit?: string; source: VisitSource }
   | { kind: 'photo'; visit_id: string; point_id?: string }
   | { kind: 'finish'; visit_id: string }

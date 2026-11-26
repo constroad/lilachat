@@ -149,8 +149,10 @@ async function sectionOpened(workspaceId: string, userId: Types.ObjectId, body: 
   const document = await keptDocument(workspaceId, userId, visitId);
   const form = document ? visitSectionForm(document, section) : null;
   if (!form) return fail(409, 'draft_not_open', 'Abre la visita de nuevo para seguir.');
-  // Portal's guardar_visita requires an entry key on every save: one per opened form, so resending it never duplicates.
-  return { form, context: { ...(visitId ? { visitaId: visitId } : placeOfInput(body)), seccion: section, entradaId: randomUUID() } };
+  // Portal's guardar_visita requires an entry key on every save and dedupes a visit's creation by it. The phone's offline
+  // queue sends its own (José 26/11), so a resend after a lost answer is the same visit; otherwise one per opened form.
+  const entradaId = typeof body.entry_id === 'string' && ENTRY_ID.test(body.entry_id) ? body.entry_id : randomUUID();
+  return { form, context: { ...(visitId ? { visitaId: visitId } : placeOfInput(body)), seccion: section, entradaId } };
 }
 
 /** The point as the phone sent it, before Portal's checks. */

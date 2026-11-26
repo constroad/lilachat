@@ -177,6 +177,15 @@ describe('a visit\'s writes', () => {
     expect(context).toEqual({ seccion: 'datos', lat: -12.1, lng: -77, precisionM: 8, entradaId: expect.stringMatching(/^[0-9a-f-]{36}$/) });
     expect((await BotCommandRunModel.findById(interview.body.commandId).lean())?.context).toMatchObject({ visitaId: VISIT, seccion: 'entrevista', entradaId: expect.stringMatching(/^[0-9a-f-]{36}$/) });
   });
+  it('a section sent from the phone\'s queue keeps the phone\'s key: a resend of the visit\'s creation is the same visit (José 26/11)', async () => {
+    answers['visit.draft.requested'] = { status: 200, body: NEW_VISIT };
+    await draftOf({ chat_id: String(visitsChannel) }).expect(200);
+    const queued = '4b1f0c2e-9d3a-4e5f-8a7b-6c5d4e3f2a1b';
+    const start = await openOf({ chat_id: String(visitsChannel), kind: 'section', section: 'datos', entry_id: queued }).expect(200);
+    expect((await BotCommandRunModel.findById(start.body.commandId).lean())?.context).toMatchObject({ seccion: 'datos', entradaId: queued });
+    const bad = await openOf({ chat_id: String(visitsChannel), kind: 'section', section: 'datos', entry_id: 'not-a-uuid' }).expect(200);
+    expect((await BotCommandRunModel.findById(bad.body.commandId).lean())?.context?.entradaId).not.toBe('not-a-uuid');
+  });
   it('finishing and the PDF are forms with nothing to fill; outside the door nothing opens', async () => {
     const finish = await openOf({ chat_id: String(visitsChannel), kind: 'finish', visit_id: VISIT }).expect(200);
     expect(finish.body.response.form).toMatchObject({ id: 'terminar_visita', schema: { properties: {} } });

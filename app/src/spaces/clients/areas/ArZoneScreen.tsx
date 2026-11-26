@@ -49,7 +49,7 @@ export function ArZoneScreen(props: Props) {
     const gps = props.place.point ?? shot.point;
     const point = gps ? { lat: gps.lat, lng: gps.lng, precision: gps.precision } : null;
     const reportId = await write.save(areaCreateRequest(props.report, entryId, arAreaFigures(result), point, arMethodOf(result), 'apk', zoneGeometryField(result)), { place: placeText.value.trim(), note }, [withShotLabels(shot.shot, labels, panel)]);
-    if (reportId) props.onSaved(reportId);
+    if (reportId !== null) props.onSaved(reportId);
   };
   return (
     <View className="flex-1 bg-background">

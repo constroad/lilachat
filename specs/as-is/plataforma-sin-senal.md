@@ -33,6 +33,7 @@
 | **Visita técnica** (datos, entrevista, puntos, fotos y videos, terminar) | **Cola de campo** + copia en el teléfono; ver §3-bis | `spaces/visits/useVisit.ts`, `visitJobs.ts`, `shared/visitOffline.ts` |
 | ⚡ de un chat | La última lista de acciones guardada | `chat/commands/useChatCommands.ts` |
 | **Pendientes y checklist del canal** | El plan guardado; marcar y subir evidencia van por la cola de campo | `chat/workPlan/useWorkPlan.ts`, `evidenceUpload.ts`, `shared/taskOffline.ts` |
+| **Observaciones (REG-OBS, LEV-OBS) e IAA** | El informe guardado; registrar, levantar y medir un área van por la cola de campo | `spaces/clients/fieldWriteJobs.ts`, `shared/fieldWrites.ts` |
 | Informe nuevo de un tipo nunca abierto | Con señal, abrir «Servicios» deja listos los formularios de cada tipo | `reports/reportQueueStore.ts` › `prepareReportTypes` |
 | Informes de campo (secciones y fotos) | Cola propia, ver `obra-informes.md` | `spaces/clients/reports/reportQueueStore.ts` |
 | **Fotos, videos y documentos al Drive del servicio** | **Cola de campo**: se guardan en el teléfono y suben solos | `spaces/clients/fieldQueueStore.ts`, `useDriveUpload.ts`, `shared/fieldQueue.ts` |
@@ -85,6 +86,17 @@
   (el server une un `seq` una sola vez). El `seq` queda guardado: un reintento solo une.
 - Franja de pendientes del canal sobre «Pendientes».
 
+### Observaciones e IAA sin señal (26/11)
+
+- Registrar o levantar una observación y guardar un área medida (AR o foto con wincha) son trabajos
+  `observation` de la cola: el pedido con su `entry_id`, los valores y cada foto o video con sus campos
+  (`captura`). Portal encuentra el primero en un reenvío por `entradaId` y, sin `informeId`, lo archiva en
+  el informe abierto del servicio (`findOpenReport`, verificado 26/11): nada espera a otro trabajo.
+- El informe que Portal mandó se guarda (`lilachat:space-cache:<espacio>:field-report:<servicio>:<tipo>`)
+  y se muestra sin red; una negativa de Portal gana a la copia. Al llegar un registro, el informe se pide
+  otra vez. La franja de la cola sale arriba de las dos pantallas.
+- Editar y quitar un área siguen directos (necesitan señal).
+
 ### Formularios de cada tipo de informe (26/11)
 
 Con señal, al abrir «Servicios» se lee una vez por espacio y proceso cada tipo de informe que el
@@ -102,8 +114,8 @@ siempre. 400, 403, 413 y el resto siguen siendo «este archivo no va».
 
 | Qué | Por qué hoy falla | Lote |
 | --- | --- | --- |
-| «Registrar avance» y observaciones del mapa | Formulario de la puerta del mapa en vivo; la foto se sube antes de enviar | 2 |
-| REG-OBS, LEV-OBS e IAA | Sin cola (`useObservations`, `useAreas`) | 2 |
+| «Registrar avance» del mapa | Formulario de la puerta del mapa en vivo; la foto se sube antes de enviar | 2 |
+| Editar o quitar un área (IAA) | Directo, sin cola | 2 |
 | Mapa de la obra | El enlace y la lectura del mapa no se guardan | 2 |
 | Subir con la app en segundo plano | El socket se pausa atrás y todo sale por `alConectar` | 4 |
 | Chats secretos | La clave del otro no se guarda | aparte |

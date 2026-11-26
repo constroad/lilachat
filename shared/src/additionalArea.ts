@@ -249,7 +249,7 @@ export function zoneRemoveAsk(number: number, totals: AreaTotals, area: Pick<Add
 export const areaRemoveAsk = (item?: string): { title: string; hint: string } => ({ title: item ? `¿Quitar el área ${item}?` : '¿Quitar esta área?', hint: 'Sale del cuadro y sus fotos van a la papelera de Portal.' });
 /** Portal only lets the field remove what the field measured: an area measured on its photos is the office's. */
 export const isRemovableArea = (area: Pick<AdditionalArea, 'method'>): boolean => area.method !== null && AREA_FIELD_METHODS.includes(area.method);
-const AREA_WRITE: WriteKind<AreaAnswer> = { failed: AREA_WRITE_FAILED, answerOf: areaAnswerOf, who: 'El área' };
+export const AREA_WRITE: WriteKind<AreaAnswer> = { failed: AREA_WRITE_FAILED, answerOf: areaAnswerOf, who: 'El área' };
 
 /** One screen's write of an area: the area, then its photos (the Medición capture marked). */
 export const areaWriteStore = () => formFilesWriteStore(AREA_WRITE, areaPlaceValues, AREA_WRITE_FAILED);

@@ -53,7 +53,7 @@ export type ObservationWriteDeps<F> = FormFilesWriteDeps<F>;
 export type ObservationWriteResult = FormFilesWriteResult<ObservationAnswer>;
 
 export const OBSERVATION_WRITE_FAILED = 'No se pudo guardar la observación. Revisa tu señal y vuelve a intentarlo.';
-const OBSERVATION_WRITE: WriteKind<ObservationAnswer> = { failed: OBSERVATION_WRITE_FAILED, answerOf: observationAnswerOf, who: 'La observación' };
+export const OBSERVATION_WRITE: WriteKind<ObservationAnswer> = { failed: OBSERVATION_WRITE_FAILED, answerOf: observationAnswerOf, who: 'La observación' };
 
 /**
  * Writes the observation, then its files one by one. A file that fails is

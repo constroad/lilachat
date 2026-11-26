@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { FieldQueueStrip } from '../FieldQueueStrip';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { ChevronRight, FileText, Scan } from 'lucide-react-native';
 import { areaCardLines, areaReportDay, areaTotalsLine, closedRing, PREVIEW_ASKING, PREVIEW_LABEL, type AdditionalArea, type AreaDocument, type ChannelLinks, type SpaceClientService } from '@lilachat/shared';
@@ -77,6 +78,7 @@ export function AreasScreen(props: Props) {
     <View className="flex-1 bg-background">
       <ObservationHeader kicker={report?.code ?? 'Informe de área adicional'} title="Área adicional" onBack={close} />
       <ScrollView testID="areas-pantalla" keyboardShouldPersistTaps="handled" contentContainerStyle={{ padding: 16, gap: 12, paddingBottom: 24 }}>
+        <FieldQueueStrip serviceId={props.to.serviceId} />
         {draft === null ? <View className="h-40 rounded-2xl bg-surface" /> : null}
         {draft && !draft.ok ? <Text testID="areas-fallo" className="rounded-2xl border border-outline/15 bg-surface p-4 text-[15px] text-on-surface">{draft.message}</Text> : null}
         {report ? <ReportBody report={report} service={props.service.name} onOpen={(areaId) => { pdf.stop(); setMode({ kind: 'zone', areaId }); }} /> : null}

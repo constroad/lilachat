@@ -39,6 +39,7 @@ import { forgetFieldQueue } from './src/spaces/clients/fieldQueueStore';
 import './src/spaces/clients/useDriveUpload';
 import './src/spaces/visits/visitJobs';
 import './src/chat/workPlan/evidenceUpload';
+import './src/spaces/clients/fieldWriteJobs';
 import { forgetMySpaces } from './src/spaces/currentSpace';
 import { forgetPendingInChats } from './src/chat/pendingInChats';
 import { avisarMensaje } from './src/chat/avisoLocal';

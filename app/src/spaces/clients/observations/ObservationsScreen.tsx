@@ -1,4 +1,5 @@
 import { useCallback, useMemo, useState } from 'react';
+import { FieldQueueStrip } from '../FieldQueueStrip';
 import { Image, Linking, Pressable, ScrollView, Text, View } from 'react-native';
 import { Camera, Play } from 'lucide-react-native';
 import { approximateLine, evidenceBadge, LIFTING_TYPE, observationCounts, observationNumber, observationPlace, observationsIn, registeredLine, reportTypeLabel, STATUS_PILLS, type Observation, type ObservationDocument, type ObservationStatus, type SpaceClientService } from '@lilachat/shared';
@@ -115,6 +116,7 @@ export function ObservationsScreen(props: Props) {
     <View className="flex-1 bg-background">
       <ObservationHeader kicker={reportTypeLabel(props.type)} title="Observaciones" caption={props.service.name} onBack={back} />
       <ScrollView testID="observaciones" keyboardShouldPersistTaps="handled" contentContainerStyle={{ padding: 16, gap: 12, paddingBottom: 24 }}>
+        <FieldQueueStrip serviceId={props.serviceId} />
         {draft === null ? <Text className="py-6 text-center text-[14px] text-on-surface-variant">Trayendo las observaciones…</Text> : null}
         {draft && !draft.ok ? (
           <View testID="observaciones-fallo" className="gap-3 rounded-2xl border border-outline/15 bg-surface p-4">

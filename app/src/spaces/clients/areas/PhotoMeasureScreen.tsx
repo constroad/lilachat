@@ -58,7 +58,7 @@ export function PhotoMeasureScreen(props: { to: ObservationTarget; report: AreaD
     const point = gps ? { lat: gps.lat, lng: gps.lng, precision: gps.precision } : null;
     const request = areaCreateRequest(props.report, entryId, photoAreaFigures(measure.result), point, 'a-mano', 'apk');
     const reportId = await write.save(request, { place: placeText.value.trim(), note }, [shot.shot]);
-    if (reportId) props.onSaved(reportId);
+    if (reportId !== null) props.onSaved(reportId);
   };
   return (
     <View className="flex-1 bg-background">

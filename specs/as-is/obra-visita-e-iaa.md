@@ -4,6 +4,8 @@
 > `specs/INFORMES-DESDE-LILACHAT.spec.md` §14 y §20, `specs/AS-IS-0.1.170.spec.md`
 > (14/11), `design/stitch/INVENTARIO.md` y `design/stitch/auditorias/lv0*.md`.
 
+
+- **Sin señal (26/11):** REG-OBS, LEV-OBS y las áreas medidas del IAA se guardan en el teléfono y salen por la cola de campo; el informe guardado se ve sin red. Ver `plataforma-sin-senal.md`.
 ## 1. Qué es
 
 Dos flujos de campo que nacen en Portal y se llenan desde Lilachat:

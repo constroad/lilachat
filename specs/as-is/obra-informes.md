@@ -5,6 +5,8 @@
 > y `design/stitch/INVENTARIO.md`. El Área adicional (IAA) y la visita técnica van en
 > `obra-visita-e-iaa.md`.
 
+
+- **Sin señal (26/11):** REG-OBS, LEV-OBS y las áreas medidas del IAA se guardan en el teléfono y salen por la cola de campo; el informe guardado se ve sin red. Ver `plataforma-sin-senal.md`.
 ## 1. Qué es
 
 Decisión de José (05/11): «ya no se use public para generar informes sino que se haga

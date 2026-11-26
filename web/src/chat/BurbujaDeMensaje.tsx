@@ -3,7 +3,7 @@ import { BotFilesAlbum } from './BotFilesAlbum';
 import { LineaDeLlamada } from './LineaDeLlamada';
 import { memo, useContext, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
-import { AlertCircle, BellRing, CalendarDays, Check, CheckCheck, ChevronRight, Clock, CornerDownRight, Download, FileText, Forward, Lock, Play } from 'lucide-react';
+import { AlertCircle, BellRing, CalendarDays, Check, CheckCheck, ChevronRight, Clock, CornerDownRight, Download, FileText, Forward, Lock } from 'lucide-react';
 import { Overlay } from '../ui/Overlay';
 import { RecordatorioEnElChat } from './tarjetas/RecordatorioEnElChat';
 import { colorDeAutor, esAvisoDestacado, type DeliveryState, formatClock, primerEnlace, resolveDeliveryState, textoDeAviso } from '@lilachat/shared';
@@ -12,7 +12,6 @@ import { GifInBubble } from './gifs/GifInBubble';
 import { TarjetaDeEnlace } from './TarjetaDeEnlace';
 import { NotaDeVoz } from './NotaDeVoz';
 import { useVistaPrevia } from './useVistaPrevia';
-import { AnilloDeSubida } from './AnilloDeSubida';
 import { ChipDeHilo } from './hilos/ChipDeHilo';
 import { MenuDelMensaje } from './MenuDelMensaje';
 import { BotCardView } from './BotCardView';
@@ -29,7 +28,7 @@ import { ConversacionContext, useConversacion } from './contextoDeLaConversacion
 import type { ChatSummary, MensajeEnPantalla } from './types';
 import { Avatar } from '../ui/Avatar';
 import { AlbumGridWeb } from './AlbumGridWeb';
-import { photoBubbleStyle } from './photoBubbleStyle';
+import { MediaTimeOverlay, PictureInBubble } from './PictureInBubble';
 import { bodyIsOnlyLink, storedLinkOf, StoredLinkInBubble } from './links/StoredLinkInBubble';
 
 /** Las clases de color de autor, escritas enteras para que Tailwind las genere. */
@@ -71,6 +70,13 @@ export const BurbujaDeMensaje = memo(function BurbujaDeMensaje(props: Props) {
   if (mensaje.kind === 'guino' && !mensaje.deletedAt) return <WinkFromContext seq={mensaje.seq} wink={mensaje.wink} mine={mio} senderId={mensaje.senderId} at={mensaje.at} menu={<MenuDelMensaje mensaje={mensaje} mio={mio} />} />;
   if (props.flat) return <FlatMessage {...props} />;
   const wideLink = storedLinkOf(mensaje, props.chat) !== null;
+  // A photo, video or album fills its bubble and, without a caption, carries the time over it (José 26/11).
+  const edge = fillsBubble(mensaje, props.album);
+  const timeOver = edge && !mensaje.body && mensaje.estado !== 'fallido';
+  const author = props.conAutor ? <AuthorName senderId={mensaje.senderId} clientKey={mensaje.clientKey} prospectName={mensaje.prospect?.name} /> : null;
+  const threadQuote = mensaje.hiloDe !== undefined && mensaje.enElChat && !mensaje.deletedAt ? <ThreadQuote root={mensaje.hiloDe} mine={mio} /> : null;
+  const replyQuote = mensaje.replyToSeq && !mensaje.deletedAt ? <CitaDelMensaje seq={mensaje.replyToSeq} mio={mio} /> : null;
+  const footer = mensaje.estado === 'fallido' || timeOver ? null : <MessageFooter mensaje={mensaje} mio={mio} chat={props.chat} inBubble />;
   return (
     <div data-testid={`mensaje-${mensaje.clientKey}`} className={`group flex items-start gap-1 ${agrupado ? 'mt-0.5' : 'mt-2'} ${mio ? 'flex-row-reverse' : ''}`}>
       {/* A saved link of a notes chat takes the whole row, as in design nl-02 (review 18/11: its pill was cut at 68 %). */}
@@ -87,17 +93,15 @@ export const BurbujaDeMensaje = memo(function BurbujaDeMensaje(props: Props) {
           />
         ) : (
         <div
-          className={`max-w-full rounded-2xl px-2.5 pb-1 pt-1.5 text-[length:var(--chat-font,14px)] leading-[var(--chat-line,20px)] shadow-sm ${
+          className={`max-w-full rounded-2xl ${edge ? 'p-[3px]' : 'px-2.5 pb-1 pt-1.5'} text-[length:var(--chat-font,14px)] leading-[var(--chat-line,20px)] shadow-sm ${
             mio ? `bg-burbuja-propia text-on-burbuja-propia ${agrupado ? '' : 'rounded-tr-md'}` : `bg-burbuja-ajena text-on-burbuja-ajena ${agrupado ? '' : 'rounded-tl-md'}`
           } ${mensaje.estado === 'fallido' ? 'opacity-70' : ''}`}
         >
-          {props.conAutor ? <AuthorName senderId={mensaje.senderId} clientKey={mensaje.clientKey} prospectName={mensaje.prospect?.name} /> : null}
-          {/* Borrado: solo la lápida, sin la cita (como WhatsApp). */}
-          {mensaje.hiloDe !== undefined && mensaje.enElChat && !mensaje.deletedAt ? <ThreadQuote root={mensaje.hiloDe} mine={mio} /> : null}
-          {mensaje.replyToSeq && !mensaje.deletedAt ? <CitaDelMensaje seq={mensaje.replyToSeq} mio={mio} /> : null}
-          <MessageContent mensaje={mensaje} mio={mio} album={props.album} />
+          {/* Borrado: solo la lápida, sin la cita (como WhatsApp). Over a picture they keep the text's inset. */}
+          {author || threadQuote || replyQuote ? <div className={edge ? 'px-1.5 pb-1 pt-0.5' : undefined}>{author}{threadQuote}{replyQuote}</div> : null}
+          <MessageContent mensaje={mensaje} mio={mio} album={props.album} edge={edge} overlay={timeOver ? <MessageFooter mensaje={mensaje} mio={mio} chat={props.chat} overMedia /> : undefined} />
           {/* The time and ticks inside the bubble, like WhatsApp (José 25/11: outside it doubled every gap). */}
-          {mensaje.estado === 'fallido' ? null : <MessageFooter mensaje={mensaje} mio={mio} chat={props.chat} inBubble />}
+          {footer && edge ? <div className="px-1.5">{footer}</div> : footer}
         </div>
         )}
         {mensaje.reacciones?.length ? <PastillaDeReacciones mensaje={mensaje} mio={mio} /> : null}
@@ -265,7 +269,16 @@ function CitaDelMensaje({ seq, mio }: { seq: number; mio: boolean }) {
   );
 }
 
-function MessageContent({ mensaje, mio, album }: { mensaje: MensajeEnPantalla; mio: boolean; album?: readonly MensajeEnPantalla[] }) {
+/** A photo, video, GIF or album fills its bubble edge to edge, like WhatsApp (José 26/11). */
+function fillsBubble(message: MensajeEnPantalla, album?: readonly MensajeEnPantalla[]): boolean {
+  if (message.deletedAt || message.envelope || message.card || message.files?.length) return false;
+  if (album) return true;
+  const media = message.media;
+  if (!media?.url || isPdfMedia(media) || media.mime?.startsWith('audio/')) return false;
+  return Boolean(media.mime?.startsWith('image/') || media.mime?.startsWith('video/') || media.thumbUrl);
+}
+
+function MessageContent({ mensaje, mio, album, edge = false, overlay }: { mensaje: MensajeEnPantalla; mio: boolean; album?: readonly MensajeEnPantalla[]; /** The picture fills the bubble: the text keeps its own inset. */ edge?: boolean; /** The time over a captionless picture. */ overlay?: ReactNode }) {
   const { nombres, yo, jwt, chat, onVerFoto, onVerPdf } = useConversacion();
   // José 18/11: a notes chat with its links sorted draws the card the server stored, not the generic preview.
   const stored = storedLinkOf(mensaje, chat);
@@ -284,7 +297,7 @@ function MessageContent({ mensaje, mio, album }: { mensaje: MensajeEnPantalla; m
   // José 13/11: a forwarded copy says so, like WhatsApp.
   const forwarded = mensaje.forwarded ? <p data-testid={`reenviado-${mensaje.seq}`} className="mb-1 flex items-center gap-1 text-[12px] italic text-on-surface-variant"><Forward size={12} aria-hidden />Reenviado</p> : null;
   const sharedLine = mensaje.sharedBy ? <p data-testid={`compartido-por-${mensaje.seq}`} className="mb-1 text-[12px] text-on-surface-variant">{sharedByLine(mensaje.sharedBy)}</p> : null;
-  const shared = forwarded || sharedLine ? <>{forwarded}{sharedLine}</> : null;
+  const shared = forwarded || sharedLine ? <div className={edge ? 'px-1.5 pt-0.5' : undefined}>{forwarded}{sharedLine}</div> : null;
   if (mensaje.card) return <>{shared}<BotCardView card={mensaje.card} chatId={chat.id} seq={mensaje.seq} jwt={jwt} {...(mensaje.clientRef?.visitId ? { visitId: mensaje.clientRef.visitId } : {})} clientRef={mensaje.clientRef} {...(chat.workspaceId ? { workspaceId: chat.workspaceId } : {})} /></>;
   if (mensaje.files?.length) return <>{shared}<BotFilesAlbum seq={mensaje.seq} files={mensaje.files} /></>;
   const media = mensaje.media;
@@ -293,34 +306,25 @@ function MessageContent({ mensaje, mio, album }: { mensaje: MensajeEnPantalla; m
   }
   const pdf = Boolean(media && isPdfMedia(media));
   const esImagen = Boolean(media?.url && !pdf && (media.mime?.startsWith('image/') || media.mime?.startsWith('video/') || media.thumbUrl));
-  // A video lila could not make a thumbnail for (QA 22/10): a dark frame under the play, opening the viewer like the rest.
-  const thumblessVideo = Boolean(media?.url && !media.thumbUrl && media.mime?.startsWith('video/'));
+  const beside = edge ? '' : 'mb-1';
   return (
     <>
       {shared}
       {album ? (
-        <AlbumGridWeb items={album} onOpen={onVerFoto} />
+        <div className={`relative ${beside}`}>
+          <AlbumGridWeb items={album} onOpen={onVerFoto} />
+          {overlay ? <MediaTimeOverlay>{overlay}</MediaTimeOverlay> : null}
+        </div>
       ) : media?.url && isAnimatedImage(media.mime) && !mensaje.estado ? (
-        <GifInBubble testId={`gif-${mensaje.clientKey}`} url={media.url} alt={mensaje.body ?? 'GIF'} width={media.width} height={media.height} onOpen={() => onVerFoto(mensaje)} />
+        <div className={`relative ${beside}`}>
+          <GifInBubble testId={`gif-${mensaje.clientKey}`} url={media.url} alt={mensaje.body ?? 'GIF'} width={media.width} height={media.height} onOpen={() => onVerFoto(mensaje)} />
+          {overlay ? <MediaTimeOverlay>{overlay}</MediaTimeOverlay> : null}
+        </div>
       ) : media?.url && esImagen ? (
-        <button type="button" data-testid={`foto-${mensaje.clientKey}`} onClick={() => !mensaje.estado && onVerFoto(mensaje)} className="relative block w-full">
-          {thumblessVideo ? (
-            <span data-testid={`video-sin-miniatura-${mensaje.clientKey}`} className="mb-1 block max-h-64 w-full rounded-lg bg-black" style={{ aspectRatio: media.width && media.height ? `${media.width} / ${media.height}` : '16 / 9' }} />
-          ) : (
-            <img
-              src={media.thumbUrl || media.url}
-              alt={mensaje.body ?? 'Foto'}
-              loading="lazy"
-              className="mb-1 max-h-64 w-full rounded-lg object-cover"
-              style={photoBubbleStyle(media)}
-            />
-          )}
-          {mensaje.estado === 'enviando' ? <AnilloDeSubida razon={mensaje.progreso} /> : null}
-          {/* A video looked like a photo (José, 21/10): the play over its frame, like the app. */}
-          {media.mime?.startsWith('video/') && mensaje.estado !== 'enviando' ? (
-            <span className="absolute inset-0 mb-1 grid place-items-center"><span className="grid h-12 w-12 place-items-center rounded-full bg-black/50 text-white"><Play size={22} fill="currentColor" /></span></span>
-          ) : null}
-        </button>
+        <div className={beside}>
+          {/* A video looked like a photo (José, 21/10): the play over its frame; a video lila made no thumbnail for (22/10): a dark frame. */}
+          <PictureInBubble testId={`foto-${mensaje.clientKey}`} media={{ ...media, url: media.url }} alt={mensaje.body ?? 'Foto'} uploading={mensaje.estado === 'enviando'} progress={mensaje.progreso} onOpen={() => !mensaje.estado && onVerFoto(mensaje)} overlay={overlay} />
+        </div>
       ) : media?.url && pdf ? (
         <PdfCardWeb media={{ ...media, url: media.url }} testId={`pdf-${mensaje.clientKey}`} {...(onVerPdf && !mensaje.estado ? { onOpen: () => onVerPdf(mensaje) } : {})} />
       ) : media?.url ? (
@@ -329,6 +333,7 @@ function MessageContent({ mensaje, mio, album }: { mensaje: MensajeEnPantalla; m
           <FileText size={18} /> <span className="truncate">{readableFileName(media.fileName)}</span> <Download size={16} className="shrink-0 opacity-70" />
         </a>
       ) : null}
+      <div className={edge && mensaje.body ? 'px-1.5 pt-1' : 'contents'}>
       {stored ? <StoredLinkInBubble jwt={jwt} chatId={chat.id} seq={mensaje.seq} at={mensaje.at} link={stored} /> : vista ? <TarjetaDeEnlace vista={vista} mio={mio} /> : null}
       {mensaje.kind === 'contact' && mensaje.contact && !mensaje.deletedAt ? (
         // A shared contact (pending 9): the card; its `body` is only the summary for the list and the search.
@@ -339,11 +344,12 @@ function MessageContent({ mensaje, mio, album }: { mensaje: MensajeEnPantalla; m
       ) : mensaje.body && !(stored && bodyIsOnlyLink(mensaje.body)) ? (
         <TextoDelMensaje clave={mensaje.clientKey} texto={mensaje.body} menciones={mensaje.menciones} nombres={nombres} yo={yo} mio={mio} />
       ) : null}
+      </div>
     </>
   );
 }
 
-function MessageFooter({ mensaje, mio, chat, inline = false, inBubble = false }: { mensaje: MensajeEnPantalla; mio: boolean; chat: Props['chat']; /** Next to the name in a flat row, not under the bubble. */ inline?: boolean; /** Its own right-aligned line at the bottom of the bubble. */ inBubble?: boolean }) {
+function MessageFooter({ mensaje, mio, chat, inline = false, inBubble = false, overMedia = false }: { mensaje: MensajeEnPantalla; mio: boolean; chat: Props['chat']; /** Next to the name in a flat row, not under the bubble. */ inline?: boolean; /** Its own right-aligned line at the bottom of the bubble. */ inBubble?: boolean; /** White, over a captionless photo or video. */ overMedia?: boolean }) {
   const destacado = useContext(ConversacionContext)?.destacados?.has(mensaje.seq) ?? false;
   const estado = resolveDeliveryState({
     seq: mensaje.estado === 'enviando' ? null : mensaje.seq,
@@ -351,7 +357,7 @@ function MessageFooter({ mensaje, mio, chat, inline = false, inBubble = false }:
     otherDeliveredSeq: chat.othersDeliveredSeq,
   });
   return (
-    <span className={inBubble ? `-mt-0.5 flex items-center justify-end gap-0.5 text-[11px] leading-4 ${mio ? 'text-on-burbuja-propia/75' : 'text-on-surface-variant'}` : `${inline ? 'text-[12px]' : 'mt-1 block text-[11px]'} text-on-surface-variant`}>
+    <span className={overMedia ? 'flex items-center gap-0.5 text-[11px] leading-4 text-white' : inBubble ? `-mt-0.5 flex items-center justify-end gap-0.5 text-[11px] leading-4 ${mio ? 'text-on-burbuja-propia/75' : 'text-on-surface-variant'}` : `${inline ? 'text-[12px]' : 'mt-1 block text-[11px]'} text-on-surface-variant`}>
       {/* Lo destaqué (20/10): la estrella antes de la hora, como WhatsApp. */}
       {destacado ? <span data-testid={`destacado-${mensaje.clientKey}`} className="mr-1 text-primary">★</span> : null}
       {mensaje.editedAt && !mensaje.deletedAt ? 'Editado · ' : ''}

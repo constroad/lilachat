@@ -25,7 +25,7 @@ export function AlbumGridWeb(props: { items: readonly MensajeEnPantalla[]; onOpe
   const { items } = props;
   const head = items[0]!;
   return (
-    <div data-testid={`album-${head.seq}`} className="relative mb-1 aspect-square w-72 max-w-full overflow-hidden rounded-lg bg-black">
+    <div data-testid={`album-${head.seq}`} className="relative aspect-square w-[300px] max-w-full overflow-hidden rounded-[13px] bg-black">
       {albumGrid(items.length).map((tile) => {
         const item = items[tile.index]!;
         const across = span(tile.x, tile.w);

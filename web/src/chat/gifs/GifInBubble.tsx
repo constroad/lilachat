@@ -32,9 +32,9 @@ export function GifInBubble(props: { testId: string; url: string; alt: string; w
   };
   const shape = props.width && props.height ? { aspectRatio: `${props.width} / ${props.height}` } : undefined;
   return (
-    <button type="button" data-testid={props.testId} aria-label={stopped ? 'Reproducir el GIF' : 'Ver el GIF'} onClick={click} className="relative mb-1 block w-full overflow-hidden rounded-lg">
+    <button type="button" data-testid={props.testId} aria-label={stopped ? 'Reproducir el GIF' : 'Ver el GIF'} onClick={click} className="relative block w-[300px] max-w-full overflow-hidden rounded-[13px]">
       {/* A new key restarts the animation from its first frame. */}
-      <img key={round} ref={image} src={props.url} alt={props.alt} className={`max-h-64 w-full object-cover ${stopped ? 'invisible' : ''}`} style={shape} />
+      <img key={round} ref={image} src={props.url} alt={props.alt} className={`max-h-[375px] w-full object-cover ${stopped ? 'invisible' : ''}`} style={shape} />
       <canvas ref={still} className={`absolute inset-0 h-full w-full object-cover ${stopped ? '' : 'hidden'}`} />
       <span className="absolute bottom-2 left-2 inline-flex items-center gap-1 rounded-md bg-black/55 px-1.5 py-0.5 text-[11px] font-bold text-white">
         {stopped ? <Play size={11} fill="currentColor" /> : null}

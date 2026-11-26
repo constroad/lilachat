@@ -33,7 +33,7 @@ export function ProspectRow(props: { prospect: ProspectView; unread?: number; se
       </div>
       <p data-testid="pedido-prospecto" className="mt-0.5 h-5 truncate text-[13px] text-on-surface-variant">{ask ?? ''}</p>
       <div className="mt-2 flex items-center gap-2">
-        <span data-testid="estado-prospecto" className="flex min-w-0 flex-1"><Pill shrink tone={status.tone}>{status.text}</Pill></span>
+        <span data-testid="estado-prospecto" title={status.full ?? status.text} className="flex min-w-0 flex-1"><Pill shrink tone={status.tone}>{status.text}</Pill></span>
         {score ? (
           <span data-testid="puntaje-prospecto" aria-label={`${score.score} puntos`} className="flex shrink-0 items-center gap-1 text-[13px] font-bold tabular-nums">
             <span className={`h-2 w-2 rounded-full ${LEVEL_DOT[score.level]}`} />{score.score}

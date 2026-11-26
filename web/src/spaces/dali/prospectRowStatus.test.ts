@@ -7,7 +7,7 @@ const DAY_MINUTES = 24 * 60;
 describe('the one pill of an inbox row (dl-01 v4)', () => {
   it('late goes first, with what is late', () => {
     const late = prospectOf({ score: 86, stage: 'to_quote', readyAt: minutesAgo(3 * DAY_MINUTES) });
-    expect(rowStatusOf(late, NOW)).toEqual({ tone: 'error', text: expect.stringMatching(/^Vencido · /) });
+    expect(rowStatusOf(late, NOW)).toEqual({ tone: 'error', text: expect.stringMatching(/^Vencido · Sin cotizar /), full: expect.stringMatching(/sin cotización$/) });
   });
 
   it('then what Dali still has to ask, with its labels', () => {

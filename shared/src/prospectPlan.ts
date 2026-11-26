@@ -133,6 +133,14 @@ export function overdueLabelOf(overdue: Overdue, now: Date): string {
   return `Escribió hace ${ago} y nadie le respondió`;
 }
 
+/** The same, short enough for a row's one pill (dl-01 v4): «Sin responder 46 min», «Sin cotizar 27 horas». */
+export function overdueShortLabelOf(overdue: Overdue, now: Date): string {
+  const ago = agoOf(now.getTime() - Date.parse(overdue.since));
+  if (overdue.kind === 'to_quote_late') return `Sin cotizar ${ago}`;
+  if (overdue.kind === 'quote_unanswered') return `Cotización sin respuesta ${ago}`;
+  return `Sin responder ${ago}`;
+}
+
 /** «Hoy 16:00», «Mañana 09:00», «jue 19, 10:00»: when a next action is due. */
 export function nextActionWhenOf(iso: string, now: Date): string {
   const at = Date.parse(iso);

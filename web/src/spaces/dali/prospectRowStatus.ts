@@ -1,17 +1,18 @@
-import { STAGE_LABEL, levelOf, missingLabelsOf, overdueLabelOf, overdueOf, shownStageOf, type ProspectLevel, type ProspectStage, type ProspectView } from '@lilachat/shared';
+import { STAGE_LABEL, levelOf, missingLabelsOf, overdueLabelOf, overdueOf, overdueShortLabelOf, shownStageOf, type ProspectLevel, type ProspectStage, type ProspectView } from '@lilachat/shared';
 
 /**
  * The ONE pill of an inbox row (dl-01 v4, José 26/11: «todo muy desordenado»): what to do with it. Late beats what is
  * missing, which beats the stage. The origin left the row: it is in the ficha. PURE.
  */
 export type RowStatusTone = 'error' | 'warn' | 'neutral' | 'primary' | 'info' | 'ok';
-export type RowStatus = { tone: RowStatusTone; text: string };
+/** `full`: the whole sentence, for the pill's tooltip when its short text is cut. */
+export type RowStatus = { tone: RowStatusTone; text: string; full?: string };
 
 const STAGE_TONE: Record<ProspectStage, RowStatusTone> = { missing_info: 'neutral', to_quote: 'warn', visit: 'info', quoted: 'info', negotiation: 'primary', won: 'ok', lost: 'error' };
 
 export function rowStatusOf(prospect: ProspectView, now: Date): RowStatus {
   const overdue = overdueOf(prospect, now);
-  if (overdue) return { tone: 'error', text: `Vencido · ${overdueLabelOf(overdue, now)}` };
+  if (overdue) return { tone: 'error', text: `Vencido · ${overdueShortLabelOf(overdue, now)}`, full: overdueLabelOf(overdue, now) };
   const stage = shownStageOf(prospect);
   const missing = stage === 'missing_info' ? missingLabelsOf(prospect) : [];
   if (missing.length) return { tone: 'warn', text: `Falta: ${missing.join(', ')}` };

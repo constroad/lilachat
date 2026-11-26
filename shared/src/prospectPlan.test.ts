@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { ProspectView } from './prospectBoard.js';
-import { arrivedThisMonth, followUpSequenceOf, nextActionWhenOf, overdueLabelOf, periodStartOf, prospectTimeOf, suggestNextAction, whenOptions } from './prospectPlan.js';
+import { arrivedThisMonth, followUpSequenceOf, nextActionWhenOf, overdueLabelOf, overdueShortLabelOf, periodStartOf, prospectTimeOf, suggestNextAction, whenOptions } from './prospectPlan.js';
 
 /** Planning a prospect's next step (dl-09), in Lima time. */
 const now = new Date('2026-11-17T15:12:00.000Z'); // Tue 17/11, 10:12 in Lima
@@ -68,6 +68,10 @@ describe('labels', () => {
   it('says what is late and when a next action is due', () => {
     expect(overdueLabelOf({ kind: 'to_quote_late', since: hoursAgo(27) }, now)).toBe('Listo hace 27 horas · sin cotización');
     expect(overdueLabelOf({ kind: 'quote_unanswered', since: hoursAgo(96) }, now)).toBe('Cotización sin respuesta hace 4 días');
+    // A row's pill (dl-01 v4): short enough not to be cut.
+    expect(overdueShortLabelOf({ kind: 'hot_unanswered', since: hoursAgo(0.77) }, now)).toBe('Sin responder 46 min');
+    expect(overdueShortLabelOf({ kind: 'to_quote_late', since: hoursAgo(27) }, now)).toBe('Sin cotizar 27 horas');
+    expect(overdueShortLabelOf({ kind: 'quote_unanswered', since: hoursAgo(96) }, now)).toBe('Cotización sin respuesta 4 días');
     expect(overdueLabelOf({ kind: 'hot_unanswered', since: hoursAgo(0.5) }, now)).toBe('Escribió hace 30 min y nadie le respondió');
     expect(overdueLabelOf({ kind: 'hot_unanswered', since: hoursAgo(5) }, now)).toBe('Escribió hace 5 horas y nadie le respondió');
     expect(overdueLabelOf({ kind: 'hot_unanswered', since: hoursAgo(120) }, now)).toBe('Escribió hace 5 días y nadie le respondió');

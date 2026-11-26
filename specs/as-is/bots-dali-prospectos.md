@@ -167,6 +167,11 @@ remitentes posibles, así que cada mensaje trae el suyo.
   un riel; ancho y plegado quedan por navegador. Arreglado el 26/11: soltar el borde justo después de
   moverlo tumbaba la web entera («Algo falló al mostrar Lilachat»), porque el ancho se leía de un arrastre
   ya terminado; ahora se calcula en el movimiento (`ResizableAside.test.tsx`).
+- Orden dentro de cada sección de la Bandeja (José 26/11, «todo muy desordenado»; eligió la opción): primero los
+  que tienen mensajes sin leer, después los vencidos (algo atrasado según `overdueOf` o la próxima acción ya
+  pasada) y al final el resto, del mensaje más reciente al más viejo (`inboxOrder` en `prospectBoard.ts`;
+  web y APK le pasan los no leídos de cada chat). «Solo consultas» sigue la misma regla. Antes cada sección
+  ordenaba distinto (puntaje, próxima acción, reciente).
 - Web: diálogos y panel lateral bajo la barra. APK: hojas de abajo y pantallas con ←.
 - Documentos: la web descarga con su nombre (`?download=`). El APK ofrece Abrir · Descargar.
 - El segmentado y los círculos son los propios de cada plataforma (tonal y `Avatar` en el APK).

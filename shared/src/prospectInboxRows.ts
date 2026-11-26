@@ -27,10 +27,10 @@ const CONSULTS_HINT = 'Dali las atiende solo y no ocupan al equipo';
 const TEAM_HINT = 'Canales y mensajes directos del espacio';
 
 /** The view on screen: the one the seller chose, else «Míos» when something is theirs, else «Todos» (dl-01). */
-export function shownInboxOf(prospects: readonly ProspectView[], params: { me: string; chosen: InboxView | null; service?: string }, now: Date): { view: InboxView; inbox: ProspectInbox } {
-  const first = inboxOf(prospects, { me: params.me, view: params.chosen ?? 'mine', service: params.service }, now);
+export function shownInboxOf(prospects: readonly ProspectView[], params: { me: string; chosen: InboxView | null; service?: string; unreadOf?: (chatId: string) => number }, now: Date): { view: InboxView; inbox: ProspectInbox } {
+  const first = inboxOf(prospects, { me: params.me, view: params.chosen ?? 'mine', service: params.service, unreadOf: params.unreadOf }, now);
   if (params.chosen || first.counts.mine > 0) return { view: params.chosen ?? 'mine', inbox: first };
-  return { view: 'all', inbox: inboxOf(prospects, { me: params.me, view: 'all', service: params.service }, now) };
+  return { view: 'all', inbox: inboxOf(prospects, { me: params.me, view: 'all', service: params.service, unreadOf: params.unreadOf }, now) };
 }
 
 /** Loading, failed or empty: what the inbox says instead of its sections. */

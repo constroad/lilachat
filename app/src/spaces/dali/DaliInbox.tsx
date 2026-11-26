@@ -78,10 +78,11 @@ export function DaliInbox(props: Props) {
   const [open, setOpen] = useState(CLOSED);
   const prospects = useMemo(() => list?.prospects ?? [], [list]);
   const me = list?.me ?? props.myUserId;
-  const { view, inbox } = useMemo(() => shownInboxOf(prospects, { me, chosen, service: props.service }, now), [prospects, me, chosen, props.service, now]);
-  const rows = useMemo(() => inboxRowsOf({ list, failed: props.failed, inbox, teamChats: NO_TEAM_CHATS, open }), [list, props.failed, inbox, open]);
   const onToggle = useCallback((fold: InboxFold) => setOpen((before) => ({ ...before, [fold]: !before[fold] })), []);
   const context = useRowContext(props, me, onToggle);
+  // Unread first, then late, then the most recent (José 26/11).
+  const { view, inbox } = useMemo(() => shownInboxOf(prospects, { me, chosen, service: props.service, unreadOf: (chatId) => context.unreadOf.get(chatId) ?? 0 }, now), [prospects, me, chosen, props.service, now, context.unreadOf]);
+  const rows = useMemo(() => inboxRowsOf({ list, failed: props.failed, inbox, teamChats: NO_TEAM_CHATS, open }), [list, props.failed, inbox, open]);
   const renderRow = useCallback(({ item: row }: ListRenderItemInfo<Row>) => <InboxRowView row={row} context={context} />, [context]);
   const refresh = usePullToRefresh(list, props.failed, props.onRefresh);
   const unreadByView = useMemo(() => inboxUnreadByView(prospects, (chatId) => context.unreadOf.get(chatId) ?? 0, { me, service: props.service }), [prospects, context.unreadOf, me, props.service]);

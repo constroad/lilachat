@@ -35,10 +35,11 @@ export function DaliInbox(props: Props) {
   const [chosen, setChosen] = useState<InboxView | null>(null);
   const prospects = useMemo(() => list?.prospects ?? [], [list]);
   const me = list?.me ?? props.yo;
-  const view: InboxView = chosen ?? (inboxOf(prospects, { me, view: 'mine', service: props.service }, now).counts.mine > 0 ? 'mine' : 'all');
-  const inbox = useMemo(() => inboxOf(prospects, { me, view, service: props.service }, now), [prospects, me, view, props.service, now]);
-  const followUps = useMemo(() => followUpsOf(prospects, me, now), [prospects, me, now]);
   const unreadOf = useMemo(() => new Map((props.chats ?? []).map((chat) => [chat.id, chat.unread])), [props.chats]);
+  const view: InboxView = chosen ?? (inboxOf(prospects, { me, view: 'mine', service: props.service }, now).counts.mine > 0 ? 'mine' : 'all');
+  // Unread first, then late, then the most recent (José 26/11).
+  const inbox = useMemo(() => inboxOf(prospects, { me, view, service: props.service, unreadOf: (chatId) => unreadOf.get(chatId) ?? 0 }, now), [prospects, me, view, props.service, now, unreadOf]);
+  const followUps = useMemo(() => followUpsOf(prospects, me, now), [prospects, me, now]);
   const unreadByView = useMemo(() => inboxUnreadByView(prospects, (chatId) => unreadOf.get(chatId) ?? 0, { me, service: props.service }), [prospects, unreadOf, me, props.service]);
   const row = (prospect: ProspectView) => <ProspectRow key={prospect.id} prospect={prospect} unread={unreadOf.get(prospect.chatId)} selected={prospect.chatId === props.selectedChatId} phone={props.phone} now={now} onOpen={() => props.onOpenProspect(prospect)} />;
 

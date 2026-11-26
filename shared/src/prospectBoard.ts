@@ -203,9 +203,17 @@ export function inboxSectionOf(prospect: ProspectView, now: Date): InboxSection 
 const isOnlyConsult = (prospect: ProspectView, now: Date): boolean => prospect.intent === 'information' && !prospect.assignee && inboxSectionOf(prospect, now) === 'dali';
 
 const byRecent = (a: ProspectView, b: ProspectView) => time(b.lastActivityAt) - time(a.lastActivityAt);
-const byScore = (a: ProspectView, b: ProspectView) => (b.score ?? -1) - (a.score ?? -1) || byRecent(a, b);
-const byNextAction = (a: ProspectView, b: ProspectView) => (time(a.nextAction?.at) || Infinity) - (time(b.nextAction?.at) || Infinity) || byRecent(a, b);
-const SECTION_ORDER: Record<InboxSection, (a: ProspectView, b: ProspectView) => number> = { now: byScore, following: byNextAction, dali: byRecent };
+/** Late: something overdue on it, or its next action's hour already passed. */
+const isLate = (prospect: ProspectView, now: Date): boolean => overdueOf(prospect, now) !== null || (Boolean(prospect.nextAction) && time(prospect.nextAction?.at) < now.getTime());
+/**
+ * The order inside every section (José 26/11, «todo muy desordenado… no deja llevar un buen control»): the ones with
+ * unread messages first, then the late ones, then the rest from the most recent message to the oldest.
+ */
+function inboxOrder(unreadOf: (chatId: string) => number, now: Date) {
+  const rank = (prospect: ProspectView) => (unreadOf(prospect.chatId) > 0 ? 0 : isLate(prospect, now) ? 1 : 2);
+  return (a: ProspectView, b: ProspectView) => rank(a) - rank(b) || byRecent(a, b);
+}
+const NOTHING_UNREAD = () => 0;
 
 const inView = (prospect: ProspectView, view: InboxView, me: string): boolean =>
   view === 'all' || (view === 'mine' ? prospect.assignee?.id === me : !prospect.assignee);
@@ -222,14 +230,15 @@ function servicesOf(prospects: readonly ProspectView[]): { key: string; name: st
 }
 
 /** The inbox (dl-01): open prospects only, by section, with the counts of the three views. */
-export function inboxOf(prospects: readonly ProspectView[], params: { me: string; view: InboxView; service?: string }, now: Date) {
+export function inboxOf(prospects: readonly ProspectView[], params: { me: string; view: InboxView; service?: string; unreadOf?: (chatId: string) => number }, now: Date) {
+  const order = inboxOrder(params.unreadOf ?? NOTHING_UNREAD, now);
   const open = prospects.filter(isSalesProspect).filter(isOpen);
   const ofService = params.service ? open.filter((prospect) => prospect.service?.key === params.service) : open;
   const counts = { mine: ofService.filter((one) => inView(one, 'mine', params.me)).length, unassigned: ofService.filter((one) => !one.assignee).length, all: ofService.length };
   const shown = ofService.filter((prospect) => inView(prospect, params.view, params.me));
-  const consults = shown.filter((one) => isOnlyConsult(one, now)).sort(byRecent);
+  const consults = shown.filter((one) => isOnlyConsult(one, now)).sort(order);
   const working = shown.filter((one) => !isOnlyConsult(one, now));
-  const sections = INBOX_SECTIONS.map((key) => ({ key, label: INBOX_SECTION_LABEL[key], items: working.filter((one) => inboxSectionOf(one, now) === key).sort(SECTION_ORDER[key]) }));
+  const sections = INBOX_SECTIONS.map((key) => ({ key, label: INBOX_SECTION_LABEL[key], items: working.filter((one) => inboxSectionOf(one, now) === key).sort(order) }));
   return { counts, sections: sections.filter((section) => section.items.length > 0), consults, services: servicesOf(open) };
 }
 

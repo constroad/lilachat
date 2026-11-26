@@ -98,6 +98,29 @@ describe('inboxSectionOf', () => {
 });
 
 describe('inboxOf', () => {
+  it('orders each section unread first, then late, then the most recent (José 26/11: «todo muy desordenado»)', () => {
+    // Arrange: four prospects of the same section (a seller attends them, nothing waits on the team)
+    const seller = { id: ME, name: 'José' };
+    const quiet = prospect({ chatId: 'quiet', assignee: seller, lastActivityAt: minutesAgo(1) });
+    const late = prospect({ chatId: 'late', assignee: seller, lastActivityAt: minutesAgo(90), nextAction: { kind: 'call', at: minutesAgo(30), assigneeId: ME } });
+    const unreadOld = prospect({ chatId: 'unread-old', assignee: seller, lastActivityAt: minutesAgo(300) });
+    const unreadNew = prospect({ chatId: 'unread-new', assignee: seller, lastActivityAt: minutesAgo(20) });
+    const unread = new Map([['unread-old', 1], ['unread-new', 4]]);
+    // Act
+    const inbox = inboxOf([quiet, late, unreadOld, unreadNew], { me: ME, view: 'all', unreadOf: (chatId) => unread.get(chatId) ?? 0 }, now);
+    // Assert
+    expect(inbox.sections.map((section) => section.key)).toEqual(['following']);
+    expect(inbox.sections[0]!.items.map((item) => item.chatId)).toEqual(['unread-new', 'unread-old', 'late', 'quiet']);
+  });
+
+  it('without unread counts, the late ones still go first and then the most recent', () => {
+    const seller = { id: ME, name: 'José' };
+    const recent = prospect({ chatId: 'recent', assignee: seller, lastActivityAt: minutesAgo(2) });
+    const future = prospect({ chatId: 'future', assignee: seller, lastActivityAt: minutesAgo(1), nextAction: { kind: 'call', at: new Date(now.getTime() + 3_600_000).toISOString(), assigneeId: ME } });
+    const late = prospect({ chatId: 'late', assignee: seller, lastActivityAt: minutesAgo(500), nextAction: { kind: 'visit', at: minutesAgo(5), assigneeId: ME } });
+    expect(inboxOf([recent, future, late], { me: ME, view: 'all' }, now).sections[0]!.items.map((item) => item.chatId)).toEqual(['late', 'future', 'recent']);
+  });
+
   const services = { mezcla: { key: 'venta_mezcla', name: 'Venta de mezcla' }, base: { key: 'base', name: 'Base' } };
   const board = [
     prospect({ score: 81, service: services.mezcla }),

@@ -72,7 +72,7 @@ export const BurbujaDeMensaje = memo(function BurbujaDeMensaje(props: Props) {
   if (props.flat) return <FlatMessage {...props} />;
   const wideLink = storedLinkOf(mensaje, props.chat) !== null;
   return (
-    <div data-testid={`mensaje-${mensaje.clientKey}`} className={`group flex items-start gap-1 ${agrupado ? 'mt-1' : 'mt-3'} ${mio ? 'flex-row-reverse' : ''}`}>
+    <div data-testid={`mensaje-${mensaje.clientKey}`} className={`group flex items-start gap-1 ${agrupado ? 'mt-0.5' : 'mt-2'} ${mio ? 'flex-row-reverse' : ''}`}>
       {/* A saved link of a notes chat takes the whole row, as in design nl-02 (review 18/11: its pill was cut at 68 %). */}
       <div className={`flex ${wideLink ? 'flex-1' : 'max-w-[68%]'} min-w-0 flex-col ${mio ? 'items-end' : 'items-start'}`}>
         {/* Una encuesta, un evento o un recordatorio: su tarjeta en vez de la burbuja (W3c). */}
@@ -87,7 +87,7 @@ export const BurbujaDeMensaje = memo(function BurbujaDeMensaje(props: Props) {
           />
         ) : (
         <div
-          className={`max-w-full rounded-2xl px-3 py-2 text-[length:var(--chat-font,14px)] leading-[var(--chat-line,20px)] shadow-sm ${
+          className={`max-w-full rounded-2xl px-2.5 pb-1 pt-1.5 text-[length:var(--chat-font,14px)] leading-[var(--chat-line,20px)] shadow-sm ${
             mio ? `bg-burbuja-propia text-on-burbuja-propia ${agrupado ? '' : 'rounded-tr-md'}` : `bg-burbuja-ajena text-on-burbuja-ajena ${agrupado ? '' : 'rounded-tl-md'}`
           } ${mensaje.estado === 'fallido' ? 'opacity-70' : ''}`}
         >
@@ -96,13 +96,16 @@ export const BurbujaDeMensaje = memo(function BurbujaDeMensaje(props: Props) {
           {mensaje.hiloDe !== undefined && mensaje.enElChat && !mensaje.deletedAt ? <ThreadQuote root={mensaje.hiloDe} mine={mio} /> : null}
           {mensaje.replyToSeq && !mensaje.deletedAt ? <CitaDelMensaje seq={mensaje.replyToSeq} mio={mio} /> : null}
           <MessageContent mensaje={mensaje} mio={mio} album={props.album} />
+          {/* The time and ticks inside the bubble, like WhatsApp (José 25/11: outside it doubled every gap). */}
+          {mensaje.estado === 'fallido' ? null : <MessageFooter mensaje={mensaje} mio={mio} chat={props.chat} inBubble />}
         </div>
         )}
         {mensaje.reacciones?.length ? <PastillaDeReacciones mensaje={mensaje} mio={mio} /> : null}
         {mensaje.hilo && mensaje.hilo.respuestas > 0 && !mensaje.deletedAt ? <ChipDeLaRaiz seq={mensaje.seq} hilo={mensaje.hilo} /> : null}
         {mensaje.estado === 'fallido' ? (
           <FalloDelEnvio mensaje={mensaje} onReintentar={props.onReintentar} onDescartar={props.onDescartar} />
-        ) : ultimoDelGrupo && !mensaje.ref ? (
+        ) : ultimoDelGrupo && !mensaje.ref && mensaje.kind === 'sticker' && mensaje.media?.url && !mensaje.deletedAt ? (
+          // A sticker has no bubble: its time stays under it.
           <MessageFooter mensaje={mensaje} mio={mio} chat={props.chat} />
         ) : null}
       </div>
@@ -340,7 +343,7 @@ function MessageContent({ mensaje, mio, album }: { mensaje: MensajeEnPantalla; m
   );
 }
 
-function MessageFooter({ mensaje, mio, chat, inline = false }: { mensaje: MensajeEnPantalla; mio: boolean; chat: Props['chat']; /** Next to the name in a flat row, not under the bubble. */ inline?: boolean }) {
+function MessageFooter({ mensaje, mio, chat, inline = false, inBubble = false }: { mensaje: MensajeEnPantalla; mio: boolean; chat: Props['chat']; /** Next to the name in a flat row, not under the bubble. */ inline?: boolean; /** Its own right-aligned line at the bottom of the bubble. */ inBubble?: boolean }) {
   const destacado = useContext(ConversacionContext)?.destacados?.has(mensaje.seq) ?? false;
   const estado = resolveDeliveryState({
     seq: mensaje.estado === 'enviando' ? null : mensaje.seq,
@@ -348,7 +351,7 @@ function MessageFooter({ mensaje, mio, chat, inline = false }: { mensaje: Mensaj
     otherDeliveredSeq: chat.othersDeliveredSeq,
   });
   return (
-    <span className={`${inline ? 'text-[12px]' : 'mt-1 block text-[11px]'} text-on-surface-variant`}>
+    <span className={inBubble ? `-mt-0.5 flex items-center justify-end gap-0.5 text-[11px] leading-4 ${mio ? 'text-on-burbuja-propia/75' : 'text-on-surface-variant'}` : `${inline ? 'text-[12px]' : 'mt-1 block text-[11px]'} text-on-surface-variant`}>
       {/* Lo destaqué (20/10): la estrella antes de la hora, como WhatsApp. */}
       {destacado ? <span data-testid={`destacado-${mensaje.clientKey}`} className="mr-1 text-primary">★</span> : null}
       {mensaje.editedAt && !mensaje.deletedAt ? 'Editado · ' : ''}

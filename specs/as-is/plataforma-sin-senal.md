@@ -90,6 +90,37 @@ siempre. 400, 403, 413 y el resto siguen siendo «este archivo no va».
 | Editar y borrar mensajes | Emit sin cola ni tope | aparte |
 | Publicar un informe, PDF, «Terminar unidad» | Los hace Portal en el momento: exigen red y lo dicen | queda así |
 
+## 3-bis. Diseño del lote 3: la visita técnica sin señal (por hacer)
+
+Hechos verificados el 26/11 en Portal `main` (`portalSiteVisitTools.ts`, `site-visit.repository.ts`):
+
+- Crear la visita (`guardar_visita` de «Datos» sin `visitaId`) **se deduplica por `entradaId`**
+  (`entryKey = visita:<entradaId>`, índice único `{companyId, entryKey}`): el reenvío devuelve la misma
+  visita. Desde `2566f9fe` nuestro server deja pasar el `entry_id` del teléfono en una sección.
+- Un punto se deduplica por `entradaId` dentro de la visita. Una foto, por `clientUploadId` (en serie).
+- La foto acepta `takenAt`, `lat`, `lng`, `precisionM`: conserva su hora real. **El punto no**: Portal
+  le pone la hora del server (`createdAt: new Date()`); para guardar la hora del campo hace falta un
+  campo nuevo en `MARK_VISIT_POINT_ARGS` (decisión de José).
+- Leer el borrador sin visita no escribe nada (`showSiteVisit`).
+
+El diseño:
+
+1. **Plantilla:** cada `visits/draft` que responde bien guarda el documento como plantilla del espacio
+   (`lilachat:space-cache:<spaceId>:visit-template`), igual que `blankDocumentOf` de los informes. Los
+   formularios de cada sección salen de `VisitDocument.forms` (`visitSectionForm`).
+2. **Visita local:** `localId` = el `entradaId` de su «Datos». Se guarda la visita en el teléfono con
+   lo hecho (secciones, puntos, fotos) para que la pantalla lo muestre sin red.
+3. **Trabajos nuevos de la cola de campo:** `visit_section`, `visit_point`, `visit_photo`,
+   `visit_finish`, con `payload.visit` = `localId` o el id real. El motor suma `waitsFor` (un id local
+   sin resolver) y un mapa `localId → visitaId` en disco: «Datos» sale primero y crea; el resto espera;
+   «Terminar» sale último, cuando no queda nada de esa visita.
+4. **Al salir cada trabajo:** `visits/draft` (refresca la copia del server, 24 h) → abrir con
+   `entry_id` = clave del trabajo → enviar los valores capturados sin red. La foto del punto usa la
+   clave del trabajo como `clientUploadId`.
+5. **Con red siempre por la cola** (una sola manera de escribir), como el Drive.
+6. Siguen necesitando red y lo dicen: el PDF y «Abrir croquis» (editor de Portal).
+7. Por verificar al empezar: si el ⚡ («Visita técnica») y la tarjeta lv01 se abren sin red.
+
 ## 4. Pruebas
 
 - **Shared:** `savedServiceAnswer.test.ts` (copia fresca, sin señal, negativa, copia rota, precarga,

@@ -143,7 +143,7 @@ siempre. 400, 403, 413 y el resto siguen siendo «este archivo no va».
 | --- | --- | --- |
 | Subir con la app CERRADA (deslizada o matada por el sistema) | Sale al volver a abrirla | — |
 | Chats secretos | La clave del otro no se guarda | aparte |
-| Editar y borrar mensajes | Emit sin cola ni tope | aparte |
+| Editar y borrar mensajes | Sin señal no se mandan: lo dice al instante («Sin señal. Edita o borra el mensaje cuando vuelva la red.»); con señal esperan 8 s la respuesta (`chat/pedidosDeMensaje.ts`, 26/11). No van a la cola: el server tiene ventana de edición y un borrado tardío confundiría | queda así |
 | Publicar un informe, PDF, «Terminar unidad» | Los hace Portal en el momento: exigen red y lo dicen | queda así |
 
 ## 3-bis. La visita técnica sin señal (26/11)

@@ -86,9 +86,9 @@ function Stickers({ chat }: { chat: StickerChat }) {
         onRemoveSound={(sticker) => void stickers.setSound(sticker, { sound: { kind: 'none' }, audio: null }).then((done) => !done.ok && setNotice(done.message))}
         onExport={setExportFor}
       />
-      {soundFor ? <StickerSoundDialog sticker={soundFor} onSave={stickers.setSound} onClose={() => setSoundFor(null)} /> : null}
+      {soundFor ? <StickerSoundDialog sticker={soundFor} onSave={stickers.setSound} voiceDoor={stickers.voiceDoor} onClose={() => setSoundFor(null)} /> : null}
       {exportFor ? <StickerExportDialog sticker={exportFor} makeVideo={() => stickerVideoFile(chat.jwt, exportFor.id)} onClose={() => setExportFor(null)} /> : null}
-      {creating?.source === 'clip' ? <CreateStickerFromVideo chatName={chat.chatName} initialClip={creating.file} onClose={close} onSave={stickers.saveVideo} onSend={(sticker) => stickers.send(chat.chatId, sticker, target)} /> : null}
+      {creating?.source === 'clip' ? <CreateStickerFromVideo chatName={chat.chatName} initialClip={creating.file} onClose={close} onSave={stickers.saveVideo} voiceDoor={stickers.voiceDoor} onSend={(sticker) => stickers.send(chat.chatId, sticker, target)} /> : null}
       {creating?.source === 'photo' ? <CreateStickerWeb chatName={chat.chatName} initialPhoto={creating.file} onClose={close} onSave={stickers.save} onSend={(sticker) => stickers.send(chat.chatId, sticker, target)} onRemove={stickers.remove} /> : null}
     </>
   );
@@ -112,7 +112,7 @@ function Gifs({ chat }: { chat: StickerChat }) {
   return (
     <div className="h-80">
       <GifPanel jwt={chat.jwt} chatId={chat.chatId} target={target} onSent={chat.onSent} onSoundSticker={(gif) => void openEditor(gif)} notice={notice} />
-      {clip ? <CreateStickerFromVideo chatName={chat.chatName} initialClip={clip} onClose={() => setClip(null)} onSave={stickers.saveVideo} onSend={(sticker) => stickers.send(chat.chatId, sticker, target)} /> : null}
+      {clip ? <CreateStickerFromVideo chatName={chat.chatName} initialClip={clip} onClose={() => setClip(null)} onSave={stickers.saveVideo} voiceDoor={stickers.voiceDoor} onSend={(sticker) => stickers.send(chat.chatId, sticker, target)} /> : null}
     </div>
   );
 }

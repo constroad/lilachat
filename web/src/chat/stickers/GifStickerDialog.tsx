@@ -10,5 +10,5 @@ type Props = { jwt: string; me: string; chatId: string; chatName: string; gif: F
  */
 export default function GifStickerDialog({ jwt, me, chatId, chatName, gif, onClose }: Props) {
   const stickers = useStickers(jwt, me);
-  return <CreateStickerFromVideo chatName={chatName} initialClip={gif} onClose={onClose} onSave={stickers.saveVideo} onSend={(sticker) => stickers.send(chatId, sticker)} />;
+  return <CreateStickerFromVideo chatName={chatName} initialClip={gif} onClose={onClose} onSave={stickers.saveVideo} voiceDoor={stickers.voiceDoor} onSend={(sticker) => stickers.send(chatId, sticker)} />;
 }

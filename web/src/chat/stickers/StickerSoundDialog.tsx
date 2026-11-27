@@ -4,11 +4,13 @@ import type { ApiResult } from '../../api';
 import { FieldError, Overlay, PrimaryButton } from '../../ui/Overlay';
 import { CHECKERBOARD } from './CreateStickerFromVideo';
 import { StickerSoundPicker } from './StickerSoundPicker';
+import type { StickerVoiceDoor } from './stickerVoiceDoor';
 import { initialSavedSoundPick, savedSoundRequestOf, type SoundPick, type SoundRequest } from './videoSticker';
 
 type Props = {
   sticker: LibrarySticker;
   onSave: (sticker: LibrarySticker, request: SoundRequest) => Promise<ApiResult<{ sticker: LibrarySticker }>>;
+  voiceDoor?: StickerVoiceDoor | null;
   onClose: () => void;
 };
 
@@ -16,7 +18,7 @@ type Props = {
  * «Agregar sonido» / «Cambiar sonido» of a saved sticker (José 27/11: «quiero agregarle audio sin volver a buscar el
  * GIF», designs sa-01…sa-03): the sticker as it is, and the same sound choices as when it is made, except the video's.
  */
-export function StickerSoundDialog({ sticker, onSave, onClose }: Props) {
+export function StickerSoundDialog({ sticker, onSave, onClose, voiceDoor }: Props) {
   const options = stickerOptionsOf(sticker);
   const [pick, setPick] = useState<SoundPick | null>(() => initialSavedSoundPick(sticker));
   const [voice, setVoice] = useState<Blob | null>(null);
@@ -40,7 +42,7 @@ export function StickerSoundDialog({ sticker, onSave, onClose }: Props) {
         </div>
         <p data-testid="linea-sonido-sticker" className="text-[13px] text-on-surface-variant">{options.soundLine}</p>
       </div>
-      <StickerSoundPicker pick={pick} hasOwnSound={false} clipMs={VIDEO_STICKER_MAX_MS} voice={voice} upload={upload} disabled={busy} onPick={(next) => { setPick(next); setNotice(''); }} onVoice={setVoice} onUpload={setUpload} onNotice={setNotice} />
+      <StickerSoundPicker pick={pick} hasOwnSound={false} clipMs={VIDEO_STICKER_MAX_MS} voice={voice} upload={upload} disabled={busy} onPick={(next) => { setPick(next); setNotice(''); }} onVoice={setVoice} onUpload={setUpload} onNotice={setNotice} voiceDoor={voiceDoor} />
     </Overlay>
   );
 }

@@ -1,6 +1,7 @@
 import { STICKER_SIZE, stickerSoundField, type LibrarySticker, type StickerSound } from '@lilachat/shared';
 import { api, type ApiResult } from '../../api';
-import { withMediaType, type TrimWindow } from './videoSticker';
+import { withMediaType, type SpokenFields, type TrimWindow } from './videoSticker';
+import type { StickerVoiceId } from '@lilachat/shared';
 
 /** «Mis stickers» from the web: the same contract the app uses (`server/src/stickersRoutes.ts`). */
 export const listStickers = (jwt: string) => api<{ stickers: LibrarySticker[] }>('/stickers', { jwt });
@@ -61,7 +62,16 @@ export async function fetchGifFile(url: string): Promise<{ ok: true; file: File 
 }
 
 /** «Crear sticker desde un video» (José 26/11): the whole video (or GIF), the part to keep and its sound. */
-export type VideoStickerRequest = { video: File; trim: TrimWindow; sound: StickerSound; audio?: Blob | null };
+export type VideoStickerRequest = { video: File; trim: TrimWindow; sound: StickerSound; audio?: Blob | null; spoken?: SpokenFields };
+
+/** A voice's phrase and space travel next to `sound` (José 27/11); a file travels as `audio`. */
+function appendSoundParts(form: FormData, request: { sound: StickerSound; audio?: Blob | null; spoken?: SpokenFields }): void {
+  if (request.sound.kind === 'voice' && request.spoken) {
+    form.append('voiceText', request.spoken.text);
+    form.append('spaceId', request.spoken.spaceId);
+  }
+  if (request.sound.kind === 'file' && request.audio) form.append('audio', audioPart(request.audio));
+}
 
 const AUDIO_EXTENSIONS: Record<string, string> = { 'audio/webm': 'webm', 'audio/ogg': 'ogg', 'audio/mp4': 'm4a', 'audio/mpeg': 'mp3', 'audio/wav': 'wav' };
 
@@ -78,8 +88,8 @@ export function videoStickerForm(request: VideoStickerRequest): FormData {
   form.append('startMs', String(Math.round(request.trim.startMs)));
   form.append('endMs', String(Math.round(request.trim.endMs)));
   form.append('sound', stickerSoundField(request.sound));
+  appendSoundParts(form, request);
   form.append('file', withMediaType(request.video));
-  if (request.sound.kind === 'file' && request.audio) form.append('audio', audioPart(request.audio));
   return form;
 }
 
@@ -87,10 +97,10 @@ export function videoStickerForm(request: VideoStickerRequest): FormData {
 export const createStickerFromVideo = (jwt: string, request: VideoStickerRequest) => postStickerForm(jwt, '/api/stickers/from-video', videoStickerForm(request));
 
 /** The new sound of a saved sticker (José 27/11): one of ours, a recorded or uploaded file, or none. */
-export function setStickerSound(jwt: string, stickerId: string, request: { sound: StickerSound; audio: Blob | null }): Promise<ApiResult<{ sticker: LibrarySticker }>> {
+export function setStickerSound(jwt: string, stickerId: string, request: { sound: StickerSound; audio: Blob | null; spoken?: SpokenFields }): Promise<ApiResult<{ sticker: LibrarySticker }>> {
   const form = new FormData();
   form.append('sound', stickerSoundField(request.sound));
-  if (request.sound.kind === 'file' && request.audio) form.append('audio', audioPart(request.audio));
+  appendSoundParts(form, request);
   return postStickerForm(jwt, `/api/stickers/${stickerId}/sound`, form);
 }
 
@@ -115,6 +125,22 @@ export const stickerVideoFile = (jwt: string, stickerId: string) => authorizedFi
 
 /** A GIF of the GIF tab, for the clip editor (design sa-04): through the server, which keeps GIPHY's key. */
 export const giphyGifFile = (jwt: string, gifId: string) => authorizedFile(jwt, `/api/gifs/${encodeURIComponent(gifId)}/file`, `giphy-${gifId}.gif`, 'image/gif');
+
+export type VoiceOutcome = { ok: true; audio: Blob } | { ok: false; message: string };
+
+/** «Escuchar» a voice before saving it (José 27/11): the audio, or the server's refusal in its own words. */
+export async function previewStickerVoice(jwt: string, request: { voiceId: StickerVoiceId; text: string; spaceId: string }): Promise<VoiceOutcome> {
+  try {
+    const response = await fetch('/api/stickers/voice/preview', { method: 'POST', headers: { Authorization: `Bearer ${jwt}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ voice: request.voiceId, text: request.text, spaceId: request.spaceId }) });
+    if (!response.ok) {
+      const payload = (await response.json().catch(() => ({}))) as { message?: string };
+      return { ok: false, message: payload.message ?? 'La voz no está disponible ahora. Inténtalo más tarde.' };
+    }
+    return { ok: true, audio: await response.blob() };
+  } catch {
+    return { ok: false, message: 'Sin conexión. Revisa tu internet.' };
+  }
+}
 
 async function postStickerForm(jwt: string, path: string, form: FormData): Promise<ApiResult<{ sticker: LibrarySticker }>> {
   try {

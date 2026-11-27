@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useSyncExternalStore } from 'react';
 import { addRecentSticker, packLibrary, STICKER_PACKS, type LibrarySticker } from '@lilachat/shared';
+import { useStickerVoiceDoor } from './stickerVoiceDoor';
 import { createStickerFromVideo, keepFromMessage, keepFromPack, listStickers, removeSticker, sendSticker, setFavorite, setStickerSound, stickerFromGif, uploadGifSticker, uploadSticker, type StickerTarget, type VideoStickerRequest } from './stickersApi';
 import type { SoundRequest } from './videoSticker';
 
@@ -148,5 +149,6 @@ export function useStickers(jwt: string, owner: string) {
     return response;
   }, [jwt]);
 
-  return { ...current, packs: STICKER_PACK_SECTIONS, reload: () => reload(jwt, owner), send, save, saveGif, saveVideo, toggleFavorite, remove, keepReceived, setSound };
+  const voiceDoor = useStickerVoiceDoor(jwt);
+  return { ...current, voiceDoor, packs: STICKER_PACK_SECTIONS, reload: () => reload(jwt, owner), send, save, saveGif, saveVideo, toggleFavorite, remove, keepReceived, setSound };
 }

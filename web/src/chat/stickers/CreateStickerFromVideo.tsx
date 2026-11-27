@@ -6,6 +6,7 @@ import { Overlay } from '../../ui/Overlay';
 import { stopWinkSounds } from '../winkSounds';
 import type { VideoStickerRequest } from './stickersApi';
 import { StickerSoundPicker } from './StickerSoundPicker';
+import type { StickerVoiceDoor } from './stickerVoiceDoor';
 import { VideoTrimStrip } from './VideoTrimStrip';
 import { clipFileProblem, clipIsGif, clipSeconds, clipTime, GIF_TRIM, initialTrim, lostItsSound, soundPickForClip, soundRequestOf, trimLengthMs, type SoundPick, type TrimWindow } from './videoSticker';
 
@@ -14,6 +15,8 @@ type Props = {
   chatName: string;
   onClose: () => void;
   onSave: (request: VideoStickerRequest) => Promise<ApiResult<{ sticker: LibrarySticker }>>;
+  /** «Voz» for an admin of the open space (José 27/11). */
+  voiceDoor?: StickerVoiceDoor | null;
   onSend: (sticker: LibrarySticker) => Promise<boolean>;
   /** The video or GIF already chosen (under «Crear», or a chat's GIF): no second picker (design sc-01a). */
   initialClip?: File;
@@ -141,7 +144,7 @@ export function CreateStickerFromVideo(props: Props) {
         </div>
         <div className="flex flex-col gap-4">
           {clip.trim && !clip.isGif ? <TrimSection videoMs={clip.videoMs} trim={clip.trim} disabled={busy} onChange={clip.setTrim} /> : null}
-          <StickerSoundPicker pick={sound} hasOwnSound={!clip.isGif} clipMs={clip.trim ? trimLengthMs(clip.trim) : 0} voice={voice} upload={upload} disabled={busy} onPick={setPick} onVoice={setVoice} onUpload={setUpload} onNotice={setNotice} />
+          <StickerSoundPicker pick={sound} hasOwnSound={!clip.isGif} clipMs={clip.trim ? trimLengthMs(clip.trim) : 0} voice={voice} upload={upload} disabled={busy} onPick={setPick} onVoice={setVoice} onUpload={setUpload} onNotice={setNotice} voiceDoor={props.voiceDoor} />
         </div>
       </div>
       <Status busy={busy} notice={notice} info={info} />

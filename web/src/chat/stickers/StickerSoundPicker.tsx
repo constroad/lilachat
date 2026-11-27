@@ -1,8 +1,11 @@
-import { useRef, type ReactNode } from 'react';
+import { useRef } from 'react';
 import { Mic, Music, Play, Upload, VolumeOff } from 'lucide-react';
 import { STICKER_SOUND_PRESETS, type StickerSoundPreset } from '@lilachat/shared';
 import { playWinkSound, stopWinkSounds } from '../winkSounds';
 import { VoiceRecorder } from './VoiceRecorder';
+import { SoundOption } from './SoundOption';
+import { SpokenVoiceOption } from './SpokenVoiceOption';
+import type { StickerVoiceDoor } from './stickerVoiceDoor';
 import { audioFileProblem, clipTime, type SoundPick } from './videoSticker';
 
 const AUDIO_ACCEPT = '.mp3,.m4a,.wav,audio/mpeg,audio/mp4,audio/x-m4a,audio/wav,audio/x-wav';
@@ -20,6 +23,8 @@ type Props = {
   onVoice: (voice: Blob) => void;
   onUpload: (file: File) => void;
   onNotice: (message: string) => void;
+  /** «Voz» (José 27/11): only for an owner or admin of the open space; null hides it. */
+  voiceDoor?: StickerVoiceDoor | null;
 };
 
 /**
@@ -59,26 +64,9 @@ export function StickerSoundPicker(props: Props) {
       </SoundOption>
       <input ref={audioInput} type="file" accept={AUDIO_ACCEPT} hidden data-testid="input-audio-sticker" onChange={(event) => { const file = event.target.files?.[0]; event.target.value = ''; takeAudio(file); }} />
       <PresetSounds pick={pick} disabled={disabled} onPick={props.onPick} />
+      {props.voiceDoor ? <SpokenVoiceOption pick={pick} door={props.voiceDoor} disabled={disabled} onPick={props.onPick} onNotice={props.onNotice} /> : null}
       <SoundOption testId="sin-sonido" icon={<VolumeOff size={17} />} title="Sin sonido" checked={pick?.kind === 'none'} disabled={disabled} onSelect={() => props.onPick({ kind: 'none' })} />
     </section>
-  );
-}
-
-type OptionProps = { testId: string; icon: ReactNode; title: string; hint?: string; checked: boolean; disabled: boolean; onSelect: () => void; children?: ReactNode };
-
-function SoundOption({ testId, icon, title, hint, checked, disabled, onSelect, children }: OptionProps) {
-  return (
-    <div className={`rounded-xl border p-3 transition-colors ${checked ? 'border-primary bg-primary/5' : 'border-outline/20'}`}>
-      <button type="button" role="radio" aria-checked={checked} data-testid={testId} disabled={disabled} onClick={onSelect} className="flex w-full items-center gap-3 text-left disabled:opacity-60">
-        <span className={`grid h-9 w-9 shrink-0 place-items-center rounded-full ${checked ? 'bg-primary text-on-primary' : 'bg-primary/10 text-primary'}`}>{icon}</span>
-        <span className="min-w-0 flex-1">
-          <span className="block text-[14px] font-semibold text-on-surface">{title}</span>
-          {hint ? <span className="block truncate text-[12px] text-on-surface-variant">{hint}</span> : null}
-        </span>
-        <span aria-hidden className={`grid h-5 w-5 shrink-0 place-items-center rounded-full border-2 ${checked ? 'border-primary' : 'border-outline/40'}`}>{checked ? <span className="h-2.5 w-2.5 rounded-full bg-primary" /> : null}</span>
-      </button>
-      {children}
-    </div>
   );
 }
 

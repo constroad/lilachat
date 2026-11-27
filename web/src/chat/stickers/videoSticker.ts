@@ -1,4 +1,4 @@
-import { clipHasOwnSound, isStickerClipMime, MAX_STICKER_AUDIO_BYTES, MAX_STICKER_VIDEO_BYTES, soundPresetIdOf, stickerHasSound, VIDEO_STICKER_MAX_MS, VIDEO_STICKER_MIN_MS, type StickerSound } from '@lilachat/shared';
+import { clipHasOwnSound, isStickerClipMime, MAX_STICKER_AUDIO_BYTES, MAX_STICKER_VIDEO_BYTES, soundPresetIdOf, stickerHasSound, VIDEO_STICKER_MAX_MS, VIDEO_STICKER_MIN_MS, voiceTextOf, MAX_VOICE_TEXT, type StickerSound, type StickerVoiceId } from '@lilachat/shared';
 
 /**
  * The decisions of «Crear sticker desde un video» (José 26/11, design ss-04):
@@ -111,8 +111,12 @@ export function audioFileProblem(file: File): string | null {
 }
 
 /** What the person picked under «Sonido del sticker»: voice and upload both travel as a file. */
-export type SoundPick = { kind: 'original' } | { kind: 'none' } | { kind: 'preset'; presetId: string } | { kind: 'voice' } | { kind: 'upload' };
-export type SoundRequest = { sound: StickerSound; audio: Blob | null };
+export type SoundPick = { kind: 'original' } | { kind: 'none' } | { kind: 'preset'; presetId: string } | { kind: 'voice' } | { kind: 'upload' } | SpokenPick;
+/** «Voz» (José 27/11): a phrase said by Valeria or Daniel, for an admin of the space it is asked from. */
+export type SpokenPick = { kind: 'spoken'; voiceId: StickerVoiceId; text: string; spaceId: string };
+/** The phrase and the space of a voice: the server checks the admin and asks agentes for the audio. */
+export type SpokenFields = { text: string; spaceId: string };
+export type SoundRequest = { sound: StickerSound; audio: Blob | null; spoken?: SpokenFields };
 
 /** What the sound choice means for this clip: without a sound of its own, «Sonido original» is «Sin sonido». */
 export function soundPickForClip(pick: SoundPick, hasOwnSound: boolean): SoundPick {
@@ -123,7 +127,14 @@ export function soundPickForClip(pick: SoundPick, hasOwnSound: boolean): SoundPi
 export function soundRequestOf(pick: SoundPick, voice: Blob | null, upload: File | null): SoundRequest | { problem: string } {
   if (pick.kind === 'voice') return voice ? { sound: { kind: 'file' }, audio: voice } : { problem: 'Graba tu voz primero, o elige otro sonido.' };
   if (pick.kind === 'upload') return upload ? { sound: { kind: 'file' }, audio: upload } : { problem: 'Elige un audio, o elige otro sonido.' };
+  if (pick.kind === 'spoken') return spokenRequestOf(pick);
   return { sound: pick, audio: null };
+}
+
+function spokenRequestOf(pick: SpokenPick): SoundRequest | { problem: string } {
+  const text = voiceTextOf(pick.text);
+  if (!text) return { problem: `Escribe la frase de la voz (hasta ${MAX_VOICE_TEXT} caracteres).` };
+  return { sound: { kind: 'voice', voiceId: pick.voiceId }, audio: null, spoken: { text, spaceId: pick.spaceId } };
 }
 
 /** A saved sticker starts on its own preset; with no sound, or one the person recorded, nothing is chosen yet (José 27/11). */

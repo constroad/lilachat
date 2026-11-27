@@ -8,7 +8,8 @@ import { audioFileProblem, clipTime, type SoundPick } from './videoSticker';
 const AUDIO_ACCEPT = '.mp3,.m4a,.wav,audio/mpeg,audio/mp4,audio/x-m4a,audio/wav,audio/x-wav';
 
 type Props = {
-  pick: SoundPick;
+  /** null: nothing chosen yet (a saved sticker keeps its sound until another is picked, José 27/11). */
+  pick: SoundPick | null;
   /** A GIF has no sound of its own: «Sonido original» is not offered (design sc-01a). */
   hasOwnSound: boolean;
   clipMs: number;
@@ -46,19 +47,19 @@ export function StickerSoundPicker(props: Props) {
         Sonido del sticker <span className="text-[12px] font-normal normal-case tracking-normal">Hasta 6 segundos</span>
       </h3>
       {props.hasOwnSound ? (
-        <SoundOption testId="sonido-original" icon={<Music size={17} />} title="Sonido original" hint={`El audio del video, en el tramo elegido (${clipTime(props.clipMs)})`} checked={pick.kind === 'original'} disabled={disabled} onSelect={() => props.onPick({ kind: 'original' })} />
+        <SoundOption testId="sonido-original" icon={<Music size={17} />} title="Sonido original" hint={`El audio del video, en el tramo elegido (${clipTime(props.clipMs)})`} checked={pick?.kind === 'original'} disabled={disabled} onSelect={() => props.onPick({ kind: 'original' })} />
       ) : null}
-      <SoundOption testId="sonido-grabar" icon={<Mic size={17} />} title="Grabar tu voz" hint="Mantén presionado para hablar, o toca para empezar y parar" checked={pick.kind === 'voice'} disabled={disabled} onSelect={() => props.onPick({ kind: 'voice' })}>
-        {pick.kind === 'voice' ? <VoiceRecorder voice={props.voice} disabled={disabled} onVoice={props.onVoice} onNotice={props.onNotice} /> : null}
+      <SoundOption testId="sonido-grabar" icon={<Mic size={17} />} title="Grabar tu voz" hint="Mantén presionado para hablar, o toca para empezar y parar" checked={pick?.kind === 'voice'} disabled={disabled} onSelect={() => props.onPick({ kind: 'voice' })}>
+        {pick?.kind === 'voice' ? <VoiceRecorder voice={props.voice} disabled={disabled} onVoice={props.onVoice} onNotice={props.onNotice} /> : null}
       </SoundOption>
-      <SoundOption testId="sonido-subir" icon={<Upload size={17} />} title="Subir un audio" hint={props.upload ? props.upload.name : 'MP3, M4A o WAV'} checked={pick.kind === 'upload'} disabled={disabled} onSelect={pickUpload}>
-        {pick.kind === 'upload' && props.upload ? (
+      <SoundOption testId="sonido-subir" icon={<Upload size={17} />} title="Subir un audio" hint={props.upload ? props.upload.name : 'MP3, M4A o WAV'} checked={pick?.kind === 'upload'} disabled={disabled} onSelect={pickUpload}>
+        {pick?.kind === 'upload' && props.upload ? (
           <button type="button" disabled={disabled} onClick={() => audioInput.current?.click()} className="mt-2 text-[12px] font-semibold text-primary disabled:opacity-50">Elegir otro audio</button>
         ) : null}
       </SoundOption>
       <input ref={audioInput} type="file" accept={AUDIO_ACCEPT} hidden data-testid="input-audio-sticker" onChange={(event) => { const file = event.target.files?.[0]; event.target.value = ''; takeAudio(file); }} />
       <PresetSounds pick={pick} disabled={disabled} onPick={props.onPick} />
-      <SoundOption testId="sin-sonido" icon={<VolumeOff size={17} />} title="Sin sonido" checked={pick.kind === 'none'} disabled={disabled} onSelect={() => props.onPick({ kind: 'none' })} />
+      <SoundOption testId="sin-sonido" icon={<VolumeOff size={17} />} title="Sin sonido" checked={pick?.kind === 'none'} disabled={disabled} onSelect={() => props.onPick({ kind: 'none' })} />
     </section>
   );
 }
@@ -82,13 +83,13 @@ function SoundOption({ testId, icon, title, hint, checked, disabled, onSelect, c
 }
 
 /** «Sonidos de Lilachat»: a click picks it and lets it be heard once. */
-function PresetSounds({ pick, disabled, onPick }: { pick: SoundPick; disabled: boolean; onPick: (pick: SoundPick) => void }) {
+function PresetSounds({ pick, disabled, onPick }: { pick: SoundPick | null; disabled: boolean; onPick: (pick: SoundPick) => void }) {
   const choose = (preset: StickerSoundPreset) => {
     onPick({ kind: 'preset', presetId: preset.id });
     stopWinkSounds();
     playWinkSound(preset.sound);
   };
-  const chosen = pick.kind === 'preset' ? pick.presetId : null;
+  const chosen = pick?.kind === 'preset' ? pick.presetId : null;
   return (
     <div className={`rounded-xl border p-3 ${chosen ? 'border-primary bg-primary/5' : 'border-outline/20'}`}>
       <p className="text-[14px] font-semibold text-on-surface">Sonidos de Lilachat</p>

@@ -9,7 +9,8 @@ import { ChatModel, MessageModel } from './chatModels.js';
 import { StickerModel } from './stickerModel.js';
 import { buildPushText } from './pushSender.js';
 import { signSession } from './sessions.js';
-import type { VideoStickerConverter } from './soundSticker.js';
+import type { StickerSoundCutter, VideoStickerConverter } from './soundSticker.js';
+import type { StickerVideoMaker } from './stickerVideo.js';
 
 /**
  * Stickers (José, 20/10: «in WhatsApp I upload a photo, the background goes
@@ -30,8 +31,21 @@ const fromVideo: VideoStickerConverter = async ({ video, window, soundFrom }) =>
   if (video.toString() === 'broken') return 'not-a-video';
   return { webp: WEBP, audio: soundFrom === null ? null : Buffer.alloc(2_000, 1) };
 };
+/** What the sound cutter got (ffmpeg runs for real in `soundSticker.test.ts`): whether it had the sticker's picture. */
+const soundCuts: { hadPicture: boolean }[] = [];
+const cutSound: StickerSoundCutter = async ({ picture }) => {
+  soundCuts.push({ hadPicture: picture !== null });
+  return Buffer.alloc(2_000, 2);
+};
+/** What the export got: the picture, and the sound when there is one. */
+const exports: { picture: string; sound: string | null }[] = [];
+const makeVideo: StickerVideoMaker = async ({ picture, sound }) => {
+  exports.push({ picture: picture.toString('hex').slice(0, 8), sound: sound?.toString() ?? null });
+  return Buffer.from('mp4-bytes');
+};
+const readBytes = async (url: string) => (url.endsWith('.m4a') || url.includes('/sonidos/') ? Buffer.from(`sound:${url.split('/').pop()}`) : WEBP);
 const app = buildApp({
-  animatedStickers: { fromVideo },
+  animatedStickers: { fromVideo, cutSound, makeVideo, readBytes },
   mediaUploader: {
     async upload(p) {
       uploads.push({ fileName: p.fileName, mimeType: p.mimeType });
@@ -52,6 +66,8 @@ afterAll(async () => {
 beforeEach(async () => {
   uploads.length = 0;
   conversions.length = 0;
+  soundCuts.length = 0;
+  exports.length = 0;
   await Promise.all([UserModel.deleteMany({}), ChatModel.deleteMany({}), MessageModel.deleteMany({}), StickerModel.deleteMany({})]);
   const users = await UserModel.create([{ phone: '900000001', name: 'José' }, { phone: '900000002', name: 'Ana' }]);
   me = users[0]!._id;
@@ -244,5 +260,102 @@ describe('a sticker with sound from a video', () => {
     const photo = await request(app).post('/api/stickers/from-video').set(withJwt(me)).field('startMs', '0').field('endMs', '3000').field('sound', 'none').attach('file', WEBP, { filename: 'a.webp', contentType: 'image/webp' });
     expect(photo.status).toBe(400);
     expect(await StickerModel.countDocuments({})).toBe(0);
+  });
+});
+
+/** José 27/11: «ya tengo un sticker en mis favoritos… quiero agregarle audio sin volver a buscar el GIF». */
+describe('the sound of a saved sticker', () => {
+  const soundRequest = (id: string, fields: Record<string, string>, audio?: Buffer, userId = me) => {
+    let pending = request(app).post(`/api/stickers/${id}/sound`).set(withJwt(userId)).set('Host', 'lilachat.example').set('X-Forwarded-Proto', 'https');
+    for (const [key, value] of Object.entries(fields)) pending = pending.field(key, value);
+    return audio ? pending.attach('audio', audio, { filename: 'voz.webm', contentType: 'audio/webm' }) : pending;
+  };
+  const saved = async () => (await create(me)).body.sticker.id as string;
+
+  it('one of ours: the sticker keeps its picture and gets the sound', async () => {
+    // Arrange
+    const id = await saved();
+    // Act
+    const res = await soundRequest(id, { sound: 'preset:risa' });
+    // Assert
+    expect(res.status).toBe(200);
+    expect(res.body.sticker).toMatchObject({ id, audioUrl: 'https://lilachat.example/sonidos/wink-laugh.mp3' });
+    expect((await StickerModel.findById(id).lean())?.audioUrl).toBe('https://lilachat.example/sonidos/wink-laugh.mp3');
+    expect(soundCuts).toHaveLength(0);
+  });
+
+  it('a recorded or uploaded one is cut to the sticker and saved as its own audio', async () => {
+    const id = await saved();
+    const before = uploads.length;
+    const res = await soundRequest(id, { sound: 'file' }, Buffer.from('voice'));
+    expect(res.status).toBe(200);
+    expect(uploads.slice(before)).toEqual([{ fileName: 'sticker-sonido.m4a', mimeType: 'audio/mp4' }]);
+    expect(res.body.sticker.audioUrl).toMatch(/sticker-sonido\.m4a$/);
+    expect(soundCuts).toHaveLength(1);
+  });
+
+  it('«Sin sonido» takes it away; changing it again replaces it', async () => {
+    const id = await saved();
+    await soundRequest(id, { sound: 'preset:bocina' }).expect(200);
+    await soundRequest(id, { sound: 'preset:aplausos' }).expect(200);
+    expect((await StickerModel.findById(id).lean())?.audioUrl).toMatch(/wink-clap\.mp3$/);
+    const quiet = await soundRequest(id, { sound: 'none' });
+    expect(quiet.status).toBe(200);
+    expect(quiet.body.sticker.audioUrl).toBeUndefined();
+    expect((await StickerModel.findById(id).lean())?.audioUrl).toBeUndefined();
+  });
+
+  it('a sticker already sent keeps the sound it had in the chat', async () => {
+    const id = await saved();
+    await request(app).post(`/api/chats/${chatId}/stickers`).set(withJwt(me)).send({ stickerId: id, clientKey: 'k-sound-1' }).expect(201);
+    await soundRequest(id, { sound: 'preset:risa' }).expect(200);
+    const sent = await MessageModel.findOne({ chatId, kind: 'sticker' }).lean();
+    expect(sent?.media?.audioUrl).toBeUndefined();
+  });
+
+  it('only my own sticker, and only a sound it can carry', async () => {
+    const id = await saved();
+    expect((await soundRequest(id, { sound: 'preset:risa' }, undefined, ana)).status).toBe(404);
+    expect((await soundRequest(new Types.ObjectId().toString(), { sound: 'preset:risa' })).status).toBe(404);
+    expect((await soundRequest('not-an-id', { sound: 'preset:risa' })).status).toBe(404);
+    // A saved sticker has no video: «Sonido original» does not apply.
+    expect((await soundRequest(id, { sound: 'original' })).status).toBe(400);
+    expect((await soundRequest(id, { sound: 'file' })).status).toBe(400);
+    expect((await soundRequest(id, { sound: 'loud' })).status).toBe(400);
+  });
+});
+
+/** José 27/11: «exportarlo para usarlo en WhatsApp» (design sa-05): the video with its sound, for WhatsApp's «Crear sticker». */
+describe('exporting a saved sticker', () => {
+  const exportRequest = (id: string, userId = me) => request(app).get(`/api/stickers/${id}/export.mp4`).set(withJwt(userId)).buffer(true).parse((res, done) => {
+    const chunks: Buffer[] = [];
+    res.on('data', (chunk: Buffer) => chunks.push(chunk));
+    res.on('end', () => done(null, Buffer.concat(chunks)));
+  });
+
+  it('one with sound comes as an MP4 with that sound', async () => {
+    // Arrange: a sticker that got «Risa»
+    const id = (await create(me)).body.sticker.id as string;
+    await request(app).post(`/api/stickers/${id}/sound`).set(withJwt(me)).set('Host', 'lilachat.example').set('X-Forwarded-Proto', 'https').field('sound', 'preset:risa').expect(200);
+    // Act
+    const res = await exportRequest(id);
+    // Assert
+    expect(res.status).toBe(200);
+    expect(res.headers['content-type']).toBe('video/mp4');
+    expect(res.headers['content-disposition']).toContain('sticker-lilachat.mp4');
+    expect((res.body as Buffer).toString()).toBe('mp4-bytes');
+    expect(exports).toEqual([{ picture: '52494646', sound: 'sound:wink-laugh.mp3' }]);
+  });
+
+  it('a still one without sound is only a picture: no video', async () => {
+    const id = (await create(me)).body.sticker.id as string;
+    expect((await exportRequest(id)).status).toBe(400);
+    expect(exports).toHaveLength(0);
+  });
+
+  it('only my own', async () => {
+    const id = (await create(me)).body.sticker.id as string;
+    expect((await exportRequest(id, ana)).status).toBe(404);
+    expect((await exportRequest('nope')).status).toBe(404);
   });
 });

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { MAX_STICKER_AUDIO_BYTES, MAX_STICKER_VIDEO_BYTES, VIDEO_STICKER_MAX_MS, VIDEO_STICKER_MIN_MS } from '@lilachat/shared';
-import { audioFileProblem, clipFileProblem, clipIsGif, clipSeconds, clipTime, GIF_TRIM, HOLD_TO_RECORD_MS, initialTrim, lostItsSound, moveTrim, msAtStrip, releaseStopsRecording, resizeTrimEnd, resizeTrimStart, soundPickForClip, soundRequestOf, stickerSourceOf, stripTicks, trimLengthMs, withMediaType } from './videoSticker';
+import { audioFileProblem, clipFileProblem, clipIsGif, clipSeconds, clipTime, GIF_TRIM, HOLD_TO_RECORD_MS, initialTrim, lostItsSound, moveTrim, msAtStrip, releaseStopsRecording, resizeTrimEnd, resizeTrimStart, soundPickForClip, soundRequestOf, stickerSourceOf, stripTicks, trimLengthMs, withMediaType, initialSavedSoundPick, savedSoundRequestOf } from './videoSticker';
 
 const fileOf = (name: string, type: string, bytes = 10) => new File([new Uint8Array(bytes)], name, { type });
 const heavy = (name: string, type: string, size: number) => {
@@ -185,5 +185,21 @@ describe('a GIF in the clip editor', () => {
   it('a video keeps whatever was chosen, the original sound included', () => {
     expect(soundPickForClip({ kind: 'original' }, true)).toEqual({ kind: 'original' });
     expect(soundPickForClip({ kind: 'none' }, true)).toEqual({ kind: 'none' });
+  });
+});
+
+/** José 27/11: a sound for a sticker already saved. */
+describe('the sound of a saved sticker', () => {
+  it('starts on its own preset; without one nothing is chosen', () => {
+    expect(initialSavedSoundPick({ audioUrl: 'https://x/sonidos/wink-horn.mp3' })).toEqual({ kind: 'preset', presetId: 'bocina' });
+    expect(initialSavedSoundPick({ audioUrl: 'https://x/files/sticker-sonido.m4a' })).toBeNull();
+    expect(initialSavedSoundPick({})).toBeNull();
+  });
+
+  it('asks for a choice; «original» never goes (a saved sticker has no video)', () => {
+    expect(savedSoundRequestOf(null, null, null)).toEqual({ problem: 'Elige el sonido del sticker.' });
+    expect(savedSoundRequestOf({ kind: 'original' }, null, null)).toEqual({ problem: 'Elige el sonido del sticker.' });
+    expect(savedSoundRequestOf({ kind: 'none' }, null, null)).toEqual({ sound: { kind: 'none' }, audio: null });
+    expect(savedSoundRequestOf({ kind: 'voice' }, null, null)).toEqual({ problem: 'Graba tu voz primero, o elige otro sonido.' });
   });
 });

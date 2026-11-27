@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { createStickerFromVideo, fetchGifFile, sendSticker, stickerFromGif, uploadGifSticker, videoStickerForm } from './stickersApi';
+import { createStickerFromVideo, fetchGifFile, giphyGifFile, sendSticker, setStickerSound, stickerFromGif, stickerVideoFile, uploadGifSticker, videoStickerForm } from './stickersApi';
 
 /** José, 20/10: «no puedo responder con sticker» — the reply and the thread travel with the sticker. */
 describe('sendSticker', () => {
@@ -142,5 +142,52 @@ describe('the GIF of a chat as a file', () => {
   it('a network failure says so, without breaking', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => Promise.reject(new TypeError('Failed to fetch'))));
     expect(await fetchGifFile('/media/a.gif')).toEqual({ ok: false, message: 'No se pudo traer ese GIF. Revisa tu conexión.' });
+  });
+});
+
+/** José 27/11: the sound of a saved sticker, exporting it, and a GIPHY GIF for the editor. */
+describe('a saved sticker: its sound and its export', () => {
+  afterEach(() => vi.unstubAllGlobals());
+  const sticker = { id: '6739f0c2a1b2c3d4e5f60799', url: 'https://x/s.webp', mime: 'image/webp', width: 512, height: 512, favorite: false, at: '2026-11-27T12:00:00.000Z', audioUrl: 'https://x/sonidos/wink-laugh.mp3' };
+  const call = (request: ReturnType<typeof vi.fn>) => request.mock.calls[0] as unknown as [string, RequestInit];
+
+  it('one of ours goes as its field; a voice as the audio file', async () => {
+    // Arrange
+    const request = vi.fn(async () => new Response(JSON.stringify({ sticker }), { status: 200 }));
+    vi.stubGlobal('fetch', request);
+    // Act
+    const saved = await setStickerSound('jwt', sticker.id, { sound: { kind: 'preset', presetId: 'risa' }, audio: null });
+    await setStickerSound('jwt', sticker.id, { sound: { kind: 'file' }, audio: new Blob(['v'], { type: 'audio/webm' }) });
+    // Assert
+    const [url, init] = call(request);
+    expect(url).toBe(`/api/stickers/${sticker.id}/sound`);
+    expect((init.body as FormData).get('sound')).toBe('preset:risa');
+    expect(saved).toEqual({ ok: true, data: { sticker } });
+    const voice = (request.mock.calls[1] as unknown as [string, RequestInit])[1].body as FormData;
+    expect([voice.get('sound'), (voice.get('audio') as File).name]).toEqual(['file', 'sticker-sonido.webm']);
+  });
+
+  it('the export comes as an MP4 file named for WhatsApp', async () => {
+    const request = vi.fn(async () => new Response(new Blob(['mp4'], { type: 'video/mp4' }), { status: 200 }));
+    vi.stubGlobal('fetch', request);
+    const made = await stickerVideoFile('jwt', sticker.id);
+    expect(call(request)[0]).toBe(`/api/stickers/${sticker.id}/export.mp4`);
+    expect((call(request)[1].headers as Record<string, string>).Authorization).toBe('Bearer jwt');
+    expect(made.ok && [made.file.name, made.file.type]).toEqual(['sticker-lilachat.mp4', 'video/mp4']);
+  });
+
+  it('a refused export says the server words; no network says so', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ message: 'Este sticker no se mueve ni suena: expórtalo como imagen.' }), { status: 400 })));
+    expect(await stickerVideoFile('jwt', sticker.id)).toEqual({ ok: false, message: 'Este sticker no se mueve ni suena: expórtalo como imagen.' });
+    vi.stubGlobal('fetch', vi.fn(async () => { throw new Error('offline'); }));
+    expect(await stickerVideoFile('jwt', sticker.id)).toEqual({ ok: false, message: 'Sin conexión. Revisa tu internet.' });
+  });
+
+  it('a GIPHY GIF comes through the server as a .gif file', async () => {
+    const request = vi.fn(async () => new Response(new Blob(['GIF89a'], { type: 'image/gif' }), { status: 200 }));
+    vi.stubGlobal('fetch', request);
+    const gif = await giphyGifFile('jwt', 'abc123');
+    expect(call(request)[0]).toBe('/api/gifs/abc123/file');
+    expect(gif.ok && [gif.file.name, gif.file.type]).toEqual(['giphy-abc123.gif', 'image/gif']);
   });
 });

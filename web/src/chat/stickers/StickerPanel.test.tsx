@@ -7,7 +7,7 @@ const sticker = (id: string, favorite = false): LibrarySticker => ({ id, url: `h
 const pack = { id: 'lila-1', title: 'Lila', stickers: [sticker('pack:lila-1/dog-ready'), sticker('pack:lila-1/cat')] };
 
 function draw(params: { library: LibrarySticker[] | null; recents?: string[]; packs?: (typeof pack)[] }) {
-  const actions = { onSend: vi.fn(), onCreate: vi.fn(), onToggleFavorite: vi.fn(), onRemove: vi.fn() };
+  const actions = { onSend: vi.fn(), onCreate: vi.fn(), onToggleFavorite: vi.fn(), onRemove: vi.fn(), onSound: vi.fn(), onRemoveSound: vi.fn(), onExport: vi.fn() };
   render(<StickerPanel library={params.library} recents={params.recents ?? []} packs={params.packs ?? [pack]} error="" {...actions} />);
   return actions;
 }
@@ -53,18 +53,38 @@ describe('StickerPanel (web)', () => {
     expect(within(mine).getAllByRole('button', { name: 'Mandar el sticker' })).toHaveLength(12);
   });
 
-  it('the star toggles favorite and the X removes from «Mis stickers», without sending', () => {
-    const { onToggleFavorite, onRemove, onSend } = draw({ library: [sticker('a')] });
-    fireEvent.click(screen.getByTestId('favorito-mine-a'));
-    fireEvent.click(screen.getByTestId('quitar-mine-a'));
-    expect(onToggleFavorite).toHaveBeenCalledWith(expect.objectContaining({ id: 'a' }));
-    expect(onRemove).toHaveBeenCalledWith(expect.objectContaining({ id: 'a' }));
+  /** José 27/11 (design sa-03): the «⋯» of a saved sticker, its sound first. */
+  it('«⋯» opens its options: sound, export, favorites and remove, without sending', () => {
+    // Arrange
+    const { onToggleFavorite, onRemove, onSend, onSound, onExport } = draw({ library: [{ ...sticker('a'), animated: true }] });
+    // Act
+    fireEvent.click(screen.getByTestId('opciones-mine-a'));
+    // Assert
+    expect(screen.getAllByRole('menuitem').map((item) => item.textContent?.trim())).toEqual(['Agregar sonido', 'Exportar para WhatsApp', 'Agregar a Favoritos', 'Quitar de Mis stickers']);
+    fireEvent.click(screen.getByTestId('sonido-mine-a'));
+    expect(onSound).toHaveBeenCalledWith(expect.objectContaining({ id: 'a' }));
+    expect(screen.queryByTestId('menu-mine-a')).toBeNull();
+    for (const item of ['exportar', 'favorito', 'quitar']) {
+      fireEvent.click(screen.getByTestId('opciones-mine-a'));
+      fireEvent.click(screen.getByTestId(`${item}-mine-a`));
+    }
+    expect([onExport, onToggleFavorite, onRemove].map((fn) => fn.mock.calls.length)).toEqual([1, 1, 1]);
     expect(onSend).not.toHaveBeenCalled();
   });
 
-  it('a pack sticker can be starred but not removed', () => {
+  it('one with sound offers to change it or take it away', () => {
+    const { onRemoveSound } = draw({ library: [{ ...sticker('a'), audioUrl: 'https://x/sonidos/wink-laugh.mp3' }] });
+    fireEvent.click(screen.getByTestId('opciones-mine-a'));
+    expect(screen.getByTestId('sonido-mine-a').textContent?.trim()).toBe('Cambiar sonido');
+    fireEvent.click(screen.getByTestId('quitar-sonido-mine-a'));
+    expect(onRemoveSound).toHaveBeenCalledWith(expect.objectContaining({ id: 'a' }));
+  });
+
+  it('a pack sticker can get a sound and a star, but is not removed', () => {
     draw({ library: [] });
+    fireEvent.click(screen.getByTestId('opciones-pack:lila-1-pack:lila-1/cat'));
     expect(screen.getByTestId('favorito-pack:lila-1-pack:lila-1/cat')).toBeInTheDocument();
+    expect(screen.getByTestId('sonido-pack:lila-1-pack:lila-1/cat')).toBeInTheDocument();
     expect(screen.queryByTestId('quitar-pack:lila-1-pack:lila-1/cat')).toBeNull();
   });
 

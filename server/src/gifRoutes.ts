@@ -76,6 +76,21 @@ export function buildGifRouter(options: { apiKey?: string; fetchers?: GiphyFetch
     }
   }));
 
+  /** The GIF itself, for the sticker editor (José 27/11): a sticker with sound from the GIF tab, without sending it first. */
+  router.get('/:gifId/file', asyncRoute(async (req, res) => {
+    if (!apiKey) return void res.status(404).json({ message: 'GIPHY no está configurado.' });
+    const gifId = String(req.params.gifId ?? '');
+    if (!GIF_ID.test(gifId)) return void res.status(400).json({ message: 'Ese GIF no existe.' });
+    try {
+      const rendition = gifRenditionToSend(record(await fetchers.json(`${GIPHY_API}/${gifId}?${new URLSearchParams({ api_key: apiKey })}`)).data);
+      if (!rendition) return void res.status(400).json({ message: 'Ese GIF no se puede usar.' });
+      res.set({ 'Content-Type': 'image/gif', 'Cache-Control': 'private, max-age=3600' }).send(await fetchers.bytes(rendition.url));
+    } catch (error) {
+      console.error('[gif] GIPHY did not give the GIF:', error instanceof Error ? error.message : error);
+      res.status(503).json({ message: 'GIPHY no respondió. Inténtalo de nuevo.' });
+    }
+  }));
+
   router.post('/send', asyncRoute(async (req, res) => {
     if (!apiKey) return void res.status(404).json({ message: 'GIPHY no está configurado.' });
     const chatId = String(req.body?.chatId ?? '');

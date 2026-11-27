@@ -5,6 +5,10 @@ import {
   isStickerClipMime,
   parseStickerSound,
   shouldReplaySound,
+  stickerExportOf,
+  stickerOptionsOf,
+  soundPresetIdOf,
+  stickerSoundLabelOf,
   soundPresetPath,
   STICKER_SOUND_PLAYS,
   STICKER_SOUND_PRESETS,
@@ -104,5 +108,58 @@ describe('shouldReplaySound', () => {
     expect(shouldReplaySound(1)).toBe(true);
     expect(shouldReplaySound(2)).toBe(true);
     expect(shouldReplaySound(3)).toBe(false);
+  });
+});
+
+/** José 27/11: «exportarlo para usarlo en WhatsApp». WhatsApp takes no sound from outside: a video for its «Crear sticker». */
+describe('stickerExportOf', () => {
+  const animated = { mime: 'image/webp', animated: true };
+  it('an animated or sounding picture gives the video and the picture', () => {
+    expect(stickerExportOf({ ...animated, audioUrl: 'https://x/a.m4a' })).toEqual({ video: true, picture: true });
+    expect(stickerExportOf(animated)).toEqual({ video: true, picture: true });
+    expect(stickerExportOf({ mime: 'image/png', audioUrl: 'https://x/a.m4a' })).toEqual({ video: true, picture: true });
+  });
+
+  it('a still sticker without sound is only a picture', () => {
+    expect(stickerExportOf({ mime: 'image/webp' })).toEqual({ video: false, picture: true });
+  });
+
+  it('a pack animation that is not a picture cannot leave', () => {
+    expect(stickerExportOf({ mime: 'application/json', animated: true })).toEqual({ video: false, picture: false });
+  });
+});
+
+describe('stickerSoundLabelOf', () => {
+  it('names a preset, says when it is the person own, or that it has none', () => {
+    expect(stickerSoundLabelOf({ audioUrl: 'https://lilachat.constroad.com/sonidos/wink-laugh.mp3' })).toBe('Risa');
+    expect(stickerSoundLabelOf({ audioUrl: 'https://lilachat.constroad.com/files/x/sticker-sonido.m4a' })).toBe('Sonido propio');
+    expect(stickerSoundLabelOf({})).toBeNull();
+  });
+});
+
+/** The options of a saved sticker (designs sa-01, sa-02, sa-03): the same on the web and the APK. */
+describe('stickerOptionsOf', () => {
+  const mine = { id: '6739f0c2a1b2c3d4e5f60701', mime: 'image/webp', animated: true, favorite: false };
+  it('without sound: «Agregar sonido» first, and export', () => {
+    expect(stickerOptionsOf(mine)).toEqual({ sound: 'Agregar sonido', canRemoveSound: false, soundLine: 'Animado · sin sonido', canExport: true, favorite: 'Agregar a Favoritos', canRemove: true });
+  });
+
+  it('with sound: change it or take it away, and it says which one', () => {
+    const options = stickerOptionsOf({ ...mine, favorite: true, audioUrl: 'https://x/sonidos/wink-laugh.mp3' });
+    expect(options).toMatchObject({ sound: 'Cambiar sonido', canRemoveSound: true, soundLine: 'Animado · con sonido · Risa', favorite: 'Quitar de Favoritos' });
+  });
+
+  it('a still one says so; a pack one is not «mine» to remove; a pack animation cannot leave', () => {
+    expect(stickerOptionsOf({ ...mine, animated: false }).soundLine).toBe('Sin sonido');
+    expect(stickerOptionsOf({ ...mine, id: 'pack:lila-1/dog' }).canRemove).toBe(false);
+    expect(stickerOptionsOf({ ...mine, mime: 'application/json' }).canExport).toBe(false);
+  });
+});
+
+describe('soundPresetIdOf', () => {
+  it('the preset behind a sound url, or null for one of the person', () => {
+    expect(soundPresetIdOf('https://x/sonidos/wink-horn.mp3')).toBe('bocina');
+    expect(soundPresetIdOf('https://x/files/sticker-sonido.m4a')).toBeNull();
+    expect(soundPresetIdOf(undefined)).toBeNull();
   });
 });

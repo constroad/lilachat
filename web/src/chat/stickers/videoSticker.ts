@@ -1,4 +1,4 @@
-import { clipHasOwnSound, isStickerClipMime, MAX_STICKER_AUDIO_BYTES, MAX_STICKER_VIDEO_BYTES, stickerHasSound, VIDEO_STICKER_MAX_MS, VIDEO_STICKER_MIN_MS, type StickerSound } from '@lilachat/shared';
+import { clipHasOwnSound, isStickerClipMime, MAX_STICKER_AUDIO_BYTES, MAX_STICKER_VIDEO_BYTES, soundPresetIdOf, stickerHasSound, VIDEO_STICKER_MAX_MS, VIDEO_STICKER_MIN_MS, type StickerSound } from '@lilachat/shared';
 
 /**
  * The decisions of «Crear sticker desde un video» (José 26/11, design ss-04):
@@ -124,6 +124,18 @@ export function soundRequestOf(pick: SoundPick, voice: Blob | null, upload: File
   if (pick.kind === 'voice') return voice ? { sound: { kind: 'file' }, audio: voice } : { problem: 'Graba tu voz primero, o elige otro sonido.' };
   if (pick.kind === 'upload') return upload ? { sound: { kind: 'file' }, audio: upload } : { problem: 'Elige un audio, o elige otro sonido.' };
   return { sound: pick, audio: null };
+}
+
+/** A saved sticker starts on its own preset; with no sound, or one the person recorded, nothing is chosen yet (José 27/11). */
+export function initialSavedSoundPick(sticker: { audioUrl?: string | null }): SoundPick | null {
+  const presetId = soundPresetIdOf(sticker.audioUrl);
+  return presetId ? { kind: 'preset', presetId } : null;
+}
+
+/** The new sound of a saved sticker: it has no video, so «original» never goes; nothing chosen asks for a choice. */
+export function savedSoundRequestOf(pick: SoundPick | null, voice: Blob | null, upload: File | null): SoundRequest | { problem: string } {
+  if (!pick || pick.kind === 'original') return { problem: 'Elige el sonido del sticker.' };
+  return soundRequestOf(pick, voice, upload);
 }
 
 /** «Sonido original» of a silent video: the server saves it without sound, and the person is told. */

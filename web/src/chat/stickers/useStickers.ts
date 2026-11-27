@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useSyncExternalStore } from 'react';
 import { addRecentSticker, packLibrary, STICKER_PACKS, type LibrarySticker } from '@lilachat/shared';
-import { createStickerFromVideo, keepFromMessage, keepFromPack, listStickers, removeSticker, sendSticker, setFavorite, stickerFromGif, uploadGifSticker, uploadSticker, type StickerTarget, type VideoStickerRequest } from './stickersApi';
+import { createStickerFromVideo, keepFromMessage, keepFromPack, listStickers, removeSticker, sendSticker, setFavorite, setStickerSound, stickerFromGif, uploadGifSticker, uploadSticker, type StickerTarget, type VideoStickerRequest } from './stickersApi';
+import type { SoundRequest } from './videoSticker';
 
 /**
  * «Mis stickers» on the web: ONE copy for the panel and the message menu (a
@@ -59,6 +60,8 @@ async function reload(jwt: string, owner: string) {
 }
 
 const withSticker = (sticker: LibrarySticker) => [sticker, ...(store.library ?? []).filter((one) => one.id !== sticker.id)];
+/** The same sticker, changed, where it was (a new sound does not move it to the front). */
+const withReplaced = (sticker: LibrarySticker) => ((store.library ?? []).some((one) => one.id === sticker.id) ? (store.library ?? []).map((one) => (one.id === sticker.id ? sticker : one)) : withSticker(sticker));
 
 export function useStickers(jwt: string, owner: string) {
   adopt(owner);
@@ -136,5 +139,14 @@ export function useStickers(jwt: string, owner: string) {
     return 'Agregado a favoritos';
   }, [jwt]);
 
-  return { ...current, packs: STICKER_PACK_SECTIONS, reload: () => reload(jwt, owner), send, save, saveGif, saveVideo, toggleFavorite, remove, keepReceived };
+  /** José 27/11: a sound for a sticker already saved; a pack one is kept first, so the sound has a copy to live on. */
+  const setSound = useCallback(async (sticker: LibrarySticker, request: SoundRequest) => {
+    const kept = sticker.id.startsWith('pack:') ? await keepFromPack(jwt, sticker.id, sticker.favorite) : null;
+    if (kept && !kept.ok) return kept;
+    const response = await setStickerSound(jwt, kept?.ok ? kept.data.sticker.id : sticker.id, request);
+    if (response.ok) update({ library: withReplaced(response.data.sticker), error: '' });
+    return response;
+  }, [jwt]);
+
+  return { ...current, packs: STICKER_PACK_SECTIONS, reload: () => reload(jwt, owner), send, save, saveGif, saveVideo, toggleFavorite, remove, keepReceived, setSound };
 }

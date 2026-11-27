@@ -15,7 +15,10 @@ import { animatedStickerRoutes, fetchStoredMedia, type GifConverter, type MediaF
 import { gifToAnimatedSticker } from './animatedSticker.js';
 import { webFileUrl } from './webOrigin.js';
 import { videoStickerRoutes } from './videoStickerRoutes.js';
-import { videoToSoundSticker, type VideoStickerConverter } from './soundSticker.js';
+import { cutStickerSound, videoToSoundSticker, type StickerSoundCutter, type VideoStickerConverter } from './soundSticker.js';
+import { stickerSoundRoutes } from './stickerSoundRoutes.js';
+import { stickerExportRoutes } from './stickerExportRoutes.js';
+import { stickerToVideo, type StickerVideoMaker } from './stickerVideo.js';
 
 /** A static sticker is light (WhatsApp: ~100 KB); room left for a lossless WebP. */
 const MAX_STICKER_BYTES = 512 * 1024;
@@ -131,12 +134,14 @@ function keepRoutes(router: Router) {
  * here live «Mis stickers», the default pack and the send, which reuses the
  * file instead of uploading it again. Session per route: mounted on `/api`.
  */
-export function buildStickersRouter(uploader: MediaUploader = defaultMediaUploader(), animated: { convert?: GifConverter; fetchMedia?: MediaFetcher; fromVideo?: VideoStickerConverter } = {}): Router {
+export function buildStickersRouter(uploader: MediaUploader = defaultMediaUploader(), animated: { convert?: GifConverter; fetchMedia?: MediaFetcher; fromVideo?: VideoStickerConverter; cutSound?: StickerSoundCutter; makeVideo?: StickerVideoMaker; readBytes?: (url: string) => Promise<Buffer | null> } = {}): Router {
   const router = Router();
   libraryRoutes(router, uploader);
   keepRoutes(router);
   animatedStickerRoutes(router, { uploader, convert: animated.convert ?? gifToAnimatedSticker, fetchMedia: animated.fetchMedia ?? fetchStoredMedia });
   videoStickerRoutes(router, { uploader, convert: animated.fromVideo ?? videoToSoundSticker });
+  stickerSoundRoutes(router, { uploader, cutSound: animated.cutSound ?? cutStickerSound });
+  stickerExportRoutes(router, { makeVideo: animated.makeVideo ?? stickerToVideo, ...(animated.readBytes ? { readBytes: animated.readBytes } : {}) });
 
   /** A `sticker` message with the SAME file; a retry (same `clientKey`) does not duplicate. */
   router.post('/chats/:chatId/stickers', requireSession, asyncRoute(async (req, res) => {

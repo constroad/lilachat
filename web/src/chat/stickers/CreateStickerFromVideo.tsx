@@ -22,7 +22,8 @@ type Props = {
 const MS_PER_SECOND = 1_000;
 /** timeupdate fires a few times per second: a little slack before the start counts as outside the window. */
 const LOOP_SLACK_MS = 100;
-const CHECKERBOARD = 'bg-[conic-gradient(rgb(0_0_0/0.06)_25%,transparent_0_50%,rgb(0_0_0/0.06)_0_75%,transparent_0)] bg-[length:20px_20px]';
+/** The transparency behind a sticker preview; shared with the sound and export dialogs. */
+export const CHECKERBOARD = 'bg-[conic-gradient(rgb(0_0_0/0.06)_25%,transparent_0_50%,rgb(0_0_0/0.06)_0_75%,transparent_0)] bg-[length:20px_20px]';
 
 const usableClip = (file: File | undefined) => (file && !clipFileProblem(file) ? file : null);
 

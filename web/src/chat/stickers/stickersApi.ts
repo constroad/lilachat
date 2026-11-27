@@ -86,6 +86,36 @@ export function videoStickerForm(request: VideoStickerRequest): FormData {
 /** The server cuts the clip into a 512×512 animated WebP and keeps its sound: answers the sticker with `audioUrl`. */
 export const createStickerFromVideo = (jwt: string, request: VideoStickerRequest) => postStickerForm(jwt, '/api/stickers/from-video', videoStickerForm(request));
 
+/** The new sound of a saved sticker (José 27/11): one of ours, a recorded or uploaded file, or none. */
+export function setStickerSound(jwt: string, stickerId: string, request: { sound: StickerSound; audio: Blob | null }): Promise<ApiResult<{ sticker: LibrarySticker }>> {
+  const form = new FormData();
+  form.append('sound', stickerSoundField(request.sound));
+  if (request.sound.kind === 'file' && request.audio) form.append('audio', audioPart(request.audio));
+  return postStickerForm(jwt, `/api/stickers/${stickerId}/sound`, form);
+}
+
+export type FileOutcome = { ok: true; file: File } | { ok: false; message: string };
+
+/** A file the server makes for this session, with its refusal in its own words. */
+async function authorizedFile(jwt: string, path: string, name: string, type: string): Promise<FileOutcome> {
+  try {
+    const response = await fetch(path, { headers: { Authorization: `Bearer ${jwt}` } });
+    if (!response.ok) {
+      const payload = (await response.json().catch(() => ({}))) as { message?: string };
+      return { ok: false, message: payload.message ?? 'No se pudo preparar el archivo.' };
+    }
+    return { ok: true, file: new File([await response.blob()], name, { type }) };
+  } catch {
+    return { ok: false, message: 'Sin conexión. Revisa tu internet.' };
+  }
+}
+
+/** «Exportar para WhatsApp» (design sa-05): the sticker as a short MP4 with its sound, for WhatsApp's «Crear sticker». */
+export const stickerVideoFile = (jwt: string, stickerId: string) => authorizedFile(jwt, `/api/stickers/${stickerId}/export.mp4`, 'sticker-lilachat.mp4', 'video/mp4');
+
+/** A GIF of the GIF tab, for the clip editor (design sa-04): through the server, which keeps GIPHY's key. */
+export const giphyGifFile = (jwt: string, gifId: string) => authorizedFile(jwt, `/api/gifs/${encodeURIComponent(gifId)}/file`, `giphy-${gifId}.gif`, 'image/gif');
+
 async function postStickerForm(jwt: string, path: string, form: FormData): Promise<ApiResult<{ sticker: LibrarySticker }>> {
   try {
     const response = await fetch(path, { method: 'POST', headers: { Authorization: `Bearer ${jwt}` }, body: form });

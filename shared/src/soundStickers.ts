@@ -91,3 +91,45 @@ export function stickerHasSound(media: { audioUrl?: string | null } | null | und
 export function shouldReplaySound(playsDone: number): boolean {
   return playsDone < STICKER_SOUND_PLAYS;
 }
+
+/** What a saved sticker can be exported as (José 27/11, design sa-05): the video with its sound, and the picture. */
+export function stickerExportOf(sticker: { mime: string; animated?: boolean; audioUrl?: string | null }): { video: boolean; picture: boolean } {
+  const picture = sticker.mime.startsWith('image/');
+  // WhatsApp takes no sound from outside: its own «Crear sticker» makes one from a video, so a moving or sounding one goes as video.
+  return { video: picture && (Boolean(sticker.animated) || stickerHasSound(sticker)), picture };
+}
+
+const presetOfUrl = (audioUrl: string | null | undefined) =>
+  audioUrl ? STICKER_SOUND_PRESETS.find((one) => audioUrl.endsWith(`/sonidos/wink-${one.sound}.mp3`)) ?? null : null;
+
+/** The preset behind a sound's address («bocina»), or null for one the person recorded or uploaded. */
+export function soundPresetIdOf(audioUrl: string | null | undefined): string | null {
+  return presetOfUrl(audioUrl)?.id ?? null;
+}
+
+/** «Risa» for one of ours, «Sonido propio» for a recorded or uploaded one, or null without sound. */
+export function stickerSoundLabelOf(sticker: { audioUrl?: string | null }): string | null {
+  if (!stickerHasSound(sticker)) return null;
+  return presetOfUrl(sticker.audioUrl)?.label ?? 'Sonido propio';
+}
+
+export type StickerOptions = { sound: 'Agregar sonido' | 'Cambiar sonido'; canRemoveSound: boolean; soundLine: string; canExport: boolean; favorite: 'Agregar a Favoritos' | 'Quitar de Favoritos'; canRemove: boolean };
+
+/**
+ * The options of a saved sticker (José 27/11, designs sa-01…sa-03): its sound first («ya tengo un sticker en mis
+ * favoritos, quiero agregarle audio»), export, favorites, and removing one of mine.
+ */
+export function stickerOptionsOf(sticker: { id: string; mime: string; animated?: boolean; audioUrl?: string | null; favorite: boolean }): StickerOptions {
+  const sound = stickerSoundLabelOf(sticker);
+  const kind = sticker.animated ? 'Animado' : '';
+  const soundLine = sound ? [kind, `con sonido · ${sound}`].filter(Boolean).join(' · ') : kind ? `${kind} · sin sonido` : 'Sin sonido';
+  const exportable = stickerExportOf(sticker);
+  return {
+    sound: sound ? 'Cambiar sonido' : 'Agregar sonido',
+    canRemoveSound: Boolean(sound),
+    soundLine,
+    canExport: exportable.video || exportable.picture,
+    favorite: sticker.favorite ? 'Quitar de Favoritos' : 'Agregar a Favoritos',
+    canRemove: !sticker.id.startsWith('pack:'),
+  };
+}

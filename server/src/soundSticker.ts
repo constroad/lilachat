@@ -81,3 +81,20 @@ export const videoToSoundSticker: VideoStickerConverter = ({ video, window, soun
       await rm(folder, { recursive: true, force: true });
     }
   });
+
+/** A sound for a sticker already saved (José 27/11): cut to one loop of its picture, or 6 s when it is still. */
+export type StickerSoundCutter = (input: { picture: Buffer | null; sound: Buffer }) => Promise<Buffer | null>;
+
+/** The real cutter, one at a time like the converter. A picture that cannot be read gets the longest sound. */
+export const cutStickerSound: StickerSoundCutter = ({ picture, sound }) =>
+  oneAtATime(async () => {
+    const folder = await mkdtemp(join(tmpdir(), 'sticker-sound-'));
+    try {
+      const source = join(folder, 'sound.in');
+      await writeFile(source, sound);
+      const lengthMs = picture ? await stickerLengthMs(picture, VIDEO_STICKER_MAX_MS).catch(() => VIDEO_STICKER_MAX_MS) : VIDEO_STICKER_MAX_MS;
+      return await audioOf(folder, source, { startMs: 0, durationMs: lengthMs });
+    } finally {
+      await rm(folder, { recursive: true, force: true });
+    }
+  });

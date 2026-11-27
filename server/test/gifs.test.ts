@@ -80,3 +80,28 @@ describe('GIPHY through the server', () => {
     await request(withKey).post('/api/gifs/send').set(auth(me)).send({ chatId: String(chat), gifId: '../x', clientKey: 'k' }).expect(400);
   });
 });
+
+/** José 27/11: from the GIF tab, a sticker with sound without sending the GIF first. */
+describe('a GIF for the sticker editor', () => {
+  it('comes as the same 200 px GIF that sending stores, and nothing is posted', async () => {
+    // Act
+    const res = await request(withKey).get('/api/gifs/abc/file').set(auth(me)).buffer(true).parse((stream, done) => {
+      const chunks: Buffer[] = [];
+      stream.on('data', (chunk: Buffer) => chunks.push(chunk));
+      stream.on('end', () => done(null, Buffer.concat(chunks)));
+    });
+    // Assert
+    expect(res.status).toBe(200);
+    expect(res.headers['content-type']).toBe('image/gif');
+    expect((res.body as Buffer).toString()).toBe('GIF89a-fake');
+    expect(fetchers.bytes).toHaveBeenCalledWith('https://media.giphy.com/media/abc/200w.gif');
+    expect(await MessageModel.countDocuments()).toBe(0);
+    expect(uploads).toEqual([]);
+  });
+
+  it('a bad id, no key or no session are refused', async () => {
+    await request(withKey).get('/api/gifs/..%2Fx/file').set(auth(me)).expect(400);
+    await request(withoutKey).get('/api/gifs/abc/file').set(auth(me)).expect(404);
+    await request(withKey).get('/api/gifs/abc/file').expect(401);
+  });
+});

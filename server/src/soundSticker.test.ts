@@ -4,7 +4,8 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { promisify } from 'node:util';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { audioClipArgs, videoClipToGifArgs, videoToSoundSticker } from './soundSticker.js';
+import { audioClipArgs, cutStickerSound, videoClipToGifArgs, videoToSoundSticker } from './soundSticker.js';
+import { gifToAnimatedSticker } from './animatedSticker.js';
 
 /** José 26/11: stickers with sound from a video, like WhatsApp's of 25/11. */
 describe('videoClipToGifArgs', () => {
@@ -112,6 +113,37 @@ describe('videoToSoundSticker (ffmpeg + sharp)', () => {
     await writeFile(soundPath, made.audio);
     const { stdout } = await run('ffprobe', ['-v', 'error', '-show_entries', 'format=duration', '-of', 'csv=p=0', soundPath]);
     expect(Number(stdout)).toBeCloseTo(2, 0);
+  }, 60_000);
+
+  /** José 27/11: a sound added to a sticker already saved. */
+  const lengthOf = async (audio: Buffer, name: string) => {
+    const path = join(folder, name);
+    await writeFile(path, audio);
+    const { stdout } = await run('ffprobe', ['-v', 'error', '-show_entries', 'format=duration', '-of', 'csv=p=0', path]);
+    return Number(stdout);
+  };
+
+  it('a sound added to a saved animated sticker lasts one loop of it', async () => {
+    // Arrange: a 2-second animated sticker
+    const gifPath = join(folder, 'saved.gif');
+    await run('ffmpeg', ['-y', '-loglevel', 'error', '-f', 'lavfi', '-i', 'testsrc=size=120x120:rate=10:duration=2', gifPath]);
+    const picture = await gifToAnimatedSticker(await readFile(gifPath));
+    if (typeof picture === 'string') throw new Error(picture);
+    // Act
+    const audio = await cutStickerSound({ picture, sound: withSound });
+    // Assert
+    expect(await lengthOf(audio!, 'saved-loop.m4a')).toBeCloseTo(2, 0);
+  }, 60_000);
+
+  it('a still sticker, or one that cannot be read, keeps up to 6 seconds of the sound', async () => {
+    const { default: sharp } = await import('sharp');
+    const still = await sharp({ create: { width: 512, height: 512, channels: 4, background: { r: 0, g: 0, b: 0, alpha: 0 } } }).webp().toBuffer();
+    expect(await lengthOf((await cutStickerSound({ picture: still, sound: withSound }))!, 'still.m4a')).toBeCloseTo(6, 0);
+    expect(await lengthOf((await cutStickerSound({ picture: null, sound: withSound }))!, 'unread.m4a')).toBeCloseTo(6, 0);
+  }, 60_000);
+
+  it('a file with no sound gives no sound', async () => {
+    expect(await cutStickerSound({ picture: null, sound: silent })).toBeNull();
   }, 60_000);
 
   it('bytes that are not a video are refused', async () => {

@@ -6,7 +6,7 @@ Lo expresivo del chat. Un panel con cuatro pestañas (`shared/src/panelTab.ts`):
 Además, el zumbido de Messenger, los emojis propios del espacio y los atajos «:hug».
 Tono adulto: nada chibi ni infantil (decisión de José, §74).
 
-**Fecha de corte:** 26/11/2026.
+**Fecha de corte:** 27/11/2026.
 
 ## 2. Qué hace hoy
 
@@ -81,6 +81,10 @@ Tono adulto: nada chibi ni infantil (decisión de José, §74).
 - Ajuste del grupo: `info/GroupFunRow.tsx`. Lo visto: `funSeen.ts`.
 - Emojis propios: `reacciones/SpaceEmojiSection.tsx`, `AddCustomEmojiDialog.tsx`, `ReactionGlyph.tsx`.
 
+- Opciones de un sticker guardado (27/11, José: «quiero agregarle audio sin volver a buscar el GIF»; diseño `sa-03`): «⋯» al pasar el cursor (`StickerCellMenu.tsx`) con «Agregar/Cambiar sonido», «Quitar sonido», «Exportar para WhatsApp», favoritos y «Quitar de Mis stickers» (`stickerOptionsOf`, shared). El sonido se elige en `StickerSoundDialog.tsx` (sin «Sonido original»; abre en su preset). Un sticker del paquete se guarda primero (`useStickers › setSound`).
+- «Exportar para WhatsApp» (27/11, diseño `sa-05`): `StickerExportDialog.tsx` descarga el video con su sonido (MP4 del server) y la imagen WebP/PNG. WhatsApp no recibe sonido desde otras apps: el sonido se pone en su «Crear sticker» con ese video (beta 2.26.47, 25/11).
+- Pestaña GIF (27/11, diseño `sa-04`): «Sticker con sonido» en cada GIF (al pasar el cursor; siempre en pantalla táctil) abre el editor con ese GIF sin mandarlo (`GET /api/gifs/:id/file`, `giphyGifFile`).
+
 ### Server (`server/src/`)
 
 - Stickers (`stickersRoutes.ts`, en `/api`): `GET/POST /stickers`, `PATCH/DELETE /stickers/:id`, `POST /stickers/from-message`, `POST /stickers/from-pack`, `POST /chats/:chatId/stickers` (enviar).
@@ -97,6 +101,10 @@ Tono adulto: nada chibi ni infantil (decisión de José, §74).
 - Emojis propios: `GET/POST /api/workspaces/:id/emojis`, `DELETE /api/workspaces/:id/emojis/:emojiId` (`workspaceRoutes.ts`, `customEmojiCatalog.ts`, `customEmojiModel.ts`).
 - Mensajes: `kind` `sticker`, `zumbido` y `guino` (`Message.wink` con el id del catálogo).
 
+- Sonido de un sticker guardado (27/11): `POST /stickers/:id/sound` (`stickerSoundRoutes.ts`), multipart `sound` (`file`, `none`, `preset:<id>`; `original` no aplica) y `audio`. Solo el dueño (404 si no). El audio se corta a una vuelta del sticker (`cutStickerSound`; quieto, 6 s). Lo ya enviado conserva su sonido.
+- Exportar (27/11): `GET /stickers/:id/export.mp4` (`stickerExportRoutes.ts`, `stickerVideo.ts`): sharp saca cada cuadro sobre blanco y ffmpeg arma el MP4 con su sonido (libx264, si no h264_videotoolbox, si no mpeg4). Solo si se mueve o suena (`stickerExportOf`).
+- `GET /api/gifs/:gifId/file` (`gifRoutes.ts`): el GIF de 200 px de GIPHY para el editor, sin mandarlo.
+
 ### Shared (`shared/src/`)
 
 - Panel: `panelTab.ts`. Atajos: `emojiShortcode.ts` + `emojiNamesData.ts` (carga diferida).
@@ -108,6 +116,8 @@ Tono adulto: nada chibi ni infantil (decisión de José, §74).
 - GIF: `gifs.ts` (host permitido, tope 4 MB, sugerencias «Gracias», «Listo», «Jajaja»…).
 - Emojis propios: `customEmojis.ts` (PNG, WebP o GIF hasta 256 KB; la reacción guarda `:nombre:`).
 - Reacciones: `reacciones.ts`.
+
+- `soundStickers.ts` (27/11): `stickerOptionsOf` (las opciones de un sticker guardado), `stickerExportOf`, `stickerSoundLabelOf`, `soundPresetIdOf`.
 
 ## 3. Diferencias APK vs web
 

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { ImagePlay, Smile, Sparkles, Sticker } from 'lucide-react';
-import type { WinkId } from '@lilachat/shared';
+import type { GifResult, LibrarySticker, WinkId } from '@lilachat/shared';
 import { WinkPanel } from '../WinkPanel';
 import { GifPanel } from '../gifs/GifPanel';
 import { useGifsAvailable } from '../gifs/gifsApi';
@@ -9,8 +9,10 @@ import { StickerPanel } from './StickerPanel';
 import { CreateStickerWeb } from './CreateStickerWeb';
 import { CreateStickerFromVideo } from './CreateStickerFromVideo';
 import { useStickers } from './useStickers';
+import { StickerSoundDialog } from './StickerSoundDialog';
+import { StickerExportDialog } from './StickerExportDialog';
 import { stickerSourceOf, type StickerSource } from './videoSticker';
-import type { StickerThread } from './stickersApi';
+import { giphyGifFile, stickerVideoFile, type StickerThread } from './stickersApi';
 import { lastPanelTab, type PanelTab } from '@lilachat/shared';
 
 /** `thread`: from a thread (20/10) the sticker goes to it; `onSent` lets the thread close its picker. */
@@ -48,7 +50,7 @@ export default function EmojiStickerPanel({ onPickEmoji, chat, winks }: { onPick
           ))}
         </div>
       ) : null}
-      {tab === 'stickers' && chat ? <Stickers chat={chat} /> : tab === 'gifs' && chat ? <div className="h-80"><GifPanel jwt={chat.jwt} chatId={chat.chatId} target={{ ...chat.thread, replyToSeq: chat.replyToSeq }} onSent={chat.onSent} /></div> : tab === 'winks' && winks ? <WinkPanel recipient={winks.recipient} onSend={winks.onSend} onNudge={winks.onNudge} /> : <PanelDeEmojis onElegir={onPickEmoji} />}
+      {tab === 'stickers' && chat ? <Stickers chat={chat} /> : tab === 'gifs' && chat ? <Gifs chat={chat} /> : tab === 'winks' && winks ? <WinkPanel recipient={winks.recipient} onSend={winks.onSend} onNudge={winks.onNudge} /> : <PanelDeEmojis onElegir={onPickEmoji} />}
     </div>
   );
 }
@@ -60,6 +62,8 @@ function Stickers({ chat }: { chat: StickerChat }) {
   const stickers = useStickers(chat.jwt, chat.me);
   const [creating, setCreating] = useState<Creating | null>(null);
   const [notice, setNotice] = useState('');
+  const [soundFor, setSoundFor] = useState<LibrarySticker | null>(null);
+  const [exportFor, setExportFor] = useState<LibrarySticker | null>(null);
   const target = { ...chat.thread, replyToSeq: chat.replyToSeq };
   const create = (file: File) => {
     const source = stickerSourceOf(file);
@@ -78,10 +82,38 @@ function Stickers({ chat }: { chat: StickerChat }) {
         onCreate={create}
         onToggleFavorite={(sticker) => void stickers.toggleFavorite(sticker)}
         onRemove={(sticker) => void stickers.remove(sticker)}
+        onSound={setSoundFor}
+        onRemoveSound={(sticker) => void stickers.setSound(sticker, { sound: { kind: 'none' }, audio: null }).then((done) => !done.ok && setNotice(done.message))}
+        onExport={setExportFor}
       />
+      {soundFor ? <StickerSoundDialog sticker={soundFor} onSave={stickers.setSound} onClose={() => setSoundFor(null)} /> : null}
+      {exportFor ? <StickerExportDialog sticker={exportFor} makeVideo={() => stickerVideoFile(chat.jwt, exportFor.id)} onClose={() => setExportFor(null)} /> : null}
       {creating?.source === 'clip' ? <CreateStickerFromVideo chatName={chat.chatName} initialClip={creating.file} onClose={close} onSave={stickers.saveVideo} onSend={(sticker) => stickers.send(chat.chatId, sticker, target)} /> : null}
       {creating?.source === 'photo' ? <CreateStickerWeb chatName={chat.chatName} initialPhoto={creating.file} onClose={close} onSave={stickers.save} onSend={(sticker) => stickers.send(chat.chatId, sticker, target)} onRemove={stickers.remove} /> : null}
     </>
+  );
+}
+
+/**
+ * The GIF tab (José 27/11, design sa-04): a click sends the GIF as always; its «Sticker con sonido» opens the clip
+ * editor with that GIF, without sending it first.
+ */
+function Gifs({ chat }: { chat: StickerChat }) {
+  const stickers = useStickers(chat.jwt, chat.me);
+  const [clip, setClip] = useState<File | null>(null);
+  const [notice, setNotice] = useState('');
+  const target = { ...chat.thread, replyToSeq: chat.replyToSeq };
+  const openEditor = async (gif: GifResult) => {
+    setNotice('');
+    const fetched = await giphyGifFile(chat.jwt, gif.id);
+    if (fetched.ok) setClip(fetched.file);
+    else setNotice(fetched.message);
+  };
+  return (
+    <div className="h-80">
+      <GifPanel jwt={chat.jwt} chatId={chat.chatId} target={target} onSent={chat.onSent} onSoundSticker={(gif) => void openEditor(gif)} notice={notice} />
+      {clip ? <CreateStickerFromVideo chatName={chat.chatName} initialClip={clip} onClose={() => setClip(null)} onSave={stickers.saveVideo} onSend={(sticker) => stickers.send(chat.chatId, sticker, target)} /> : null}
+    </div>
   );
 }
 

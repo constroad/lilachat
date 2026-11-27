@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Search } from 'lucide-react';
+import { Music, Search } from 'lucide-react';
 import { GIF_SUGGESTIONS, type GifResult, type MessageTarget } from '@lilachat/shared';
 import { newGifKey, searchGifs, sendGif } from './gifsApi';
 import { addGifInFlight, removeGifInFlight } from './gifsInFlight';
@@ -38,7 +38,7 @@ function useGifSearch(jwt: string, q: string) {
  * `g-01-panel-gif-giphy`): search, suggestion chips, a grid of moving
  * previews and «Powered by GIPHY». A click sends it.
  */
-export function GifPanel(props: { jwt: string; chatId: string; /** An answer or a thread reply (José 10/11). */ target?: MessageTarget; onSent?: () => void }) {
+export function GifPanel(props: { jwt: string; chatId: string; /** An answer or a thread reply (José 10/11). */ target?: MessageTarget; onSent?: () => void; /** José 27/11 (design sa-04): a sticker with sound from this GIF. */ onSoundSticker?: (gif: GifResult) => void; notice?: string }) {
   const [text, setText] = useState('');
   const [error, setError] = useState<string | null>(null);
   const { gifs, failed, more } = useGifSearch(props.jwt, text.trim());
@@ -69,7 +69,7 @@ export function GifPanel(props: { jwt: string; chatId: string; /** An answer or 
           </button>
         ))}
       </div>
-      {error ? <p role="alert" className="px-4 pb-1 text-[13px] text-error">{error}</p> : null}
+      {error || props.notice ? <p role="alert" className="px-4 pb-1 text-[13px] text-error">{error || props.notice}</p> : null}
       <div className="min-h-0 flex-1 overflow-y-auto px-2" onScroll={(event) => event.currentTarget.scrollTop + event.currentTarget.clientHeight >= event.currentTarget.scrollHeight - 80 && more()}>
         {gifs === null ? (
           failed ? <p className="p-4 text-center text-[13px] text-on-surface-variant">GIPHY no respondió. Inténtalo de nuevo.</p> : <div className="m-2 h-24 animate-pulse rounded-lg bg-background" />
@@ -79,14 +79,26 @@ export function GifPanel(props: { jwt: string; chatId: string; /** An answer or 
           <div className="grid grid-cols-[repeat(auto-fill,minmax(140px,1fr))] gap-1.5 pb-2">
             {/* Narrow tiles with the 200 px tall version: two wide columns stretched the 100 px preview (José 10/11). */}
             {gifs.map((gif) => (
-              <button key={gif.id} type="button" data-testid={`gif-${gif.id}`} title={gif.title || 'GIF'} onClick={() => void send(gif)} className="overflow-hidden rounded-lg bg-background">
-                <img src={gif.sharpUrl ?? gif.previewUrl} alt={gif.title || 'GIF'} loading="lazy" className="h-28 w-full object-cover" />
-              </button>
+              <div key={gif.id} className="group/gif relative">
+                <button type="button" data-testid={`gif-${gif.id}`} title={gif.title || 'GIF'} onClick={() => void send(gif)} className="block w-full overflow-hidden rounded-lg bg-background">
+                  <img src={gif.sharpUrl ?? gif.previewUrl} alt={gif.title || 'GIF'} loading="lazy" className="h-28 w-full object-cover" />
+                </button>
+                {props.onSoundSticker ? <SoundStickerButton gif={gif} onPick={props.onSoundSticker} /> : null}
+              </div>
             ))}
           </div>
         )}
       </div>
       <p className="py-1.5 text-center text-[11px] font-bold uppercase tracking-widest text-on-surface-variant">Powered by GIPHY</p>
     </div>
+  );
+}
+
+/** «Sticker con sonido» on a GIF (design sa-04): on hover on a computer, always on a touch screen. */
+function SoundStickerButton({ gif, onPick }: { gif: GifResult; onPick: (gif: GifResult) => void }) {
+  return (
+    <button type="button" data-testid={`sticker-sonido-${gif.id}`} title="Sticker con sonido" aria-label="Sticker con sonido" onClick={() => onPick(gif)} className="absolute bottom-1.5 right-1.5 grid h-8 w-8 place-items-center rounded-full bg-surface/90 text-primary shadow opacity-0 transition-opacity focus:opacity-100 group-hover/gif:opacity-100 [@media(hover:none)]:opacity-100">
+      <Music size={15} />
+    </button>
   );
 }

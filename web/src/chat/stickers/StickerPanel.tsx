@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react';
-import { Clock3, FolderHeart, Star, WandSparkles, X } from 'lucide-react';
+import { Clock3, FolderHeart, Star, WandSparkles } from 'lucide-react';
 import { stickerSections, type LibrarySticker, type StickerSection, type StickerSectionKey } from '@lilachat/shared';
+import { StickerCellMenu, type StickerActions } from './StickerCellMenu';
 
 type Filter = 'all' | 'recent' | 'favorites' | 'mine';
 /** «Mis stickers» shows two rows; «Ver todos» opens the rest (design). */
@@ -11,7 +12,7 @@ const FILTERS: { key: Exclude<Filter, 'all'>; label: string; Icon: typeof Clock3
   { key: 'mine', label: 'Mis stickers', Icon: FolderHeart },
 ];
 
-type Props = {
+type Props = StickerActions & {
   library: LibrarySticker[] | null;
   recents: string[];
   packs: { id: string; title: string; stickers: LibrarySticker[] }[];
@@ -19,14 +20,12 @@ type Props = {
   onSend: (sticker: LibrarySticker) => void;
   /** The photo, video or GIF chosen under «Crear» (José 26/11, design sc-01a): the host picks the editor. */
   onCreate: (file: File) => void;
-  onToggleFavorite: (sticker: LibrarySticker) => void;
-  onRemove: (sticker: LibrarySticker) => void;
 };
 
 /**
  * The web Stickers tab (José, 20/10; design `s1-web-stickers`), the same as
  * the app: Recientes, Favoritos, Mis stickers, the default pack and «Crear»
- * first. A click sends; on hover, the star and remove.
+ * first. A click sends; on hover, «⋯» with its sound, export, favorites and remove (José 27/11, design sa-03).
  */
 export function StickerPanel(props: Props) {
   const [filter, setFilter] = useState<Filter>('all');
@@ -95,24 +94,15 @@ function CreateTile({ onCreate }: { onCreate: (file: File) => void }) {
   );
 }
 
-function Cell({ sectionKey, sticker, onSend, onToggleFavorite, onRemove }: Props & { sectionKey: StickerSectionKey; sticker: LibrarySticker }) {
+function Cell({ sectionKey, sticker, onSend, ...actions }: Props & { sectionKey: StickerSectionKey; sticker: LibrarySticker }) {
   const key = `${sectionKey}-${sticker.id}`;
-  const isPack = sticker.id.startsWith('pack:');
   return (
     <div className="group/sticker relative aspect-square">
       <button type="button" data-testid={`sticker-${key}`} aria-label="Mandar el sticker" onClick={() => onSend(sticker)} className="grid h-full w-full place-items-center rounded-2xl border border-outline/10 bg-surface p-1.5 hover:bg-primary/10">
         <img src={sticker.url} alt="" loading="lazy" className="h-full w-full object-contain" />
       </button>
-      <span className="absolute right-1 top-1 flex gap-0.5 opacity-0 transition-opacity focus-within:opacity-100 group-hover/sticker:opacity-100">
-        <button type="button" data-testid={`favorito-${key}`} aria-label={sticker.favorite ? 'Quitar de favoritos' : 'Agregar a favoritos'} aria-pressed={sticker.favorite} onClick={() => onToggleFavorite(sticker)} className="grid h-7 w-7 place-items-center rounded-full bg-surface/90 text-on-surface-variant shadow">
-          <Star size={14} className={sticker.favorite ? 'fill-current text-primary' : ''} />
-        </button>
-        {isPack ? null : (
-          <button type="button" data-testid={`quitar-${key}`} aria-label="Quitar de Mis stickers" onClick={() => onRemove(sticker)} className="grid h-7 w-7 place-items-center rounded-full bg-surface/90 text-on-surface-variant shadow">
-            <X size={14} />
-          </button>
-        )}
-      </span>
+      {sticker.favorite ? <Star size={12} aria-label="En favoritos" className="pointer-events-none absolute bottom-1.5 left-1.5 fill-current text-primary" /> : null}
+      <StickerCellMenu sticker={sticker} testKey={key} actions={actions} />
     </div>
   );
 }

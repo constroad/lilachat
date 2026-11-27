@@ -1,4 +1,4 @@
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createServer, type Server } from 'node:http';
 import type { MongoMemoryServer } from 'mongodb-memory-server';
 import mongoose, { Types } from 'mongoose';
@@ -201,12 +201,16 @@ describe('the space members desk', () => {
     const chatId = (await ProspectChannelModel.findOne({ prospectId: PROSPECT }).lean())!.chatId;
     const posted = (body: Record<string, unknown>) => request(app).post('/api/bots/messages').set({ Authorization: `Bearer ${TOKEN}` }).send(body).expect((res) => expect(res.status).toBeLessThan(300));
     const wrote = new Date(Date.now() - 60_000).toISOString();
+    const storedNow = () => ProspectChannelModel.findOne({ prospectId: PROSPECT }).lean();
     await posted({ prospect: PROSPECT, as_contact: true, sent_at: wrote, text: 'Hola, vi su anuncio', idempotency_key: 'wa-1' });
+    // The hours are noted without waiting for the reply (noteDaliPost): wait for each before the next one counts.
+    await vi.waitFor(async () => expect((await storedNow())?.firstContactAt).toBeInstanceOf(Date));
     await posted({ prospect: PROSPECT, text: '¡Hola! ¿En qué distrito?', idempotency_key: 'dali-1' });
+    await vi.waitFor(async () => expect((await storedNow())?.firstDaliReplyAt).toBeInstanceOf(Date));
     const reply = await MessageModel.create({ chatId, seq: 99, senderId: ana, clientKey: 'web-reply-1', kind: 'text', body: 'Te llamo en 5 min', at: new Date() });
     const chat = await ChatModel.findById(chatId).lean();
     await botsHearMessage(reply.toObject() as Message, chat!.members.map((member) => String(member.userId)));
-    const stored = await ProspectChannelModel.findOne({ prospectId: PROSPECT }).lean();
+    const stored = await storedNow();
     expect(stored?.firstContactAt?.toISOString()).toBe(wrote);
     expect(stored?.lastContactAt?.toISOString()).toBe(wrote);
     expect(stored?.firstDaliReplyAt).toBeInstanceOf(Date);

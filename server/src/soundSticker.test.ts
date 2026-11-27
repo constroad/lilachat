@@ -84,6 +84,22 @@ describe('videoToSoundSticker (ffmpeg + sharp)', () => {
     expect(made.audio?.length).toBeGreaterThan(1_000);
   }, 60_000);
 
+  it('a GIF is cut like a video, with the sound of another file (José 26/11)', async () => {
+    // Arrange: an 8-second GIF
+    const gifPath = join(folder, 'clip.gif');
+    await run('ffmpeg', ['-y', '-loglevel', 'error', '-f', 'lavfi', '-i', 'testsrc=size=200x200:rate=10:duration=8', gifPath]);
+    // Act
+    const made = await videoToSoundSticker({ video: await readFile(gifPath), window: { startMs: 0, durationMs: 6_000 }, soundFrom: withSound });
+    // Assert
+    if (typeof made === 'string') throw new Error(made);
+    const { default: sharp } = await import('sharp');
+    // A 10 fps GIF repeats frames at 12.5 fps and the GIF muxer merges repeats: the length is what must hold.
+    const metadata = await sharp(made.webp, { animated: true }).metadata();
+    expect(metadata).toMatchObject({ format: 'webp', width: 512 });
+    expect((metadata.delay ?? []).reduce((total, delay) => total + delay, 0)).toBe(6_000);
+    expect(made.audio?.length).toBeGreaterThan(1_000);
+  }, 60_000);
+
   it('bytes that are not a video are refused', async () => {
     expect(await videoToSoundSticker({ video: Buffer.from('not a video'), window: { startMs: 0, durationMs: 1_000 }, soundFrom: null })).toBe('not-a-video');
   }, 60_000);

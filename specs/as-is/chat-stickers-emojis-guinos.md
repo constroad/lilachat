@@ -30,6 +30,7 @@ Tono adulto: nada chibi ni infantil (decisión de José, §74).
 - Un GIF del chat se puede convertir en sticker animado propio (22/10).
 - Sticker con sonido desde un video (26/11, diseños `ss-01`, `ss-02`, `ss-03`): mosaico «Desde un video» → `CreateVideoSticker.tsx` con tramo de hasta 6 s (`VideoTrimStrip.tsx`, `videoStickerTrim.ts`, vista en bucle `useClipPreview.ts`) y hoja de sonido `StickerSoundSheet.tsx` (original, grabar `VoiceClipRecorder.tsx`, elegir un audio del teléfono, sonidos de Lilachat, sin sonido; `videoStickerSound.ts`).
   - Sin texto sobre el sticker: el «Aa Texto» del diseño no está.
+  - Si las miniaturas del tramo fallan (expo-video no lee la cantidad de cuadros de algunos archivos), la tira queda lisa con un aviso en consola.
   - En el chat, hilo y canal llega silenciado con el parlante `stickerSound.tsx`; al tocarlo suena 3 veces (`stickerSoundController.ts`) y la animación sigue mientras suena.
 
 **GIF** (`gifs/`)
@@ -80,7 +81,7 @@ Tono adulto: nada chibi ni infantil (decisión de José, §74).
 
 - Stickers (`stickersRoutes.ts`, en `/api`): `GET/POST /stickers`, `PATCH/DELETE /stickers/:id`, `POST /stickers/from-message`, `POST /stickers/from-pack`, `POST /chats/:chatId/stickers` (enviar).
 - Sticker animado propio desde un GIF (`animatedStickerRoutes.ts`, `animatedSticker.ts`): `POST /stickers/animated`, `POST /stickers/from-gif`. WebP animado 512×512, hasta 6 s y 500 KB, con sharp.
-- Sticker con sonido desde un video (26/11): `POST /stickers/from-video` (`videoStickerRoutes.ts`), multipart con `file` (video hasta 60 MB), `audio` opcional, `startMs`, `endMs` y `sound` (`original`, `file`, `none`, `preset:<id>`).
+- Sticker con sonido desde un video (26/11): `POST /stickers/from-video` (`videoStickerRoutes.ts`), multipart con `file` (video o GIF hasta 60 MB; `isStickerClipMime`), `audio` opcional, `startMs`, `endMs` y `sound` (`original`, `file`, `none`, `preset:<id>`).
   - `soundSticker.ts`: ffmpeg corta el tramo a GIF de 12,5 cuadros por segundo (80 ms, exacto en GIF: el dibujo va al ritmo del sonido) y sharp lo deja en WebP animado 512×512; el sonido sale aparte en AAC mono de 64 kbps. Uno a la vez en la mini.
   - Un video sin pista de sonido queda como sticker sin sonido, sin error. Los sonidos de Lilachat no se suben: apuntan a `/sonidos/wink-*.mp3` de la web (`webOrigin.ts`).
   - `Sticker.audioUrl` y `Message.media.audioUrl` viajan al enviar y al guardar el sticker de otro.
@@ -95,7 +96,7 @@ Tono adulto: nada chibi ni infantil (decisión de José, §74).
 
 - Panel: `panelTab.ts`. Atajos: `emojiShortcode.ts` + `emojiNamesData.ts` (carga diferida).
 - Stickers: `stickers.ts` (paquete «Lila» y «En movimiento»), `stickerEditor.ts`, `stickerMask.ts`, `stickerRows.ts`, `animatedStickers.ts`.
-- Stickers con sonido: `soundStickers.ts` (tramo `clipWindowOf` de 0,5 a 6 s, `parseStickerSound`, 8 sonidos de Lilachat `STICKER_SOUND_PRESETS`, 3 reproducciones `STICKER_SOUND_PLAYS`).
+- Stickers con sonido: `soundStickers.ts` (`isStickerClipMime`: video o GIF; `clipHasOwnSound`: solo el video trae sonido; tramo `clipWindowOf` de 0,5 a 6 s, `parseStickerSound`, 8 sonidos de Lilachat `STICKER_SOUND_PRESETS`, 3 reproducciones `STICKER_SOUND_PLAYS`).
 - Lottie: `lottie/` (`svgToLottie`, `rigToLottie`: una parte del guiño en SVG pasa a formas Lottie, revisado píxel a píxel).
 - Guiños: `winks.ts` (catálogo `WINKS`, `winkPanelGroups`, `canReturnWink`, `shouldPlayFun`, `NUDGE_SHAKE`), `winkArt.ts`, `winkDances.ts`, `winkTimeline.ts`, `winkSeasons.ts`, `winkSketches*.ts` (Halloween, Navidad, Año Nuevo, San Valentín, Día de la Madre, Fiestas Patrias, rockero, ataque), `winkEmojis.ts`.
 - Lo ya reproducido: `funLedger.ts`. Zumbido: `nudge.ts`.

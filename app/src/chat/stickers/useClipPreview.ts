@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
 import { useVideoPlayer, type VideoThumbnail } from 'expo-video';
-import { reportarError } from '../../ui/reportarError';
 import { shouldLoopBack, stripFrameTimes, type TrimWindow } from './videoStickerTrim';
 
 const MS_PER_SECOND = 1_000;
@@ -36,7 +35,8 @@ export function useClipPreview(uri: string, trim: TrimWindow | null) {
       player
         .generateThumbnailsAsync(stripFrameTimes(ms, STRIP_FRAMES), { maxWidth: FRAME_MAX_WIDTH })
         .then(setFrames)
-        .catch((error: unknown) => reportarError('useClipPreview.frames', error));
+        // Expected on some files: expo-video parses an empty frame count and throws. The plain strip stays.
+        .catch((error: unknown) => console.warn('[stickers] strip frames unavailable:', error instanceof Error ? error.message : String(error)));
     };
     const onLoad = player.addListener('sourceLoad', (payload) => loaded(payload.duration));
     if (player.duration > 0) loaded(player.duration);

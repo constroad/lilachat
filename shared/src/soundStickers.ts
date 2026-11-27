@@ -72,6 +72,16 @@ export function clipWindowOf(start: unknown, end: unknown): ClipWindow | null {
   return durationMs >= VIDEO_STICKER_MIN_MS ? { startMs: from, durationMs } : null;
 }
 
+/** What a sound sticker is cut from: a video, or a GIF (José 26/11: «¿por qué no desde un GIF con audio?»). */
+export function isStickerClipMime(mime: string | null | undefined): boolean {
+  return typeof mime === 'string' && (mime.startsWith('video/') || mime === 'image/gif');
+}
+
+/** A GIF has no sound of its own: «Sonido original» is offered only for a video. */
+export function clipHasOwnSound(mime: string | null | undefined): boolean {
+  return typeof mime === 'string' && mime.startsWith('video/');
+}
+
 /** A sticker (or its message's media) that carries a sound. */
 export function stickerHasSound(media: { audioUrl?: string | null } | null | undefined): boolean {
   return typeof media?.audioUrl === 'string' && media.audioUrl.length > 0;

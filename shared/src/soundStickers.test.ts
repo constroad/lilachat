@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
+  clipHasOwnSound,
   clipWindowOf,
+  isStickerClipMime,
   parseStickerSound,
   shouldReplaySound,
   soundPresetPath,
@@ -67,6 +69,23 @@ describe('sound presets', () => {
 
   it('an unknown preset has no path', () => {
     expect(soundPresetPath('nope')).toBeNull();
+  });
+});
+
+describe('what a sound sticker is cut from', () => {
+  it('a video or a GIF; a photo or a document is not', () => {
+    expect(isStickerClipMime('video/mp4')).toBe(true);
+    expect(isStickerClipMime('video/quicktime')).toBe(true);
+    expect(isStickerClipMime('image/gif')).toBe(true);
+    expect(isStickerClipMime('image/webp')).toBe(false);
+    expect(isStickerClipMime('application/pdf')).toBe(false);
+    expect(isStickerClipMime(undefined)).toBe(false);
+  });
+
+  it('only a video brings its own sound', () => {
+    expect(clipHasOwnSound('video/mp4')).toBe(true);
+    expect(clipHasOwnSound('image/gif')).toBe(false);
+    expect(clipHasOwnSound(null)).toBe(false);
   });
 });
 

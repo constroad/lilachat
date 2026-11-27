@@ -229,6 +229,13 @@ describe('a sticker with sound from a video', () => {
     expect(saved.body.sticker.audioUrl).toBe(sent.body.message.media.audioUrl);
   });
 
+  it('a GIF makes one too (José 26/11: «¿por qué no desde un GIF con audio?»)', async () => {
+    const res = await request(app).post('/api/stickers/from-video').set(withJwt(me)).set('Host', 'lilachat.example')
+      .field('startMs', '0').field('endMs', '4000').field('sound', 'preset:risa').attach('file', Buffer.from('a gif'), { filename: 'a.gif', contentType: 'image/gif' });
+    expect(res.status).toBe(201);
+    expect(res.body.sticker.audioUrl).toBe('http://lilachat.example/sonidos/wink-laugh.mp3');
+  });
+
   it('refuses what cannot make a sticker', async () => {
     expect((await fromVideoRequest({ startMs: '0', endMs: '3000', sound: 'loud' })).status).toBe(400);
     expect((await fromVideoRequest({ startMs: '0', endMs: '3000', sound: 'file' })).status).toBe(400);

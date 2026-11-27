@@ -1,6 +1,6 @@
 import type { NextFunction, Request, Response, Router } from 'express';
 import multer from 'multer';
-import { clipWindowOf, MAX_STICKER_AUDIO_BYTES, MAX_STICKER_VIDEO_BYTES, parseStickerSound, soundPresetPath, STICKER_SIZE, type StickerSound } from '@lilachat/shared';
+import { clipWindowOf, isStickerClipMime, MAX_STICKER_AUDIO_BYTES, MAX_STICKER_VIDEO_BYTES, parseStickerSound, soundPresetPath, STICKER_SIZE, type StickerSound } from '@lilachat/shared';
 import type { MediaUploader } from './mediaClient.js';
 import { asyncRoute, requireSession } from './requireSession.js';
 import type { VideoStickerConverter } from './soundSticker.js';
@@ -9,6 +9,7 @@ import { toClientSticker } from './stickerView.js';
 import { webFileUrl } from './webOrigin.js';
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: MAX_STICKER_VIDEO_BYTES + 1 } });
+// A GIF goes through the same door as a video: ffmpeg reads both (José 26/11).
 const receiveParts = (req: Request, res: Response, next: NextFunction) =>
   upload.fields([{ name: 'file', maxCount: 1 }, { name: 'audio', maxCount: 1 }])(req, res, (error?: unknown) => {
     if (error) return res.status(413).json({ message: 'Ese video pesa demasiado (máximo 60 MB).' });
@@ -17,7 +18,7 @@ const receiveParts = (req: Request, res: Response, next: NextFunction) =>
 
 const REFUSALS = {
   'too-heavy': { status: 413, message: 'No se pudo dejar ese clip en 500 KB: prueba con uno más corto.' },
-  'not-a-video': { status: 400, message: 'No se pudo leer ese video.' },
+  'not-a-video': { status: 400, message: 'No se pudo leer ese video o GIF.' },
 } as const;
 
 type Parts = { video?: Express.Multer.File; audio?: Express.Multer.File };
@@ -28,7 +29,7 @@ const partsOf = (req: Request): Parts => {
 
 /** Why the request cannot make a sticker, or null when it can. */
 function refusalOf(parts: Parts, sound: StickerSound | null): string | null {
-  if (!parts.video || !parts.video.mimetype.startsWith('video/')) return 'Elige un video.';
+  if (!parts.video || !isStickerClipMime(parts.video.mimetype)) return 'Elige un video o un GIF.';
   if (!sound) return 'Elige el sonido del sticker.';
   if (sound.kind !== 'file') return null;
   if (!parts.audio || !(parts.audio.mimetype.startsWith('audio/') || parts.audio.mimetype === 'video/mp4')) return 'Elige un audio.';

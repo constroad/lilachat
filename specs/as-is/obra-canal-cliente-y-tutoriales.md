@@ -146,6 +146,9 @@ Plan» (`channelTabsFor`, `checklistHoldsPending`); quien no tiene Checklist con
   `WorkMapItems.tsx`): las observaciones son pines (rojo pendiente, verde levantada).
   Cada observación pendiente de la lista lleva «Levantar» (APK y web, José 27/11): abre «Levantamiento de
   observaciones» directo en ella (`ServiceDetailView` → `ObservationsScreen` con `lift`; ver `obra-mapa.md`).
+  «Definir área de trabajo» (editor de calle, José 27/11): en el teléfono el mapa ocupa casi toda la pantalla
+  (franja compacta, ±10 m sobre el mapa, formulario plegable; panel lateral girado o en tablet) y los extremos
+  vuelven sobre la línea en cada arrastre. Detalle en `obra-mapa.md`.
   Pasar el mouse por un dibujo u observación abre su tarjeta (Popup de MapLibre); un clic la
   deja abierta con «Cerrar»; un clic en el mapa vacío la cierra. Las miniaturas abren la foto
   en el visor de Portal. El panel suma «Dibujos» (por tipo, con conteo) y «Observaciones»

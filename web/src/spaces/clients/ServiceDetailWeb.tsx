@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { ChevronLeft, FilePlus, FileText } from 'lucide-react';
-import { AREA_TYPE, createsInEmbed, draftToContinue, embedCreateRequest, opensEmbed, reportTypeLabel, isObservationType, SERVICE_REPORT_ACTION, serviceValuesOf, detailRows, detailSheet, serviceTabs, openingSheets, moreInPortal, type ChannelLinks, type DetailTabKey, type ServiceTabKey, type EmbedCreateRequest, type ServiceAskResult, type ServiceDetail, type ServiceReport, type ServiceTabItem, type SpaceClientService } from '@lilachat/shared';
+import { LIFTING_TYPE, AREA_TYPE, createsInEmbed, draftToContinue, embedCreateRequest, opensEmbed, reportTypeLabel, isObservationType, SERVICE_REPORT_ACTION, serviceValuesOf, detailRows, detailSheet, serviceTabs, openingSheets, moreInPortal, type ChannelLinks, type DetailTabKey, type ServiceTabKey, type EmbedCreateRequest, type ServiceAskResult, type ServiceDetail, type ServiceReport, type ServiceTabItem, type SpaceClientService } from '@lilachat/shared';
 import { usePortalFileViewer } from './PortalFileViewer';
 import { RecordSheetWeb } from './RecordSheetWeb';
 import { ServiceDriveWeb } from './ServiceDriveWeb';
@@ -17,6 +17,7 @@ import { CreateReportDialog } from './reports/CreateReportDialog';
 import { ReportDocumentWeb } from './reports/ReportDocumentWeb';
 import { PortalEmbedWeb } from './reports/PortalEmbedWeb';
 import { ObservationsWeb } from './observations/ObservationsWeb';
+import type { LiftRow } from './workMap/WorkMapItems';
 import { AreasWeb } from './areas/AreasWeb';
 
 /** An order's sheet makes its link with what Portal's modal asks (José 31/10); other sheets have no button. */
@@ -134,7 +135,7 @@ function ServiceDriveOnly(props: ServiceDetailProps & { compact: boolean }) {
   );
 }
 
-type ReportOpen = { type: string; reportId?: string; responsible?: string };
+type ReportOpen = { type: string; reportId?: string; responsible?: string; lift?: LiftRow };
 type Framed = Pick<ServiceReport, 'title'> & Partial<Pick<ServiceReport, 'id' | 'url'>> & { create?: EmbedCreateRequest };
 
 /** What is filled from here (José 05/11: not in Portal's public page): the report, Portal's editor framed, the picker. */
@@ -200,7 +201,7 @@ function ReportTakeover(props: ServiceDetailProps & { report: ReportOpen; portal
   const { report } = props;
   const reportId = report.reportId ? { reportId: report.reportId } : {};
   if (report.type === AREA_TYPE) return <Takeover><AreasWeb target={props.target} chatId={props.chatId} service={props.service} {...reportId} portalUrl={props.portalUrl} onClose={props.onClose} /></Takeover>;
-  if (isObservationType(report.type)) return <Takeover><ObservationsWeb target={props.target} chatId={props.chatId} service={props.service} type={report.type} {...reportId} portalUrl={props.portalUrl} onClose={props.onClose} /></Takeover>;
+  if (isObservationType(report.type)) return <Takeover><ObservationsWeb target={props.target} chatId={props.chatId} service={props.service} type={report.type} {...reportId} {...(report.lift ? { lift: report.lift } : {})} portalUrl={props.portalUrl} onClose={props.onClose} /></Takeover>;
   return <Takeover><ReportDocumentWeb target={props.target} chatId={props.chatId} service={props.service} type={report.type} {...reportId} {...(report.responsible ? { responsible: report.responsible } : {})} portalUrl={props.portalUrl} links={props.links} admin={Boolean(props.admin)} onClose={props.onClose} /></Takeover>;
 }
 
@@ -211,7 +212,7 @@ function ServiceBody(props: BodyProps) {
   const { answer, tab, flows } = props;
   if (answer === null) return <div data-testid="detalle-cargando" className="h-48 animate-pulse rounded-xl bg-surface" />;
   if (!answer.ok) return <DetailFailure answer={answer} onCreate={() => flows.setPicker(true)} />;
-  if (props.mapOpen && props.links) return <MapWorkspace admin={props.seesMoney} detail={answer.value} service={props.service} links={doorMapLinks(props.links, props.target, props.chatId, props.service.id)} target={props.target} chatId={props.chatId} />;
+  if (props.mapOpen && props.links) return <MapWorkspace onLift={(lift) => flows.setReport({ type: LIFTING_TYPE, lift })} admin={props.seesMoney} detail={answer.value} service={props.service} links={doorMapLinks(props.links, props.target, props.chatId, props.service.id)} target={props.target} chatId={props.chatId} />;
   if (tab === 'drive') return <ServiceDriveWeb target={props.target} service={props.service} chatId={props.chatId} marks={answer.value.photoMarks} />;
   if (tab !== 'orders' && tab !== 'reports') return null;
   return <ServiceLists detail={answer.value} target={props.target} serviceId={props.service.id} links={props.links} seesMoney={props.seesMoney} admin={Boolean(props.admin)} tab={tab} startOrderId={tab === 'orders' ? props.startOrderId : undefined} startReportId={tab === 'reports' ? props.startReportId : undefined} onReported={props.askAgain} onCreateReport={() => flows.setPicker(true)} onContinueReport={flows.setReport} onOpenEmbed={flows.setFramed} />;

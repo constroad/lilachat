@@ -36,22 +36,29 @@ function MarkList(props: { map: WorkMap; onPick: (pick: MapPick) => void }) {
   );
 }
 
-function ObservationList(props: { map: WorkMap; onPick: (pick: MapPick) => void }) {
+/** A map row to lift (José 27/11 «agrega Levantar también en la web»): it opens the lifting on it. */
+export type LiftRow = { id: string; text: string };
+
+function ObservationList(props: { map: WorkMap; onPick: (pick: MapPick) => void; onLift?: (row: LiftRow) => void }) {
   const rows = useMemo(() => observationRowsOf(props.map.observations ?? []), [props.map.observations]);
+  const open = useMemo(() => new Set((props.map.observations ?? []).filter((one) => one.status === 'open').map((one) => one.id)), [props.map.observations]);
   if (!rows.length) return null;
   return (
     <section data-testid="mapa-observaciones" className="pt-4">
       <p className={`${KICKER} px-1 pb-2`}>Observaciones</p>
       <ul className="space-y-1 rounded-[10px] border-[1.5px] border-outline/15 bg-surface p-2">
         {rows.map((row) => (
-          <li key={row.id}>
-            <button type="button" data-testid={`mapa-observacion-${row.id}`} onClick={() => props.onPick({ kind: 'observation', id: row.id })} className={ROW}>
+          <li key={row.id} className="flex items-center gap-2">
+            <button type="button" data-testid={`mapa-observacion-${row.id}`} onClick={() => props.onPick({ kind: 'observation', id: row.id })} className={`${ROW} min-w-0 flex-1`}>
               <span className="min-w-0 flex-1">
                 <span className="line-clamp-2 text-[13px] font-semibold text-on-surface">{row.text}</span>
                 <span className="block text-[12px] text-on-surface-variant">{row.placed ? row.photos : `${row.photos} · sin ubicación`}</span>
               </span>
               <StatusPill status={row.status} />
             </button>
+            {props.onLift && open.has(row.id) ? (
+              <button type="button" data-testid={`levantar-${row.id}`} aria-label={`Levantar ${row.text}`} onClick={() => props.onLift?.({ id: row.id, text: row.text })} className="h-9 shrink-0 rounded-full bg-primary px-3 text-[13px] font-semibold text-on-primary">Levantar</button>
+            ) : null}
           </li>
         ))}
       </ul>
@@ -60,11 +67,11 @@ function ObservationList(props: { map: WorkMap; onPick: (pick: MapPick) => void 
 }
 
 /** «Dibujos» by type and «Observaciones», open first (José 19/11); a tap flies the map there. */
-export function WorkMapItems(props: { map: WorkMap; onPick: (pick: MapPick) => void }) {
+export function WorkMapItems(props: { map: WorkMap; onPick: (pick: MapPick) => void; onLift?: (row: LiftRow) => void }) {
   return (
     <>
       <MarkList map={props.map} onPick={props.onPick} />
-      <ObservationList map={props.map} onPick={props.onPick} />
+      <ObservationList map={props.map} onPick={props.onPick} onLift={props.onLift} />
     </>
   );
 }

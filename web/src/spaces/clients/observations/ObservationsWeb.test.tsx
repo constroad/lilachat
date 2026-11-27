@@ -136,5 +136,11 @@ describe('registering and lifting from the browser (an iPhone has no APK)', () =
     expect(asks.at(-1)).toContain('"type":"REG-OBS"');
     expect(asks.at(-1)).not.toContain('lev9');
   });
-});
 
+  it('from the map\'s «Levantar» opens that observation ready to lift (José 27/11)', async () => {
+    answer({ document: documentOf([item('1', 'open', 'Fisura en junta fría'), item('3', 'open', 'Bache')]) });
+    render(<ObservationsWeb target={target} chatId="ch1" service={service} type="LEV-OBS" lift={{ id: 'map-3', text: 'bache' }} onClose={vi.fn()} />);
+    await waitFor(() => expect(screen.getByTestId('levantar-OBS-003')).toBeTruthy());
+    expect(screen.queryByTestId('levantar-OBS-001')).toBeNull();
+  });
+});

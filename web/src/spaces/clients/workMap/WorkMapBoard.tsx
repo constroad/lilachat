@@ -19,7 +19,7 @@ import { PrimeCoatSuggestions } from './PrimeCoat';
 import { PendingProgressCard } from './PendingProgress';
 import { MapMoreMenu } from './MapMoreMenu';
 import { usePortalFileViewer } from '../PortalFileViewer';
-import { WorkMapItems } from './WorkMapItems';
+import { WorkMapItems, type LiftRow } from './WorkMapItems';
 import { MapCardView } from './MapCardView';
 import { ServiceCroquisButton } from './ServiceCroquis';
 
@@ -88,7 +88,7 @@ function useDischarges(map: WorkMap, discharges: UnitDischarge[], day: string, d
   return { suggestion, ranges, onRange, pins, stretches };
 }
 
-type BoardProps = { map: WorkMap; pageUrl: string; title: string; serviceId: string; /** Crumbs and title (o-01). */ head?: ReactNode; /** The service's state beside «Avance de la obra». */ badge?: ReactNode; discharges?: UnitDischarge[]; /** Field photos with their place: the «Fotos» layer (José 08/11). */ mapPhotos?: MapPhoto[]; send?: ProgressSend; /** «Nueva calle» (o-02). */ onDraw?: () => void; /** «Borrar calle»: anyone, logical (José 07/11). */ deleteStreet?: StreetDeleteSend; /** Stretches, stages and works (o-03 to o-05). */ editMap?: MapEditSend; /** A space admin: «Borrados» and «Restaurar» (José 07/11). */ admin?: boolean; /** Photos of «Registrar avance» (o-06). */ uploadPhoto?: ManualPhotoUpload<File>; /** KMZ or KML for «Importar» (o-12). */ uploadTrace?: TraceUpload<File>; /** «Incluir en el informe» as Portal has it. */ mapInReport?: ServiceMapInReport; /** What the last save answered, over the map. */ notice?: string | null; /** Reads the map again (after «Editar croquis»). */ reload?: () => void };
+type BoardProps = { /** «Levantar» on an open observation (José 27/11). */ onLift?: (row: LiftRow) => void; map: WorkMap; pageUrl: string; title: string; serviceId: string; /** Crumbs and title (o-01). */ head?: ReactNode; /** The service's state beside «Avance de la obra». */ badge?: ReactNode; discharges?: UnitDischarge[]; /** Field photos with their place: the «Fotos» layer (José 08/11). */ mapPhotos?: MapPhoto[]; send?: ProgressSend; /** «Nueva calle» (o-02). */ onDraw?: () => void; /** «Borrar calle»: anyone, logical (José 07/11). */ deleteStreet?: StreetDeleteSend; /** Stretches, stages and works (o-03 to o-05). */ editMap?: MapEditSend; /** A space admin: «Borrados» and «Restaurar» (José 07/11). */ admin?: boolean; /** Photos of «Registrar avance» (o-06). */ uploadPhoto?: ManualPhotoUpload<File>; /** KMZ or KML for «Importar» (o-12). */ uploadTrace?: TraceUpload<File>; /** «Incluir en el informe» as Portal has it. */ mapInReport?: ServiceMapInReport; /** What the last save answered, over the map. */ notice?: string | null; /** Reads the map again (after «Editar croquis»). */ reload?: () => void };
 
 /** «¿En qué calle?» when «Registrar avance» could go to several streets. */
 function StreetPick(props: { streets: Array<{ id: string; name: string }>; onPick: (streetId: string) => void; onClose: () => void }) {
@@ -180,7 +180,7 @@ const NO_OBSERVATIONS: NonNullable<WorkMap['observations']> = [];
  * The card picked on the map or in the panel's lists (José 19/11): a pick from the list flies the
  * map there; an observation with no place shows its card in the panel instead.
  */
-function useMapPick(map: WorkMap) {
+function useMapPick(map: WorkMap, onLift?: (row: LiftRow) => void) {
   const [selected, setSelected] = useState<MapPick | null>(null);
   const [focus, setFocus] = useState<WorkMapPoint | null>(null);
   const viewer = usePortalFileViewer();
@@ -192,7 +192,7 @@ function useMapPick(map: WorkMap) {
   };
   const unplaced = selected && !mapPickAnchor(selected, marks, observations) ? mapCardOf(selected, marks, observations) : null;
   const inline = unplaced ? <div className="pt-4"><MapCardView card={unplaced} onClose={() => setSelected(null)} onPhoto={(photo, all) => viewer.open(photo, all)} /></div> : null;
-  const items = marks.length || observations.length ? <>{inline}<WorkMapItems map={map} onPick={pickFromList} /></> : null;
+  const items = marks.length || observations.length ? <>{inline}<WorkMapItems map={map} onPick={pickFromList} onLift={onLift} /></> : null;
   return { selected, setSelected, focus, items, openPhoto: viewer.open, viewer: viewer.viewer };
 }
 
@@ -235,7 +235,7 @@ export function WorkMapBoard(props: BoardProps) {
   const [pendingItems, setPendingItems] = useState<PendingProgress[]>([]);
   const stretches = useMemo(() => withPendingLines(map, units ? pista.stretches : [], pendingItems), [map, units, pista.stretches, pendingItems]);
   const { holder, expanded, open, close } = useFullScreen();
-  const picks = useMapPick(map);
+  const picks = useMapPick(map, props.onLift);
   const wide = useWide(holder);
   const discharges = pista.suggestion.units.length ? <WorkMapDischarges map={map} serviceId={props.serviceId} suggestion={pista.suggestion} send={props.send} ranges={pista.ranges} onRange={pista.onRange} /> : null;
   const primeCoat = props.editMap && props.mapPhotos?.length ? <PrimeCoatSuggestions map={map} photos={props.mapPhotos} onRecord={(id, draft) => openStreet(id, true, draft)} /> : null;

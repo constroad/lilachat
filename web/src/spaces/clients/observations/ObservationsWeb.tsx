@@ -1,6 +1,6 @@
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Camera, ChevronLeft, ExternalLink } from 'lucide-react';
-import { approximateLine, evidenceFiles, LIFTING_TYPE, observationCounts, observationPins, observationPlace, observationWorkMap, readObservationDraft, registeredLine, reportTypeLabel, STATUS_PILLS, type Observation, type ObservationDocument, type ObservationStatus, type SpaceClientService } from '@lilachat/shared';
+import { observationToLift, approximateLine, evidenceFiles, LIFTING_TYPE, observationCounts, observationPins, observationPlace, observationWorkMap, readObservationDraft, registeredLine, reportTypeLabel, STATUS_PILLS, type Observation, type ObservationDocument, type ObservationStatus, type SpaceClientService } from '@lilachat/shared';
 import { lazyChunk } from '../../../ui/lazyChunk';
 import { FileThumb, usePortalFileViewer } from '../PortalFileViewer';
 import { EvidenceInput } from '../ServiceDriveWeb';
@@ -11,7 +11,7 @@ import type { ServiceAskTarget } from '../useServiceAsk';
 
 const WorkMapCanvas = lazyChunk(() => import('../workMap/WorkMapCanvas'));
 
-type Props = { target: ServiceAskTarget; chatId: string; service: SpaceClientService; type: string; reportId?: string; portalUrl?: string; onClose: (changed: boolean) => void };
+type Props = { target: ServiceAskTarget; chatId: string; service: SpaceClientService; type: string; reportId?: string; portalUrl?: string; /** From the map's «Levantar» (José 27/11): that observation opens ready to lift. */ lift?: { id: string; text: string }; onClose: (changed: boolean) => void };
 type Filter = 'all' | ObservationStatus;
 const FILTERS: { key: Filter; label: string }[] = [{ key: 'all', label: 'Todas' }, { key: 'open', label: 'Pendientes' }, { key: 'lifted', label: 'Levantadas' }];
 const PILL_CLASS = { error: 'border-error/30 bg-error/10 text-error', ok: 'border-en-linea/30 bg-en-linea/10 text-en-linea' } as const;
@@ -106,9 +106,9 @@ function ObservationRow(props: { observation: Observation; place: string; open: 
   );
 }
 
-function ObservationTable({ report, onOpen, write }: { report: ObservationDocument; onOpen: ReturnType<typeof usePortalFileViewer>['open']; write: Write }) {
+function ObservationTable({ report, onOpen, write, startOpen }: { report: ObservationDocument; onOpen: ReturnType<typeof usePortalFileViewer>['open']; write: Write; startOpen?: string | null }) {
   const [filter, setFilter] = useState<Filter>('all');
-  const [opened, setOpened] = useState<string | null>(null);
+  const [opened, setOpened] = useState<string | null>(startOpen ?? null);
   const shown = filter === 'all' ? report.observations : report.observations.filter((one) => one.status === filter);
   return (
     <section className="space-y-2">
@@ -185,7 +185,7 @@ export function ObservationsWeb(props: Props) {
           <Totals observations={report.observations} />
           <ObservationMap report={report} />
           {fresh.started ? <NewObservationWeb to={to} report={report} first={fresh.started.file} reading={fresh.started.reading} onBack={fresh.close} onDone={written} /> : null}
-          <ObservationTable report={report} onOpen={viewer.open} write={{ to, report, onDone: lifted }} />
+          <ObservationTable report={report} onOpen={viewer.open} write={{ to, report, onDone: lifted }} startOpen={props.lift ? observationToLift(report.observations, props.lift)?.id ?? null : null} />
           {report.publish.missing[0] ? <p data-testid="publicar-desde-portal" className="text-center text-sm text-on-surface-variant">{report.publish.missing[0]}</p> : null}
           {fresh.started ? null : (
             <div className="sticky bottom-0 border-t border-outline/10 bg-background py-3">

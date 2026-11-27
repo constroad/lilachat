@@ -4,6 +4,8 @@ import type { ClientWorkspace } from '@lilachat/shared';
 import { removeSpaceLogo, uploadSpaceLogo } from './spacesApi';
 
 const PREVIEW = 52;
+/** A light corner: the camera logo is square, and a round box would hide its shape (27/11). */
+const PREVIEW_RADIUS = 8;
 
 /**
  * «Logo de la cámara» (José 27/11: the round avatar in the app, the square logo on the photos). Optional: without it
@@ -31,7 +33,7 @@ export function CameraLogoRow(props: { space: ClientWorkspace; jwt: string; onSa
   };
   return (
     <div className="mt-3 flex items-center gap-3">
-      <div className="grid shrink-0 place-items-center overflow-hidden rounded-xl border border-outline/20 bg-background text-on-surface-variant" style={{ width: PREVIEW, height: PREVIEW }}>
+      <div className="grid shrink-0 place-items-center overflow-hidden border border-outline/20 bg-background text-on-surface-variant" style={{ width: PREVIEW, height: PREVIEW, borderRadius: PREVIEW_RADIUS }}>
         {url ? <img src={url} alt="" data-testid="ajustes-logo-camara-vista" className="h-full w-full object-contain" /> : <Camera size={20} />}
       </div>
       <div className="min-w-0 flex-1">

@@ -42,7 +42,7 @@ export function ConfirmDialog(props: Props) {
           <button type="button" data-testid="btn-cancelar-confirmacion" disabled={props.busy} onClick={onCancel} className="flex min-h-[44px] flex-1 items-center justify-center rounded-xl border border-outline/25 text-sm font-semibold hover:bg-background disabled:opacity-60">
             Cancelar
           </button>
-          <button type="button" data-testid="btn-confirmar" disabled={props.busy} onClick={props.onConfirm} autoFocus className="flex min-h-[44px] flex-1 items-center justify-center rounded-xl bg-error text-sm font-semibold text-white disabled:opacity-60">
+          <button type="button" data-testid="btn-confirmar" disabled={props.busy} onClick={props.onConfirm} autoFocus className="flex min-h-[44px] flex-1 items-center justify-center rounded-xl bg-error text-sm font-semibold text-background disabled:opacity-60">
             {props.confirmLabel}
           </button>
         </div>

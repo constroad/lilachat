@@ -16,7 +16,8 @@ import { gifToAnimatedSticker } from './animatedSticker.js';
 import { webFileUrl } from './webOrigin.js';
 import { videoStickerRoutes } from './videoStickerRoutes.js';
 import { cutStickerSound, videoToSoundSticker, type StickerSoundCutter, type VideoStickerConverter } from './soundSticker.js';
-import { noStickerVoice, stickerVoiceRoutes, type StickerVoiceSpeaker } from './stickerVoice.js';
+import { stickerVoiceRoutes, type StickerVoiceSpeaker } from './stickerVoice.js';
+import { speakWithAgentes } from './agentesVoice.js';
 import { stickerSoundRoutes } from './stickerSoundRoutes.js';
 import { stickerExportRoutes } from './stickerExportRoutes.js';
 import { stickerToVideo, type StickerVideoMaker } from './stickerVideo.js';
@@ -140,7 +141,7 @@ export function buildStickersRouter(uploader: MediaUploader = defaultMediaUpload
   libraryRoutes(router, uploader);
   keepRoutes(router);
   animatedStickerRoutes(router, { uploader, convert: animated.convert ?? gifToAnimatedSticker, fetchMedia: animated.fetchMedia ?? fetchStoredMedia });
-  const speak = animated.speak ?? noStickerVoice;
+  const speak = animated.speak ?? speakWithAgentes;
   stickerVoiceRoutes(router, { speak });
   videoStickerRoutes(router, { uploader, convert: animated.fromVideo ?? videoToSoundSticker, speak });
   stickerSoundRoutes(router, { uploader, cutSound: animated.cutSound ?? cutStickerSound, speak });

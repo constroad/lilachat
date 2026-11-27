@@ -144,6 +144,8 @@ Plan» (`channelTabsFor`, `checklistHoldsPending`); quien no tiene Checklist con
   (José 19/11: las fotos que sube al mapa de obra en Portal se ven aquí), menos las de otro cliente.
 - **Web** (`web/src/spaces/clients/workMap/MapCardPopup.tsx`, `MapCardView.tsx`,
   `WorkMapItems.tsx`): las observaciones son pines (rojo pendiente, verde levantada).
+  Cada observación pendiente de la lista lleva «Levantar» (APK, José 27/11): abre «Levantamiento de
+  observaciones» directo en ella (`ServiceDetailView` → `ObservationsScreen` con `lift`; ver `obra-mapa.md`).
   Pasar el mouse por un dibujo u observación abre su tarjeta (Popup de MapLibre); un clic la
   deja abierta con «Cerrar»; un clic en el mapa vacío la cierra. Las miniaturas abren la foto
   en el visor de Portal. El panel suma «Dibujos» (por tipo, con conteo) y «Observaciones»

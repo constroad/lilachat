@@ -144,7 +144,6 @@ describe('SpaceSettingsDialog (e1-12)', () => {
 
   it('saves the name, trade and approval; «Cambiar código» asks for a new one', async () => {
     answer('/workspaces/w1', { workspace: space({ name: 'QA Obra Norte', joinCode: 'QAOB-NEW1' }) }, 200, 'PATCH');
-    vi.spyOn(window, 'confirm').mockReturnValue(true);
     render(<SpaceSettingsDialog space={space()} jwt="t" onSaved={() => undefined} onClose={() => undefined} />);
     await userEvent.clear(screen.getByTestId('input-nombre-ajustes'));
     await userEvent.type(screen.getByTestId('input-nombre-ajustes'), 'QA Obra Norte');
@@ -155,6 +154,7 @@ describe('SpaceSettingsDialog (e1-12)', () => {
     const patches = () => calls.filter((call) => call.method === 'PATCH');
     await waitFor(() => expect(patches()[0]?.body).toEqual({ name: 'QA Obra Norte', rubro: 'Maquinaria', joinPolicy: 'open', taskNotices: false }));
     await userEvent.click(screen.getByTestId('ajustes-cambiar-codigo'));
+    await userEvent.click(screen.getByTestId('btn-confirmar'));
     await waitFor(() => expect(patches()[1]?.body).toEqual({ newCode: true }));
     expect(await screen.findByTestId('codigo-ajustes')).toHaveTextContent('QAOB-NEW1');
   });

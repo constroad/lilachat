@@ -22,6 +22,7 @@ import { PlaceStatusWeb } from './PlaceStatusWeb';
 import { UnitAlbumDialog } from './UnitAlbumDialog';
 import { PdfLabel } from '../RecordSheetWeb';
 import { FloatingNotice, useFloatingNotice } from '../../../ui/FloatingNotice';
+import { useConfirm } from '../../../ui/useConfirm';
 
 type Props = { /** Who the person named before creating it (José 06/11). */ responsible?: string; target: ServiceAskTarget; chatId: string; service: SpaceClientService; type: string; /** The draft a row asked to continue. */ reportId?: string; portalUrl?: string; /** The channel's links: the work map's streets for a form that picks one. */ links?: ChannelLinks; /** A space admin: «Terminar unidad» sends the unit's photos to the client's group (José 19/11). */ admin?: boolean; onClose: (changed: boolean) => void };
 
@@ -163,6 +164,7 @@ export function ReportDocumentWeb(props: Props) {
   const kicker = report ? report.title : reportTypeLabel(props.type);
   const blockers = report ? publishBlockers(report, saves, offline) : [];
   const files = usePortalFileViewer();
+  const confirm = useConfirm();
   const streets = useWorkStreets(props.target.jwt, props.links, props.target.clientId, props.service.id, wantsWorkStreets(document.form?.response?.form));
   const conditionsOf = useCallback((point: GeoPoint) => readFieldConditions(props.target.jwt, point), [props.target.jwt]);
   const album = useUnitAlbum(items);
@@ -178,7 +180,7 @@ export function ReportDocumentWeb(props: Props) {
   };
   const viewPhoto = ({ section, url, path }: PhotoToView) => {
     const view = photoViewOf(section, url);
-    if (view) files.open(view.file, view.siblings, { label: TAKE_ANOTHER_PHOTO, onPress: () => actions.openSection(path) }, photoRemovalOf(report, section, actions.removePhoto));
+    if (view) files.open(view.file, view.siblings, { label: TAKE_ANOTHER_PHOTO, onPress: () => actions.openSection(path) }, photoRemovalOf(report, section, actions.removePhoto, confirm.ask));
   };
   return (
     <div data-testid="informe-documento" className={`mx-auto flex w-full flex-col gap-3 ${items?.kind === 'repeat' && isUnitsRepeat(items) ? 'max-w-6xl' : 'max-w-3xl'}`}>
@@ -190,6 +192,7 @@ export function ReportDocumentWeb(props: Props) {
       {album.item ? <UnitAlbumDialog key={album.item.id} item={album.item} onSend={(urls) => actions.sendUnitAlbum(album.item!.id, urls)} onSent={album.sent} onClose={album.close} onView={(url) => viewAlbumPhoto(album.item!, url)} block={block} onGo={goTo} /> : null}
       {/* Over the review, the viewer goes to the end of the body like the Overlay, or it could sit under it. */}
       {album.item ? createPortal(files.viewer, window.document.body) : files.viewer}
+      {confirm.dialog}
       <FloatingNotice text={album.notice} done testId="aviso-album" />
       {report && (!items || (items.kind === 'repeat' && isUnitsRepeat(items))) ? <ReportFooter report={report} blocker={publishFooterLine(report, blockers)} pdf={pdf} onPublish={() => page.setPublishing(true)} onDone={() => props.onClose(true)} /> : null}
       {report && page.publishing ? <PublishDialog report={report} blockers={blockers} onClose={() => page.setPublishing(false)} onPublish={page.publish} onOpen={(path) => { page.setPublishing(false); actions.openSection(path); }} /> : null}

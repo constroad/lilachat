@@ -6,7 +6,10 @@
 /** In my 1:1 with someone I blocked, instead of the composer. */
 export const BLOCKED_BY_ME_COMPOSER = 'Bloqueaste a este contacto. Desbloquéalo desde su info para escribirle.';
 
-export const blockConfirmText = (name: string) => `¿Bloquear a ${name}? No podrá llamarte ni escribirte por este chat, y ninguno verá si el otro está en línea. Los grupos en común siguen igual.`;
+/** The question and what blocking does, apart: the web asks with a title and a text (José 27/11). */
+export const blockConfirmTitle = (name: string) => `¿Bloquear a ${name}?`;
+export const BLOCK_CONFIRM_DETAIL = 'No podrá llamarte ni escribirte por este chat, y ninguno verá si el otro está en línea. Los grupos en común siguen igual.';
+export const blockConfirmText = (name: string) => `${blockConfirmTitle(name)} ${BLOCK_CONFIRM_DETAIL}`;
 
 export const blockActionLabel = (blockedByMe: boolean, name: string) => (blockedByMe ? `Desbloquear a ${name}` : `Bloquear a ${name}`);
 

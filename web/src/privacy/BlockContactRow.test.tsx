@@ -11,35 +11,34 @@ describe('BlockContactRow', () => {
     // Arrange
     const fetchMock = vi.fn();
     vi.stubGlobal('fetch', fetchMock);
-    vi.stubGlobal('confirm', vi.fn(() => false));
     render(<BlockContactRow jwt="jwt" personId="u2" name="Ana" blockedByMe={false} onNotice={() => undefined} />);
     // Act
     fireEvent.click(screen.getByTestId('btn-bloquear-contacto'));
+    fireEvent.click(screen.getByTestId('btn-cancelar-confirmacion'));
     // Assert
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
   it('confirmed, it blocks and offers to unblock; unblocking needs no question', async () => {
     const fetchMock = vi.fn(async () => new Response(JSON.stringify({ ok: true }), { status: 200 }));
-    const confirmMock = vi.fn(() => true);
     vi.stubGlobal('fetch', fetchMock);
-    vi.stubGlobal('confirm', confirmMock);
     render(<BlockContactRow jwt="jwt" personId="u2" name="Ana" blockedByMe={false} onNotice={() => undefined} />);
     fireEvent.click(screen.getByTestId('btn-bloquear-contacto'));
+    fireEvent.click(screen.getByTestId('btn-confirmar'));
     await screen.findByText('Desbloquear a Ana');
     expect(fetchMock).toHaveBeenCalledWith('/api/me/blocked', expect.objectContaining({ method: 'POST', body: JSON.stringify({ userId: 'u2' }) }));
     fireEvent.click(screen.getByTestId('btn-bloquear-contacto'));
     await screen.findByText('Bloquear a Ana');
     expect(fetchMock).toHaveBeenLastCalledWith('/api/me/blocked/u2', expect.objectContaining({ method: 'DELETE' }));
-    expect(confirmMock).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole('alertdialog')).toBeNull();
   });
 
   it('a refusal keeps the state and says why', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ message: 'No encontramos a esa persona.' }), { status: 404 })));
-    vi.stubGlobal('confirm', vi.fn(() => true));
     const onNotice = vi.fn();
     render(<BlockContactRow jwt="jwt" personId="u2" name="Ana" blockedByMe={false} onNotice={onNotice} />);
     fireEvent.click(screen.getByTestId('btn-bloquear-contacto'));
+    fireEvent.click(screen.getByTestId('btn-confirmar'));
     await vi.waitFor(() => expect(onNotice).toHaveBeenCalledWith('No encontramos a esa persona.'));
     expect(screen.getByText('Bloquear a Ana')).toBeInTheDocument();
   });

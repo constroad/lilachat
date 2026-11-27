@@ -369,26 +369,24 @@ describe('ReportDocumentWeb', () => {
 
     it('«Eliminar» acts on the photo on screen after moving, once confirmed', async () => {
       // Arrange
-      const asked = vi.fn(() => true);
-      vi.stubGlobal('confirm', asked);
       const calls = await openPhoto();
       fireEvent.keyDown(window, { key: shownPhotoId() === 'p1' ? 'ArrowRight' : 'ArrowLeft' });
       const shown = shownPhotoId();
-      // Act
+      // Act: the app's own question, over the viewer (José 27/11)
       fireEvent.click(screen.getByTestId('visor-eliminar'));
+      fireEvent.click(await screen.findByTestId('btn-confirmar'));
       // Assert
       await waitFor(() => expect(formCalls(calls)).toEqual([{ kind: 'remove_photo', report_id: document.id, photo_id: shown, forms: 3 }]));
       await waitFor(() => expect(sentCalls(calls)).toEqual([{ values: {} }]));
-      expect(asked).toHaveBeenCalledTimes(1);
       expect(screen.queryByTestId('visor-fotos')).toBeNull();
     });
 
     it('nothing goes to Portal when the person says no', async () => {
       // Arrange
-      vi.stubGlobal('confirm', vi.fn(() => false));
       const calls = await openPhoto();
       // Act
       fireEvent.click(screen.getByTestId('visor-eliminar'));
+      fireEvent.click(await screen.findByTestId('btn-cancelar-confirmacion'));
       // Assert
       expect(formCalls(calls)).toEqual([]);
       expect(screen.getByTestId('visor-fotos')).toBeInTheDocument();
@@ -397,7 +395,6 @@ describe('ReportDocumentWeb', () => {
     it('a refusal reaches the person in Portal’s words', async () => {
       // Arrange
       const told = vi.fn();
-      vi.stubGlobal('confirm', vi.fn(() => true));
       vi.stubGlobal('alert', told);
       const calls = serverWith({ document: reportOf() }, { status: 422, body: { errors: { _: 'El informe ya se publicó: conserva sus fotos.' } } });
       openReport();
@@ -406,6 +403,7 @@ describe('ReportDocumentWeb', () => {
       await screen.findByTestId('visor-fotos');
       // Act
       fireEvent.click(screen.getByTestId('visor-eliminar'));
+      fireEvent.click(await screen.findByTestId('btn-confirmar'));
       // Assert
       await waitFor(() => expect(told).toHaveBeenCalledWith('El informe ya se publicó: conserva sus fotos.'));
       expect(formCalls(calls)).toHaveLength(1);

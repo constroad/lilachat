@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { Ban, Flag } from 'lucide-react';
-import { REPORT_ACTION_LABEL, blockActionLabel, blockConfirmText, watchBlockedPerson, type CardPerson } from '@lilachat/shared';
+import { BLOCK_CONFIRM_DETAIL, REPORT_ACTION_LABEL, blockActionLabel, blockConfirmTitle, watchBlockedPerson, type CardPerson } from '@lilachat/shared';
+import { useConfirm } from '../ui/useConfirm';
 import { blockPerson, listBlockedPeople, unblockPerson } from '../privacy/blockedApi';
 import { ReportDialog } from './ReportDialog';
 
@@ -17,6 +18,7 @@ export function usePersonSafety(params: { jwt: string; person: CardPerson | null
   const [blocked, setBlocked] = useState(false);
   const [busy, setBusy] = useState(false);
   const [reporting, setReporting] = useState(false);
+  const { ask, dialog: confirmDialog } = useConfirm();
 
   useEffect(() => {
     setBlocked(false);
@@ -27,13 +29,13 @@ export function usePersonSafety(params: { jwt: string; person: CardPerson | null
 
   const toggleBlock = useCallback(async () => {
     if (!personId || !person || busy) return;
-    if (!blocked && !window.confirm(blockConfirmText(person.name))) return;
+    if (!blocked && !(await ask({ title: blockConfirmTitle(person.name), text: BLOCK_CONFIRM_DETAIL, confirmLabel: 'Bloquear' }))) return;
     setBusy(true);
     const outcome = blocked ? await unblockPerson(jwt, personId) : await blockPerson(jwt, personId);
     setBusy(false);
     if (outcome.ok) setBlocked(!blocked);
     else onError(outcome.message);
-  }, [personId, person, busy, blocked, jwt, onError]);
+  }, [personId, person, busy, blocked, jwt, onError, ask]);
 
   if (!personId || !person) return { actions: null, dialog: null, reporting: false };
   const row = 'flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl border text-sm font-semibold disabled:opacity-60';
@@ -50,6 +52,11 @@ export function usePersonSafety(params: { jwt: string; person: CardPerson | null
     </div>
   );
   const subject = { target: 'user' as const, userId: personId, ...(chatId ? { chatId } : {}) };
-  const dialog = reporting ? <ReportDialog jwt={jwt} subject={subject} personName={person.name} onClose={() => setReporting(false)} onBlocked={() => setBlocked(true)} /> : null;
+  const dialog = (
+    <>
+      {reporting ? <ReportDialog jwt={jwt} subject={subject} personName={person.name} onClose={() => setReporting(false)} onBlocked={() => setBlocked(true)} /> : null}
+      {confirmDialog}
+    </>
+  );
   return { actions, dialog, reporting };
 }

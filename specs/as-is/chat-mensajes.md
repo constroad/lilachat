@@ -143,6 +143,10 @@ la búsqueda y las tarjetas de enlace. Hilos, medios, agenda y stickers tienen s
 - Destino de un envío (respuesta, hilo, «también al chat»): `messageTarget.ts`.
 - Compositor: `textoDelComposer.ts`. Diseño plano: `flatLayout.ts`.
 
+- Confirmaciones en la web (27/11): eliminar una lista de chats y quitar un emoji del espacio preguntan con
+  `ui/useConfirm` (diálogo propio), nunca con `window.confirm`, que congelaba la pestaña. Un test de fuente
+  (`ui/nativeConfirmUsage.test.ts`) impide que vuelva.
+
 ## 3. Diferencias APK vs web
 
 | Función | APK | Web |

@@ -4,23 +4,26 @@ import { useMySpaces } from '../../spaces/currentSpace';
 import { removeCustomEmoji, useSpaceEmojis } from '../../spaces/customEmojis';
 import type { CustomEmoji } from '@lilachat/shared';
 import { useConversacion } from '../contextoDeLaConversacion';
+import { useConfirm } from '../../ui/useConfirm';
 
 /** «De {espacio}» on top of the full picker (design c-06): the space's own emojis and «Agregar». */
 export function SpaceEmojiSection(props: { onPick: (emoji: string) => void; onAdd: () => void }) {
   const { jwt, chat } = useConversacion();
   const { emojis, reload } = useSpaceEmojis(jwt, chat.workspaceId);
   const spaceName = useMySpaces(jwt).spaces?.find((space) => space.id === chat.workspaceId)?.name ?? 'el espacio';
+  const confirm = useConfirm();
   if (!chat.workspaceId) return null;
   const spaceId = chat.workspaceId;
   // The server decides who may (its author or an admin) and says why not.
   const remove = async (emoji: CustomEmoji) => {
-    if (!window.confirm(`¿Quitar :${emoji.name}: de ${spaceName}?`)) return;
+    if (!(await confirm.ask({ title: `¿Quitar :${emoji.name}:?`, text: `Deja de estar en ${spaceName}. Las reacciones que ya lo usan siguen en los mensajes.`, confirmLabel: 'Quitar' }))) return;
     const removed = await removeCustomEmoji(jwt, spaceId, emoji.id);
     if (!removed.ok) return window.alert(removed.message ?? 'No se pudo quitar el emoji.');
     await reload();
   };
   return (
     <div data-testid="emojis-del-espacio" className="border-b border-outline/15 px-3 pb-2">
+      {confirm.dialog}
       <div className="flex min-h-[36px] items-center">
         <span className="flex-1 truncate text-[11px] font-bold uppercase tracking-widest text-on-surface-variant">De {spaceName} · {emojis.length}</span>
         <button type="button" data-testid="btn-agregar-emoji" onClick={props.onAdd} className="flex min-h-[32px] items-center gap-1 text-sm font-semibold text-primary hover:underline">

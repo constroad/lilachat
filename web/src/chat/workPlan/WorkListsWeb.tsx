@@ -5,6 +5,7 @@ import { api } from '../../api';
 import { useConversacion } from '../contextoDeLaConversacion';
 import { TaskDialog, type TaskEdit } from '../tarjetas/TaskDialog';
 import { attachEvidenceWeb, detachEvidenceWeb, toggleTaskWeb } from './evidenceWeb';
+import { useConfirm } from '../../ui/useConfirm';
 
 const NO_APPS: ReadonlySet<string> = new Set();
 
@@ -89,6 +90,7 @@ export function TaskDetailWeb(props: { open: OpenTask; /** Who runs the plan; an
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState('');
   const picker = useRef<HTMLInputElement>(null);
+  const confirm = useConfirm();
   const stage = props.stages.find((one) => one._id === props.open.stageId);
   const item = stage?.items.find((one) => one.id === props.open.itemId);
   if (!stage || !item) return null;
@@ -110,10 +112,11 @@ export function TaskDetailWeb(props: { open: OpenTask; /** Who runs the plan; an
   const toggle = () => void run('marcar', () => toggleTaskWeb({ jwt, checklistId: stage._id, itemId: item.id }));
   const save = (edit: TaskEdit) => void run('guardar', () => call(`/agenda/checklists/${stage._id}/items/${item.id}`, { method: 'PATCH', body: edit }, 'No se pudo guardar la tarea.'));
   const upload = (file: File | undefined) => file && void run('subir', () => attachEvidenceWeb({ jwt, chatId: chat.id, checklistId: stage._id, itemId: item.id, taskText: item.text, file }));
-  const remove = (file: TaskEvidence) => window.confirm('¿Quitar este archivo de la tarea? Sigue en el chat.') && void run('quitar', () => detachEvidenceWeb({ jwt, checklistId: stage._id, itemId: item.id, seq: file.seq }));
+  const remove = async (file: TaskEvidence) => (await confirm.ask({ title: '¿Quitar este archivo de la tarea?', text: 'Sigue en el chat.', confirmLabel: 'Quitar' })) && void run('quitar', () => detachEvidenceWeb({ jwt, checklistId: stage._id, itemId: item.id, seq: file.seq }));
   return (
     <div role="dialog" aria-modal="true" aria-label={item.text} className="fixed inset-0 z-40 flex items-end justify-center bg-black/40 md:items-center" onClick={props.onClose}>
       <div data-testid="hoja-detalle-tarea" className="flex max-h-[90vh] w-full max-w-lg flex-col rounded-t-3xl bg-background md:rounded-3xl" onClick={(event) => event.stopPropagation()}>
+        {confirm.dialog}
         <header className="flex items-start gap-3 border-b border-outline/10 px-5 pb-3 pt-4">
           <div className="min-w-0 flex-1">
             <p className="truncate text-[11px] font-bold uppercase tracking-widest text-primary">{`${stage.title} · ${chat.name}`}</p>
@@ -124,7 +127,7 @@ export function TaskDetailWeb(props: { open: OpenTask; /** Who runs the plan; an
         </header>
         <div className="flex flex-col gap-3 overflow-y-auto p-4">
           <TaskFacts stage={stage} item={item} assignee={item.assignee ? nameOf(item.assignee) : null} overdue={state === 'overdue'} />
-          <EvidenceWeb files={item.evidence ?? []} me={yo} canUpload={canMark} uploading={busy === 'subir'} onUpload={() => picker.current?.click()} onOpen={(file) => { props.onClose(); props.onOpenMessage(file.seq); }} onRemove={remove} />
+          <EvidenceWeb files={item.evidence ?? []} me={yo} canUpload={canMark} uploading={busy === 'subir'} onUpload={() => picker.current?.click()} onOpen={(file) => { props.onClose(); props.onOpenMessage(file.seq); }} onRemove={(file) => void remove(file)} />
           <input ref={picker} type="file" data-testid="input-evidencia" className="hidden" accept="image/*,application/pdf,.doc,.docx,.xls,.xlsx" onChange={(event) => { upload(event.target.files?.[0]); event.target.value = ''; }} />
           <ActivityWeb item={item} nameOf={nameOf} />
           {error ? <p role="alert" className="text-sm text-error">{error}</p> : null}

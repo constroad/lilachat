@@ -119,6 +119,9 @@ Carpeta `web/src/spaces/`:
   grupos de Archivados.
 - `welcome.ts`, `invitacion.ts`, `infoDeGrupo.ts`, `accionesDeMiembro.ts`.
 
+- En la web (27/11), desactivar un miembro y cambiar el código del espacio preguntan con el diálogo propio
+  (`ui/useConfirm`), no con `window.confirm`.
+
 ## 3. Diferencias APK vs web
 
 | Tema | APK | Web/PWA |

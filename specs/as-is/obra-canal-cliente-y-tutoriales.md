@@ -249,6 +249,9 @@ en la cabecera del Drive y las acciones del mapa en su barra, justo bajo la barr
 - **Agentes:** crea los canales, publica tarjetas (las de pago no se publican, 6feb8c1),
   responde las preguntas y firma el rol.
 
+- Quitar una foto del informe desde el visor (27/11) pregunta con el diálogo propio de la app (`useConfirm`,
+  sobre el visor), no con `window.confirm`. `ViewerRemoval.remove` es asíncrono: el visor se cierra al confirmar.
+
 ## 3. Diferencias APK vs web
 
 | Tema | Web/PWA | APK |

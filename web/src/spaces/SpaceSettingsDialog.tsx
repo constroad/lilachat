@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Check, KeyRound, Trash2 } from 'lucide-react';
 import { canDeleteSpace, membersLabel, SPACE_RUBROS, type ClientWorkspace } from '@lilachat/shared';
 import { FieldError, Overlay, PrimaryButton } from '../ui/Overlay';
+import { useConfirm } from '../ui/useConfirm';
 import { SpaceLogo } from './SpaceLogo';
 import { removeSpaceLogo, updateSpace, uploadSpaceLogo } from './spacesApi';
 import { IntegrationsSection } from './IntegrationsSection';
@@ -25,6 +26,7 @@ export function SpaceSettingsDialog(props: { space: ClientWorkspace; jwt: string
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const confirm = useConfirm();
   const clean = name.trim();
   const changed = clean !== space.name || rubro !== (space.rubro ?? '') || approval !== (space.joinPolicy === 'approval') || taskNotices !== (space.taskNotices === true);
 
@@ -53,7 +55,9 @@ export function SpaceSettingsDialog(props: { space: ClientWorkspace; jwt: string
     setLogoUrl(undefined);
     props.onSaved(response.data.workspace);
   };
-  const newCode = () => window.confirm('¿Cambiar el código? El actual deja de funcionar; quienes ya están en el espacio siguen igual.') && void save({ newCode: true });
+  const newCode = async () => {
+    if (await confirm.ask({ title: '¿Cambiar el código?', text: 'El actual deja de funcionar; quienes ya están en el espacio siguen igual.', confirmLabel: 'Cambiar' })) await save({ newCode: true });
+  };
 
   if (deleting) return <DeleteSpaceDialog space={space} jwt={props.jwt} onDeleted={() => props.onDeleted?.()} onClose={() => setDeleting(false)} />;
   return (
@@ -64,6 +68,7 @@ export function SpaceSettingsDialog(props: { space: ClientWorkspace; jwt: string
     }>
       <p className="flex items-center gap-2 text-sm text-on-surface-variant"><span className="rounded-md border border-en-linea/40 bg-en-linea/10 px-2 text-[11px] font-bold leading-5 text-en-linea">ACTIVO</span>{`${membersLabel(space.members)} activos`}</p>
       <FieldError>{error}</FieldError>
+      {confirm.dialog}
       <p className="mt-4 text-[11px] font-bold uppercase tracking-[0.18em] text-on-surface-variant">Espacio</p>
       <div className="mt-2 flex items-center gap-3">
         <SpaceLogo space={{ name: clean || space.name, logoUrl }} size={52} />
@@ -87,7 +92,7 @@ export function SpaceSettingsDialog(props: { space: ClientWorkspace; jwt: string
         {!rubro ? <option value="">Sin rubro</option> : null}
         {SPACE_RUBROS.map((option) => <option key={option} value={option}>{option}</option>)}
       </select>
-      <JoinSection code={code} approval={approval} busy={busy} onNewCode={newCode} onApproval={() => setApproval((before) => !before)} />
+      <JoinSection code={code} approval={approval} busy={busy} onNewCode={() => void newCode()} onApproval={() => setApproval((before) => !before)} />
       <NoticesSection on={taskNotices} onToggle={() => setTaskNotices((before) => !before)} />
       <IntegrationsSection jwt={props.jwt} spaceId={space.id} onOpenApp={props.onOpenApp} />
       <DangerZone space={space} onDelete={() => setDeleting(true)} />

@@ -155,10 +155,11 @@ describe('the person card — report and block', () => {
   it('blocking asks first, then it reads «Desbloquear»', async () => {
     // Arrange
     const calls = stubServer({ '/api/me/blocked': () => new Response(JSON.stringify({ blocked: [] }), { status: 200 }) });
-    vi.stubGlobal('confirm', vi.fn(() => true));
     // Act
     await open(ana);
     await userEvent.click(await screen.findByTestId('persona-bloquear'));
+    expect(screen.getByRole('alertdialog')).toHaveTextContent('¿Bloquear a Ana?');
+    await userEvent.click(screen.getByTestId('btn-confirmar'));
     // Assert
     await waitFor(() => expect(screen.getByTestId('persona-bloquear')).toHaveTextContent('Desbloquear a Ana'));
     expect(calls).toContainEqual({ url: '/api/me/blocked', method: 'POST', body: { userId: 'u-ana' } });

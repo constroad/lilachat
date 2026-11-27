@@ -2,6 +2,7 @@ import { HardDrive } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { formatBytes } from '@lilachat/shared';
 import { borrarBaseDe } from '../local/baseLocal';
+import { useConfirm } from '../ui/useConfirm';
 
 /**
  * «Almacenamiento» in the web's settings (pending 13): how much this browser
@@ -11,16 +12,18 @@ import { borrarBaseDe } from '../local/baseLocal';
 export function StorageChoice({ userId, reload = () => window.location.reload() }: { userId: string; reload?: () => void }) {
   const [usage, setUsage] = useState<number | null>(null);
   const [open, setOpen] = useState(false);
+  const confirm = useConfirm();
   useEffect(() => {
     void navigator.storage?.estimate?.().then((estimate) => setUsage(estimate.usage ?? 0)).catch(() => setUsage(null));
   }, []);
   const deleteCopy = async () => {
-    if (!window.confirm('Se borra la copia de tus chats en este navegador. Al recargar se vuelven a traer del servidor.')) return;
+    if (!(await confirm.ask({ title: '¿Borrar la copia de este navegador?', text: 'Se borra la copia de tus chats en este navegador. Al recargar se vuelven a traer del servidor.', confirmLabel: 'Borrar' }))) return;
     await borrarBaseDe(userId);
     reload();
   };
   return (
     <div>
+      {confirm.dialog}
       <button type="button" data-testid="btn-almacenamiento" aria-expanded={open} onClick={() => setOpen(!open)} className="flex min-h-[44px] w-full items-center gap-3 rounded-lg px-3 text-left text-sm hover:bg-background">
         <HardDrive size={16} />
         <span className="min-w-0 flex-1">

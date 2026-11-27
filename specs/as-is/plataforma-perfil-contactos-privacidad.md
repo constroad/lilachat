@@ -170,6 +170,10 @@ Fuentes: código, `git log`, `specs/ARCHITECTURE.spec.md` §93, §106, §165, §
 - `contacts.ts`, `nombreDeContacto.ts`, `sharedContact.ts`, `emparejarAgenda.ts`,
   `agendaRelay.ts`, `phone.ts`.
 
+- Bloquear en la web (27/11), desde la info del 1:1 o la tarjeta de la persona, pregunta con el diálogo propio
+  (`ui/useConfirm`): título `blockConfirmTitle` y detalle `BLOCK_CONFIRM_DETAIL` (shared). Borrar la copia local
+  del navegador también.
+
 ## 3. Diferencias APK vs web
 
 | Tema | APK | Web/PWA |

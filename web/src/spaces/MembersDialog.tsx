@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react';
 import { useDismiss } from '../ui/useDismiss';
+import { useConfirm } from '../ui/useConfirm';
 import { MoreVertical, Search, UserPlus, X } from 'lucide-react';
 import { changeForAction, emailInviteLine, filterMembers, formatPhoneDisplay, memberActions, type ClientWorkspace, type ClientWorkspaceMember, type MemberAction } from '@lilachat/shared';
 import { FieldError, Overlay } from '../ui/Overlay';
@@ -34,6 +35,7 @@ export function MembersDialog(props: { space: ClientWorkspace; jwt: string; myUs
   const [busy, setBusy] = useState(false);
   const [actionError, setError] = useState('');
   const [resent, setResent] = useState('');
+  const confirm = useConfirm();
   // The four lists paint at once from what was seen and refresh behind (22/10).
   const cached = useCached(memberListsCache, `${space.id}:member-lists`, async (): Promise<Record<MembersTab, ClientWorkspaceMember[]>> => {
     // One request for the four lists (22/10), split here by status.
@@ -51,9 +53,9 @@ export function MembersDialog(props: { space: ClientWorkspace; jwt: string; myUs
     props.onChanged();
     cached.refresh();
   };
-  const runAction = (member: ClientWorkspaceMember, action: MemberAction) => {
+  const runAction = async (member: ClientWorkspaceMember, action: MemberAction) => {
     setMenuFor(null);
-    if (action === 'deactivate' && !window.confirm(`¿Desactivar a ${memberName(member)}? Deja de ver los canales y chats del espacio. Sus chats personales siguen igual.`)) return;
+    if (action === 'deactivate' && !(await confirm.ask({ title: `¿Desactivar a ${memberName(member)}?`, text: 'Deja de ver los canales y chats del espacio. Sus chats personales siguen igual.', confirmLabel: 'Desactivar' }))) return;
     void after(changeMember(jwt, space.id, member.id, changeForAction(action)));
   };
   // José 19/11: an invitation of a week ago is resent from the list, without typing the email again.
@@ -72,6 +74,7 @@ export function MembersDialog(props: { space: ClientWorkspace; jwt: string; myUs
 
   return (
     <Overlay title={`Miembros de ${space.name}`} onClose={props.onClose} wide>
+      {confirm.dialog}
       <div className="flex flex-wrap items-end gap-3">
         <div className="min-w-0 flex-1">
           <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-primary">Gestión de accesos</p>
@@ -127,7 +130,7 @@ export function MembersDialog(props: { space: ClientWorkspace; jwt: string; myUs
                   <div ref={memberMenu} data-testid="menu-acciones-miembro" role="menu" className="absolute right-3 top-14 z-10 w-56 rounded-xl border border-outline/15 bg-surface p-1.5 shadow-lg">
                     <p className="px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.18em] text-primary">Cambiar rol o acceso</p>
                     {actions.map((action) => (
-                      <button key={action} type="button" role="menuitem" onClick={() => runAction(member, action)} className={`flex w-full rounded-lg px-3 py-2 text-left text-sm hover:bg-background ${action === 'deactivate' ? 'text-error' : ''}`}>{ACTION_LABELS[action]}</button>
+                      <button key={action} type="button" role="menuitem" onClick={() => void runAction(member, action)} className={`flex w-full rounded-lg px-3 py-2 text-left text-sm hover:bg-background ${action === 'deactivate' ? 'text-error' : ''}`}>{ACTION_LABELS[action]}</button>
                     ))}
                   </div>
                 ) : null}

@@ -10,7 +10,8 @@ type Session = { files: ViewableFile[]; url: string; /** Position in the gallery
 export type ViewerFooter = (url: string) => ReactNode;
 export type ViewerAction = { label: string; onPress: () => void };
 /** «Eliminar» of the viewer: it always asks about the file on screen. `remove` says whether it went ahead. */
-export type ViewerRemoval = { canRemove: (url: string) => boolean; remove: (url: string) => boolean };
+/** `remove` answers once the person confirmed in the app's own dialog (José 27/11): true closes the viewer. */
+export type ViewerRemoval = { canRemove: (url: string) => boolean; remove: (url: string) => Promise<boolean> };
 
 /** A Portal file as the chat's viewer reads a photo: it only needs the file, its name and a day. */
 const asMessage = (file: ViewableFile, index: number): MensajeEnPantalla => ({
@@ -97,7 +98,7 @@ export function usePortalFileViewer() {
   }, []);
   const photos = useMemo(() => (session ? session.files.map(asMessage) : []), [session]);
   const index = session && photos[session.at]?.media?.url === session.url ? session.at : photos.findIndex((photo) => photo.media?.url === session?.url);
-  const removeShown = session?.removal?.canRemove(session.url) ? () => { if (session.removal?.remove(session.url)) setSession(null); } : undefined;
+  const removeShown = session?.removal?.canRemove(session.url) ? () => { void session.removal?.remove(session.url).then((removed) => removed && setSession(null)); } : undefined;
   const viewer: ReactNode = (
     <>
       {session && index >= 0 ? <PhotoViewer fotos={photos} indice={index} onCambiar={(next) => setSession({ ...session, url: photos[next]?.media?.url ?? session.url, at: photos[next] ? next : session.at })} onCerrar={() => setSession(null)} {...(removeShown ? { onRemove: removeShown } : {})} {...(session.action ? { action: session.action } : {})} footer={session.footerOf?.(session.url)} /> : null}

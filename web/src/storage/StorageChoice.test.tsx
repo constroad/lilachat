@@ -14,23 +14,24 @@ afterEach(() => {
 describe('StorageChoice (pending 13, the browser)', () => {
   it('says how much this browser keeps and, after asking, deletes its copy and reloads', async () => {
     vi.stubGlobal('navigator', { ...navigator, storage: { estimate: async () => ({ usage: 12 * 1024 * 1024, quota: 2 * 1024 * 1024 * 1024 }) } });
-    vi.stubGlobal('confirm', () => true);
     const reload = vi.fn();
     render(<StorageChoice userId="u1" reload={reload} />);
     expect(await screen.findByText('12 MB en este navegador')).toBeInTheDocument();
     await userEvent.click(screen.getByTestId('btn-almacenamiento'));
     await userEvent.click(screen.getByTestId('btn-borrar-copia-local'));
+    // José 27/11: the app's own question, never the browser's.
+    await userEvent.click(screen.getByTestId('btn-confirmar'));
     expect(deleteBase).toHaveBeenCalledWith('u1');
     expect(reload).toHaveBeenCalled();
   });
 
   it('does nothing if the person says no', async () => {
     vi.stubGlobal('navigator', { ...navigator, storage: { estimate: async () => ({ usage: 0, quota: 1 }) } });
-    vi.stubGlobal('confirm', () => false);
     const reload = vi.fn();
     render(<StorageChoice userId="u1" reload={reload} />);
     await userEvent.click(screen.getByTestId('btn-almacenamiento'));
     await userEvent.click(screen.getByTestId('btn-borrar-copia-local'));
+    await userEvent.click(screen.getByTestId('btn-cancelar-confirmacion'));
     expect(deleteBase).not.toHaveBeenCalled();
     expect(reload).not.toHaveBeenCalled();
   });

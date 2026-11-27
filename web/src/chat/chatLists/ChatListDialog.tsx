@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { Check, Search, Trash2 } from 'lucide-react';
 import { CHAT_LIST_NAME_MAX, chatListNameError, diffListChats, type ChatList } from '@lilachat/shared';
 import { FieldError, Overlay } from '../../ui/Overlay';
+import { useConfirm } from '../../ui/useConfirm';
 import { Avatar } from '../../ui/Avatar';
 import type { ListOutcome } from './useChatListsWeb';
 
@@ -30,6 +31,7 @@ export function ChatListDialog(props: {
   const [search, setSearch] = useState('');
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
+  const confirm = useConfirm();
 
   const shown = useMemo(() => {
     const needle = key(search.trim());
@@ -52,7 +54,7 @@ export function ChatListDialog(props: {
   };
 
   const remove = async () => {
-    if (!list || !window.confirm('¿Eliminar la lista? Los chats no se borran: solo dejan de estar en esta lista.')) return;
+    if (!list || !(await confirm.ask({ title: '¿Eliminar la lista?', text: 'Los chats no se borran: solo dejan de estar en esta lista.', confirmLabel: 'Eliminar' }))) return;
     finish(await props.onDelete(list.id));
   };
 
@@ -86,6 +88,7 @@ export function ChatListDialog(props: {
         className="h-11 w-full rounded-xl border border-outline/30 bg-transparent px-3 text-[15px] outline-none focus:border-primary"
       />
       <FieldError>{error}</FieldError>
+      {confirm.dialog}
       <label className="mt-4 flex h-10 items-center gap-2 rounded-full bg-primary/[0.07] px-3">
         <Search size={16} className="text-primary" />
         <input data-testid="buscar-chats-de-lista" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Buscar chats" className="min-w-0 flex-1 bg-transparent text-sm outline-none" />

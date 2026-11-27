@@ -1,5 +1,7 @@
+import { Types } from 'mongoose';
 import { eventSignature } from './bots/botSecrets.js';
-import { lilaDoorFor } from './agentesModel.js';
+import { developerAppClientIds } from './bots/botApps.js';
+import { BotAppModel, BotInstallationModel } from './bots/botModels.js';
 import type { StickerVoiceSpeaker, VoiceOutcome } from './stickerVoice.js';
 
 /** agentes waits 15 s for Voice Studio before its own 503; a little more here so its answer arrives. */
@@ -8,12 +10,32 @@ const SPEECH_PATH = '/v1/voice/speech';
 
 const reasonOf = (status: number): Exclude<VoiceOutcome, { ok: true }>['reason'] => (status === 429 ? 'limit' : status === 400 ? 'refused' : 'unavailable');
 
+type VoiceDoor = { _id: Types.ObjectId; signingSecret: string; webhookUrl: string };
+
 /**
- * The sticker voice (José 27/11) from agentes, `POST /v1/voice/speech` (agentes 871d7c9): signed like its events,
- * with the Lila installation `lilaDoorFor` picks, at the same host as that app's webhook. No key or URL of our own.
+ * Who signs the voice ask: a live installation, in that space, of any app agentes hosts (agentes 27/11: any live
+ * installation of one of its apps). Agentes' host is the one of its developer app (Lila); in production Lila
+ * itself had no installation, while Dali, Portal and Inframaq did.
+ */
+async function agentesDoorFor(spaceId: string): Promise<VoiceDoor | null> {
+  if (!Types.ObjectId.isValid(spaceId)) return null;
+  const developer = await BotAppModel.findOne({ clientId: { $in: developerAppClientIds() }, webhookUrl: { $exists: true } }).select('webhookUrl').lean();
+  if (!developer?.webhookUrl) return null;
+  const host = new URL(developer.webhookUrl).host;
+  const apps = (await BotAppModel.find({ webhookUrl: { $exists: true } }).select('_id webhookUrl').lean()).filter((app) => app.webhookUrl && new URL(app.webhookUrl).host === host);
+  const installation = await BotInstallationModel.findOne({ appId: { $in: apps.map((app) => app._id) }, workspaceId: new Types.ObjectId(spaceId), revokedAt: { $exists: false } })
+    .select('_id signingSecret appId')
+    .lean();
+  const app = installation ? apps.find((one) => String(one._id) === String(installation.appId)) : undefined;
+  return installation && app?.webhookUrl ? { _id: installation._id, signingSecret: installation.signingSecret, webhookUrl: app.webhookUrl } : null;
+}
+
+/**
+ * The sticker voice (José 27/11) from agentes, `POST /v1/voice/speech` (agentes 871d7c9): signed like its events, with
+ * the space's installation of an agentes app (`agentesDoorFor`), at that app's host. No key or URL of our own.
  */
 export const speakWithAgentes: StickerVoiceSpeaker = async (speech) => {
-  const door = await lilaDoorFor([speech.userId]);
+  const door = await agentesDoorFor(speech.spaceId);
   if (!door) return { ok: false, reason: 'unavailable' };
   const body = JSON.stringify({ text: speech.text, voice: speech.voiceId, spaceId: speech.spaceId, userId: speech.userId });
   const timestamp = Date.now();

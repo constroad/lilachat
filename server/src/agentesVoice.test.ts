@@ -77,7 +77,23 @@ describe('speakWithAgentes', () => {
     expect(await speakWithAgentes(speech)).toEqual({ ok: false, reason: 'unavailable' });
   });
 
-  it('without a Lila installation there is no voice, and nothing is asked', async () => {
+  it('any live app of agentes in the space signs it, not only Lila (prod 27/11: Lila had no installation)', async () => {
+    // Arrange: only a Dali-like app of agentes is installed, plus a foreign app on another host
+    await BotInstallationModel.deleteMany({});
+    const [dali, foreign] = await BotAppModel.create([
+      { clientId: 'lca_test_dali', clientSecretHash: 'h', name: 'Dali', redirectUris: ['https://agentes.test/cb'], webhookUrl: `${base}/v1/channels/lilachat/events` },
+      { clientId: 'lca_test_other', clientSecretHash: 'h', name: 'Otro', redirectUris: ['https://otro.test/cb'], webhookUrl: 'https://otro.test/hook' },
+    ]);
+    await BotInstallationModel.create({ appId: foreign!._id, workspaceId: space, botUserId: new Types.ObjectId(), tokenHash: 't2', signingSecret: 'lcs_foreign', installedBy: admin });
+    const daliInstall = await BotInstallationModel.create({ appId: dali!._id, workspaceId: space, botUserId: new Types.ObjectId(), tokenHash: 't3', signingSecret: SECRET, installedBy: admin });
+    // Act
+    const outcome = await speakWithAgentes(speech);
+    // Assert
+    expect(outcome.ok).toBe(true);
+    expect(heard).toEqual([expect.objectContaining({ installation: String(daliInstall._id), signedOk: true })]);
+  });
+
+  it('without a live app of agentes there is no voice, and nothing is asked', async () => {
     await BotInstallationModel.deleteMany({});
     expect(await speakWithAgentes(speech)).toEqual({ ok: false, reason: 'unavailable' });
     expect(heard).toHaveLength(0);

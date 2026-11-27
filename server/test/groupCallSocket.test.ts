@@ -3,7 +3,7 @@ import type { MongoMemoryServer } from 'mongodb-memory-server';
 import { startTestMongo } from '../src/testMongo.js';
 import mongoose from 'mongoose';
 import { io as createClient, type Socket as ClientSocket } from 'socket.io-client';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { buildApp } from '../src/app.js';
 import { ChatModel, MessageModel } from '../src/chatModels.js';
 import { UserModel } from '../src/models.js';
@@ -70,9 +70,14 @@ describe('group call over the socket', () => {
     expect(c.heard.some((one) => one.event === 'groupcall.signal')).toBe(false);
     expect(b.heard.find((one) => one.event === 'groupcall.left')?.frame).toEqual({ chatId, userId: ana });
     expect(c.heard.filter((one) => one.event === 'groupcall.state').at(-1)?.frame).toEqual({ chatId, room: null, names: {} });
-    const line = await MessageModel.findOne({ chatId, kind: 'system' }).sort({ seq: -1 }).lean();
+    // The line is written after the last one hangs up, not before the ack: wait for it (it raced under a busy machine).
+    const line = await vi.waitFor(async () => {
+      const written = await MessageModel.findOne({ chatId, kind: 'system' }).sort({ seq: -1 }).lean();
+      if (!written?.body) throw new Error('call line not written yet');
+      return written;
+    }, { timeout: 5_000, interval: 50 });
     // Same words the phone shows (`cuerpoDeLlamada`): singular for one, and the length.
-    expect(line?.body).toMatch(/^Videollamada grupal · 2 personas · \d\d:\d\d$/);
+    expect(line.body).toMatch(/^Videollamada grupal · 2 personas · \d\d:\d\d$/);
   });
 
   it('a 1:1 chat cannot have a group call', async () => {

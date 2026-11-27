@@ -1,6 +1,7 @@
 import { soundPresetIdOf, stickerSoundField } from '@lilachat/shared';
 import { audioClipOf, stickerSoundOf, type SoundChoice } from './videoStickerSound';
 import type { SavedSoundUpload } from './stickersApi';
+import { spokenFieldsOf } from './spokenVoice';
 
 /**
  * The sound of a sticker already in «Mis stickers» on the APK (José 27/11: «quiero agregarle audio sin volver a buscar
@@ -19,5 +20,5 @@ const sameChoice = (a: SoundChoice | null, b: SoundChoice | null): boolean => JS
 export function savedSoundUploadOf(initial: SoundChoice | null, choice: SoundChoice | null): SavedSoundUpload | null {
   if (!choice || choice.kind === 'original' || sameChoice(initial, choice)) return null;
   const sound = stickerSoundOf(choice);
-  return sound ? { audio: audioClipOf(choice), fields: [['sound', stickerSoundField(sound)]] } : null;
+  return sound ? { audio: audioClipOf(choice), fields: [['sound', stickerSoundField(sound)], ...spokenFieldsOf(choice)] } : null;
 }

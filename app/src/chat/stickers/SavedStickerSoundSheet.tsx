@@ -3,6 +3,7 @@ import { ToastAndroid } from 'react-native';
 import { stickerSoundLabelOf, type LibrarySticker } from '@lilachat/shared';
 import type { ApiOutcome, SavedSoundUpload } from './stickersApi';
 import { StickerSoundSheet } from './StickerSoundSheet';
+import type { StickerVoiceDoor } from './stickerVoiceDoor';
 import { initialSavedChoice, savedSoundUploadOf } from './savedStickerSound';
 import type { SoundChoice } from './videoStickerSound';
 
@@ -13,7 +14,7 @@ const SIX_SECONDS = '0:06';
  * sheet as when it is made, without «Sonido original» (a saved sticker has no video). «Guardar sonido» saves what
  * changed; the backdrop or back only close. Mounted with a `key` per sticker, so each opening starts on its own sound.
  */
-export function SavedStickerSoundSheet(props: { sticker: LibrarySticker; onSave: (sticker: LibrarySticker, upload: SavedSoundUpload) => Promise<ApiOutcome<LibrarySticker>>; onClose: () => void }) {
+export function SavedStickerSoundSheet(props: { sticker: LibrarySticker; onSave: (sticker: LibrarySticker, upload: SavedSoundUpload) => Promise<ApiOutcome<LibrarySticker>>; onClose: () => void; voiceDoor?: StickerVoiceDoor | null }) {
   const { sticker } = props;
   const [initial] = useState(() => initialSavedChoice(sticker));
   const [choice, setChoice] = useState<SoundChoice | null>(initial);
@@ -41,6 +42,7 @@ export function SavedStickerSoundSheet(props: { sticker: LibrarySticker; onSave:
       onDone={() => void save()}
       doneLabel={saving ? 'Guardando…' : 'Guardar sonido'}
       current={current ? `Ahora: ${current}` : undefined}
+      voiceDoor={props.voiceDoor}
     />
   );
 }

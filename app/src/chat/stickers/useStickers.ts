@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react';
+import { useStickerVoiceDoor } from './stickerVoiceDoor';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { addRecentSticker, packLibrary, STICKER_PACKS, type LibrarySticker } from '@lilachat/shared';
 import { BASE_URL } from '../../api/client';
@@ -160,7 +161,8 @@ export function useStickers(jwt: string) {
     return changed;
   };
 
-  return { library, recents, packs: STICKER_PACK_SECTIONS, error, reload, send, save, saveFromVideo, toggleFavorite, remove, setSound };
+  const voiceDoor = useStickerVoiceDoor(jwt);
+  return { library, recents, packs: STICKER_PACK_SECTIONS, error, reload, send, save, saveFromVideo, toggleFavorite, remove, setSound, voiceDoor };
 }
 
 export type StickersState = ReturnType<typeof useStickers>;

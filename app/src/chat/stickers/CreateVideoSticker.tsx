@@ -2,12 +2,13 @@ import { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, ScrollView, Text, ToastAndroid, useWindowDimensions, View } from 'react-native';
 import { VideoView, type VideoPlayer } from 'expo-video';
 import { Image } from 'expo-image';
-import { ArrowLeft, Ban, Mic, Music, Pause, Play, Save, Send, Volume2 } from 'lucide-react-native';
+import { ArrowLeft, AudioLines, Ban, Mic, Music, Pause, Play, Save, Send, Volume2 } from 'lucide-react-native';
 import type { LibrarySticker } from '@lilachat/shared';
 import { Modal } from '../../ui/Modal';
 import { useMargenes } from '../../ui/useMargenes';
 import { useColores } from '../../ui/tema';
 import { StickerSoundSheet } from './StickerSoundSheet';
+import type { StickerVoiceDoor } from './stickerVoiceDoor';
 import { VideoTrimStrip } from './VideoTrimStrip';
 import { useClipPreview } from './useClipPreview';
 import { previewClip, previewPreset, stopSoundPreview } from './soundPreview';
@@ -28,6 +29,8 @@ type Props = {
   onClose: () => void;
   onSave: (upload: VideoStickerUpload, onProgress: (ratio: number) => void) => Promise<ApiOutcome<LibrarySticker>>;
   onSend: (sticker: LibrarySticker) => Promise<boolean>;
+  /** «Voz» for an admin of the open space (José 27/11). */
+  voiceDoor?: StickerVoiceDoor | null;
 };
 
 /**
@@ -107,7 +110,7 @@ export function CreateVideoSticker(props: Props) {
         </ScrollView>
         <Footer phase={phase} source={gif ? 'el GIF' : 'el video'} ready={Boolean(trim)} onSave={() => void finish(false)} onSend={() => void finish(true)} />
       </View>
-      <StickerSoundSheet visible={soundOpen} offerOriginal={!gif} choice={choice} clipLength={formatClipClock(trim ? trim.endMs - trim.startMs : 0)} onChoose={(next) => { setNotice(''); setChoice(next); }} onPreviewOriginal={preview.listen} onClose={() => setSoundOpen(false)} />
+      <StickerSoundSheet visible={soundOpen} offerOriginal={!gif} choice={choice} clipLength={formatClipClock(trim ? trim.endMs - trim.startMs : 0)} onChoose={(next) => { setNotice(''); setChoice(next); }} onPreviewOriginal={preview.listen} onClose={() => setSoundOpen(false)} voiceDoor={props.voiceDoor} />
     </Modal>
   );
 }
@@ -162,7 +165,7 @@ function Header(props: { onBack: () => void; onSound: () => void; disabled: bool
   );
 }
 
-const SOUND_ICONS = { original: Volume2, voice: Mic, upload: Music, preset: Music, none: Ban } as const;
+const SOUND_ICONS = { original: Volume2, voice: Mic, upload: Music, preset: Music, none: Ban, spoken: AudioLines } as const;
 
 /** What the sticker will sound like (design ss-01): a tap opens the sheet, the round button listens. */
 function SoundRow(props: { choice: SoundChoice; clipLength: string; listening: boolean; onOpen: () => void; onListen: () => void; disabled: boolean }) {

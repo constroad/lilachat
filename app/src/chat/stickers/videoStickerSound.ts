@@ -2,6 +2,7 @@ import { clipWindowOf, MAX_STICKER_AUDIO_BYTES, MAX_STICKER_VIDEO_BYTES, VIDEO_S
 import type { TrimWindow } from './videoStickerTrim';
 import type { VideoStickerUpload } from './stickersApi';
 import { clipMimeOf } from './stickerSource';
+import { spokenBlocker, spokenFieldsOf, spokenSummary, type SpokenChoice } from './spokenVoice';
 
 /**
  * The sound of a sticker made from a video (José 26/11, design ss-02): the
@@ -15,13 +16,15 @@ export type SoundChoice =
   | { kind: 'voice'; clip: AudioClip | null }
   | { kind: 'upload'; clip: AudioClip | null }
   | { kind: 'preset'; presetId: string }
-  | { kind: 'none' };
+  | { kind: 'none' }
+  | SpokenChoice;
 
 export type PickedVideo = { uri: string; name: string; mime: string; bytes?: number };
 
 /** What the server is told about the sound, or null while a voice or an audio is still missing. */
 export function stickerSoundOf(choice: SoundChoice): StickerSound | null {
   if (choice.kind === 'voice' || choice.kind === 'upload') return choice.clip ? { kind: 'file' } : null;
+  if (choice.kind === 'spoken') return spokenBlocker(choice) ? null : { kind: 'voice', voiceId: choice.voiceId };
   return choice;
 }
 
@@ -45,6 +48,8 @@ export function soundSummary(choice: SoundChoice): { title: string; detail: stri
       return { title: presetLabel(choice.presetId), detail: 'Sonido de Lilachat' };
     case 'none':
       return { title: 'Sin sonido', detail: 'El sticker se mueve sin sonar' };
+    case 'spoken':
+      return spokenSummary(choice);
   }
 }
 
@@ -56,6 +61,7 @@ export function videoStickerBlocker(input: { video: PickedVideo; trim: TrimWindo
   if (!clipWindowOf(input.trim.startMs, input.trim.endMs)) return 'Elige un tramo de medio segundo a 6 segundos.';
   if (input.choice.kind === 'voice' && !input.choice.clip) return 'Graba tu voz o elige otro sonido.';
   if (input.choice.kind === 'upload' && !input.choice.clip) return 'Elige un audio del teléfono o elige otro sonido.';
+  if (input.choice.kind === 'spoken') return spokenBlocker(input.choice);
   const clip = audioClipOf(input.choice);
   return clip && clip.bytes > MAX_STICKER_AUDIO_BYTES ? audioTooHeavy() : null;
 }
@@ -94,7 +100,7 @@ export function pickedVideoOf(asset: { uri: string; fileName?: string | null; mi
 export function videoStickerUploadOf(input: { video: PickedVideo; trim: TrimWindow; choice: SoundChoice }): VideoStickerUpload | null {
   const sound = stickerSoundOf(input.choice);
   if (!sound) return null;
-  return { video: input.video, audio: audioClipOf(input.choice), fields: videoStickerFields(input.trim, sound) };
+  return { video: input.video, audio: audioClipOf(input.choice), fields: [...videoStickerFields(input.trim, sound), ...spokenFieldsOf(input.choice)] };
 }
 
 /**

@@ -13,5 +13,5 @@ export function GifStickerEditorHost() {
 function ChatGifStickerEditor(props: { ask: GifStickerAsk }) {
   const { jwt, chatId, gif } = props.ask;
   const stickers = useStickers(jwt);
-  return <CreateVideoSticker visible video={gif} onClose={closeGifStickerEditor} onSave={stickers.saveFromVideo} onSend={(sticker) => stickers.send(chatId, sticker)} />;
+  return <CreateVideoSticker visible video={gif} onClose={closeGifStickerEditor} onSave={stickers.saveFromVideo} voiceDoor={stickers.voiceDoor} onSend={(sticker) => stickers.send(chatId, sticker)} />;
 }

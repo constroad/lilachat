@@ -139,7 +139,7 @@ export const EmojiStickerPanel = memo(function EmojiStickerPanel(props: {
       )}
       {saved.sheets}
       {videoForSticker ? (
-        <CreateVideoSticker key={videoForSticker.uri} visible video={videoForSticker} onClose={() => setVideoForSticker(null)} onSave={stickers.saveFromVideo} onSend={(sticker) => stickers.send(props.chatId, sticker, { ...props.thread, replyToSeq: props.replyTo?.() })} />
+        <CreateVideoSticker key={videoForSticker.uri} visible video={videoForSticker} onClose={() => setVideoForSticker(null)} onSave={stickers.saveFromVideo} voiceDoor={stickers.voiceDoor} onSend={(sticker) => stickers.send(props.chatId, sticker, { ...props.thread, replyToSeq: props.replyTo?.() })} />
       ) : null}
       <StickerPhotoContext.Provider value={photoForSticker}>
         <CreateSticker key={editorSession} visible={creating} chatName={props.chatName} onClose={closeEditor} onSave={stickers.save} onSend={(sticker) => stickers.send(props.chatId, sticker, { ...props.thread, replyToSeq: props.replyTo?.() })} />

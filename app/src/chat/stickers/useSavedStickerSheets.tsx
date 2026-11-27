@@ -27,7 +27,7 @@ export function useSavedStickerSheets(jwt: string, stickers: StickersState): { o
         onClose={() => setOptionsFor(null)}
         actions={{ onSound: setSoundFor, onRemoveSound: (sticker) => void removeSound(sticker), onExport: setExportFor, onToggleFavorite: (sticker) => void stickers.toggleFavorite(sticker), onRemove: (sticker) => void stickers.remove(sticker) }}
       />
-      {soundFor ? <SavedStickerSoundSheet key={soundFor.id} sticker={soundFor} onSave={stickers.setSound} onClose={() => setSoundFor(null)} /> : null}
+      {soundFor ? <SavedStickerSoundSheet key={soundFor.id} sticker={soundFor} onSave={stickers.setSound} voiceDoor={stickers.voiceDoor} onClose={() => setSoundFor(null)} /> : null}
       <StickerExportSheet jwt={jwt} sticker={exportFor} onClose={() => setExportFor(null)} />
     </>
   );

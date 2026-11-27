@@ -30,7 +30,10 @@ web), §168 (Automatizaciones). **Fecha de corte: 17/11/2026.**
 - Freno por usuario: 6 llamadas por minuto, en memoria del proceso.
 - La membresía del chat es el permiso: no se resume un chat ajeno.
 - `/lila …` al principio del mensaje, solo en un chat con `workspaceId` (`maybeAnswerMention`, llamado
-  desde `socket.ts`). Una mención «@Lila» nunca lo llama (22/10).
+  desde `socket.ts`). Una mención «@Lila» nunca lo llama (22/10). Con apps instaladas en el chat, ellas oyen el
+  mensaje y el `/lila` propio contesta igual, salvo que una de sus apps haya registrado el comando `lila`
+  (`builtInLilaAnswers`, 27/11, Agentes: antes cualquier bot lo callaba y en un canal con Dali, Portal o Inframaq
+  nadie contestaba). Firma la tarea con cualquier app de agentes del espacio (`lilaDoorFor`).
 - Lila se suma como miembro la primera vez. La respuesta es un mensaje más del chat.
 - Si falla, el chat lee «No pude responder ahora. Prueba en un rato.» y la causa va al log.
 - Contexto: hasta 40 mensajes y 8000 caracteres (`CONTEXT_LIMITS` en `shared/src/assistant.ts`).

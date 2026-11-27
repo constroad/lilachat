@@ -2,7 +2,8 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vites
 import type { MongoMemoryServer } from 'mongodb-memory-server';
 import { startTestMongo } from './testMongo.js';
 import mongoose, { Types } from 'mongoose';
-import { maybeAnswerMention, resetAssistantUser } from './assistantReply.js';
+import { builtInLilaAnswers, maybeAnswerMention, resetAssistantUser } from './assistantReply.js';
+import { BotAppModel } from './bots/botModels.js';
 import { setAssistantClient } from './assistantService.js';
 import { ChatModel, MessageModel } from './chatModels.js';
 import { UserModel } from './models.js';
@@ -156,5 +157,28 @@ describe('maybeAnswerMention', () => {
     expect(llamadas).toBe(0);
     const chat = await ChatModel.findById(chatId).lean();
     expect(chat?.members).toHaveLength(1);
+  });
+});
+
+/**
+ * Agentes 27/11: with Dali, Portal or Inframaq in a channel, «/lila» was answered by nobody — the built-in Lila
+ * kept quiet for any bot, and agentes' own /lila never registered. It keeps quiet only for an app that took `lila`.
+ */
+describe('builtInLilaAnswers', () => {
+  const botOf = (appId: Types.ObjectId) => ({ installationId: new Types.ObjectId(), appId, workspaceId: new Types.ObjectId(), botUserId: new Types.ObjectId(), scopes: [] });
+
+  it('answers when the chat has no bot, or bots without a /lila command', async () => {
+    // Arrange
+    await BotAppModel.deleteMany({});
+    const portal = await BotAppModel.create({ clientId: 'lca_test_portal_c', clientSecretHash: 'h', name: 'Portal', redirectUris: ['https://p.test/cb'], webhookUrl: 'https://agentes.test/hook', commands: [{ command: 'visita', description: 'Visita' }] });
+    // Act / Assert
+    expect(await builtInLilaAnswers([], '/lila resume')).toBe(true);
+    expect(await builtInLilaAnswers([botOf(portal._id)], '/lila resume')).toBe(true);
+  });
+
+  it('keeps quiet when an app in the chat registered /lila', async () => {
+    await BotAppModel.deleteMany({});
+    const lila = await BotAppModel.create({ clientId: 'lca_test_lila_c', clientSecretHash: 'h', name: 'Lila', redirectUris: ['https://a.test/cb'], webhookUrl: 'https://agentes.test/hook', commands: [{ command: 'lila', description: 'Lila' }] });
+    expect(await builtInLilaAnswers([botOf(lila._id)], '/lila resume')).toBe(false);
   });
 });

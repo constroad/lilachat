@@ -31,7 +31,7 @@ import { alContestar, alOfrecer, alTerminar, configurarCiclo, onAnswering } from
 import { configurarEntrega } from './entregaPorAviso.js';
 import { configurarAvisoDeTarjeta } from './avisoDeTarjeta.js';
 import { configureChannelNotices, configureMembersNotices, configureWorkspaceNotices } from './workspaceNotices.js';
-import { maybeAnswerMention } from './assistantReply.js';
+import { builtInLilaAnswers, maybeAnswerMention } from './assistantReply.js';
 import { verifySession } from './sessions.js';
 import { esDispositivoVinculado } from '@lilachat/shared';
 import { CALL_RESTART, CALL_RESTART_ANSWER, callReactionOf, callSignalStep, reactionKeyOf } from '@lilachat/shared';
@@ -252,8 +252,10 @@ export function attachSocket(httpServer: HttpServer, options: { minimumBuild?: M
         // conversación siguió igual. Un duplicado no la vuelve a invocar.
         if (!result.duplicate) {
           void (async () => {
-            // With an installed app in the chat (agentes' Lila), the app answers: the built-in @lila stays quiet.
-            if ((await botsAmong(members)).length > 0) return void (await botsHearMessage(result.message, members));
+            // The chat's apps hear it; the built-in /lila keeps quiet only if one of them took `lila` (Agentes 27/11).
+            const bots = await botsAmong(members);
+            if (bots.length > 0) await botsHearMessage(result.message, members);
+            if (!(await builtInLilaAnswers(bots, result.message.body))) return;
             await maybeAnswerMention({
               chatId: result.message.chatId,
               askedBy: userId,

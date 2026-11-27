@@ -1,5 +1,7 @@
 import { Types } from 'mongoose';
-import { detectLilaCommand, TELEFONO_DE_LILA } from '@lilachat/shared';
+import { ASSISTANT_NAME, detectLilaCommand, TELEFONO_DE_LILA } from '@lilachat/shared';
+import { BotAppModel } from './bots/botModels.js';
+import type { BotOfUser } from './bots/botRegistry.js';
 import { answerMention } from './assistantService.js';
 import { ChatModel } from './chatModels.js';
 import { sendMessage } from './chatService.js';
@@ -38,6 +40,16 @@ export async function assistantUserId(): Promise<Types.ObjectId> {
 /** Para los tests: el id cacheado no puede sobrevivir a una base nueva. */
 export function resetAssistantUser(): void {
   lilaId = null;
+}
+
+/**
+ * Whether the built-in Lila answers «/lila» in a chat with these bots (Agentes 27/11): yes, unless one of their apps
+ * registered the `lila` command itself. Before, any bot silenced it, and with Dali, Portal or Inframaq in a channel
+ * nobody answered.
+ */
+export async function builtInLilaAnswers(bots: readonly Pick<BotOfUser, 'appId'>[], body: string | undefined): Promise<boolean> {
+  if (bots.length === 0 || !detectLilaCommand(body ?? '')) return true;
+  return !(await BotAppModel.exists({ _id: { $in: bots.map((bot) => bot.appId) }, 'commands.command': ASSISTANT_NAME }));
 }
 
 export async function maybeAnswerMention(params: {

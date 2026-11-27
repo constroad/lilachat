@@ -29,10 +29,13 @@ export function WorkStreetEditor(props: EditorProps) {
   const view = useMemo(() => workMapView(props.map ?? NO_STREETS), [props.map]);
   const gps = useGpsWalk();
   useEffect(() => { setDraft((before) => (before.mode === 'gps' ? walkedDraft(before, gps.walk) : before)); }, [gps.walk]);
-  const handles = useMemo(() => streetDraftHandles(draft), [draft]);
+  // Every drop rebuilds the rings: one dropped off the street stayed where the mouse left it (José 27/11).
+  const [drops, setDrops] = useState(0);
+  const handles = useMemo(() => streetDraftHandles(draft, drops), [draft, drops]);
   const [focus, setFocus] = useState<WorkMapPoint | null>(() => (view.bounds ? null : (props.start ?? null)));
   const onHandleDrop = (handle: StreetEnd, point: WorkMapPoint) => {
     const dropped = dragStreetEnd(draft, handle, point);
+    setDrops((count) => count + 1);
     setDraft(dropped.draft);
     setError(dropped.problem);
   };

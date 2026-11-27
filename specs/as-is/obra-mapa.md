@@ -44,7 +44,7 @@ ingeniero de campo desde el celular y lo mira el cliente desde una computadora.
 | Fecha de corte | o-01 | Solo ofrece días con avance; compara `YYYY-MM-DD` como texto |
 | Día de colocación | — | Chips por día con color (`useMapDays`, `MapDayChips`); filtra fotos y unidades |
 | Capa «Fotos» | — | Marcadores con ícono y placa; el visor recorre todas las fotos del punto |
-| Nueva calle | o-02 | Tocar la calle real (sigue la vía), «A mano», o «Caminar GPS»; extremos arrastrables; ±10 m; ancho y etapa |
+| Nueva calle | o-02 | Tocar la calle real (sigue la vía), «A mano», o «Caminar GPS»; extremos arrastrables; ±10 m flotando sobre el mapa; ancho y etapa; formulario plegable en el teléfono y panel lateral girado/tablet (27/11) |
 | Caminar con GPS | o-13 | Empezar, Pausa, Seguir, Deshacer por partes, Terminar; marcador de posición |
 | Ver tramos | o-03 | Calle con su mapa, avance por trabajo y tramos con estado (Pendiente / En proceso / Terminado) |
 | Etapas con brocha | o-04 | Crear, renombrar, borrar; «Tocar calles» pinta la etapa sobre cada calle |
@@ -255,6 +255,20 @@ Motores puros, con test, usados por web y APK:
 - **19/11** El encuadre inicial suma dibujos y observaciones de Portal a las calles y tiene un tamaño mínimo
   (web y APK, mismo motor `workMapView`). Antes, con calles, los dibujos fuera de ellas no entraban.
 - **19/11** «Fotos» se separa en sub-capas por tipo de informe, como Portal (`reportPhotoLayers.ts`).
+- **27/11** «Definir área de trabajo» (o-02) en el APK, pedido de José: el mapa era ~30 % de la pantalla.
+  Banda violeta de una fila (título + Deshacer y Cancelar como íconos), modos más bajos, ±10 m
+  flotando sobre el mapa, y formulario compacto (nombre y ancho en una fila, largo en una línea,
+  etapas en una fila que se desliza) que se pliega a «resumen + Guardar calle». Girado o en tablet
+  (`useDisposicion().amplia`): mapa a la izquierda y panel lateral de 380 dp. Partes en
+  `WorkStreetEditorParts.tsx`. Mismos testIDs; nuevos `editor-calle-plegar`, `editor-calle-resumen`,
+  `editor-calle-panel`.
+- **27/11** Arreglo: la línea violeta no unía los dos aros. Causa: en el APK el aro arrastrado se
+  queda donde lo soltó el dedo si su punto no cambia (el aro del inicio tenía la clave fija
+  `start-0+000`); pasaba al soltarlo más allá del fin de la calle del mapa (se recorta al extremo) o
+  fuera de ella. Ahora cada soltada cambia la clave (`streetDraftHandles(draft, drop)` → `key`), en
+  web y APK, y soltar pasado el fin dice «Ahí termina la calle del mapa…» (`HANDLE_PAST_END`).
+  También: tras el primer toque de inicio, la línea y «Largo» ya van del aro de inicio al fin (antes
+  seguían la calle entera).
 - **20/11** Rediseño aprobado `mapa-v2` (web y APK): cabecera de una fila en Mapa, mapa a pantalla,
   días y corte flotando, «Compartir avance» y «Pantalla completa» dentro de «Más», panel como hoja
   en el teléfono. Auditorías: `design/stitch/auditorias/mapa-v2-movil.md` y `mapa-v2-escritorio.md`.
@@ -264,7 +278,7 @@ Motores puros, con test, usados por web y APK:
 | Diseño | Estado | Evidencia |
 | --- | --- | --- |
 | o-01 mapa de la obra | Implementado web y APK | `MapWorkspace.tsx`, `WorkMapBoard.tsx`, `WorkMapPanel.tsx` |
-| o-02 definir área | Implementado | `WorkStreetEditor.tsx` (web y APK) |
+| o-02 definir área | Implementado; el APK se aparta del diseño a propósito para agrandar el mapa (27/11, ver INVENTARIO) | `WorkStreetEditor.tsx` (web y APK), `WorkStreetEditorParts.tsx` (APK) |
 | o-03 calle y tramos | Implementado | `StreetScopes.tsx`, `ScopeForm.tsx` |
 | o-04 etapas | Implementado (brocha) | `WorkLayers.tsx`, `LayerActions.tsx` |
 | o-05 trabajos | Implementado (brocha) | `WorkLayers.tsx`, `LayerActions.tsx` |

@@ -1,4 +1,4 @@
-import { lengthOfLine, pickedLine, pickedRange, pickStreet, pointAtMeasure, projectToLine, stationLabel, streetAtTap, tapOnPick, type StreetPick, type TapFeatures } from '@constroad/shared/obra';
+import { lengthOfLine, pickedRange, pickStreet, pointAtMeasure, projectToLine, sliceLine, stationLabel, streetAtTap, tapOnPick, type StreetPick, type TapFeatures } from '@constroad/shared/obra';
 /** What the maps need to ask for the roads at a tap; the rules stay in the package. */
 export { NAMED_ROAD_LAYER, ROAD_SOURCE_LAYERS, tapBox, tapTolerancePx, type BasemapFeatureLike, type TapFeatures } from '@constroad/shared/obra';
 import { addStreetPoint, EMPTY_STREET, streetDraftLengthM, undoStreetPoint, type DrawMode, type StreetDraft } from './workStreetDraft.js';
@@ -32,8 +32,14 @@ export function modeChangeLoss(draft: StreetDraft, mode: DrawMode): string | nul
   return `Cambiar de forma borra lo que marcaste (${what}). ¿Cambiar igual?`;
 }
 
+/**
+ * The line between the two rings, in every step (José 27/11). The package's `pickedLine` keeps the
+ * whole street until both taps are in, so after the first tap the violet line and «Largo» did not
+ * match the ring at the start.
+ */
 const withPick = (draft: StreetDraft, pick: StreetPick, reversed = false): StreetDraft => {
-  const line = pickedLine(pick);
+  const { fromM, toM } = pickedRange(pick);
+  const line = fromM === 0 && toM === Math.round(lengthOfLine(pick.axis)) ? pick.axis : sliceLine(pick.axis, fromM, toM);
   return { ...draft, pick, reversed, points: reversed ? [...line].reverse() : line };
 };
 
@@ -102,25 +108,38 @@ export function streetDraftArea(draft: StreetDraft): string | null {
  * person's 0+000 and end, which on a street marked backwards are the map's end and start.
  */
 export type StreetEnd = 'start' | 'end';
-export type StreetHandle = { handle: StreetEnd; point: WorkMapPoint; label: string };
+/** `key` changes with every drop: a native ring the finger left off the line is drawn again at `point`. */
+export type StreetHandle = { handle: StreetEnd; point: WorkMapPoint; label: string; key: string };
 
 /** Farther than this from the axis, the drop was a slip of the finger (Portal: `MAX_OFF_AXIS_M`). */
 export const HANDLE_REACH_M = 40;
 /** The shortest stretch a drag leaves (Portal: `MIN_SCOPE_M`). */
 export const HANDLE_MIN_M = 5;
 export const HANDLE_OFF_STREET = 'Suelta el extremo sobre la calle.';
+/** Past this from the street's last point, the ring was dropped beyond where the map's street ends. */
+export const HANDLE_PAST_END_M = 8;
+/** `projectToLine` rounds its measure to the centimeter. */
+const ROUNDING_M = 0.01;
+export const HANDLE_PAST_END = 'Ahí termina la calle del mapa. Si la obra sigue, dibújala «A mano».';
 
 /** Which end of the map's road a handle of the person is. */
 const axisSide = (draft: StreetDraft, handle: StreetEnd): 'from' | 'to' => ((handle === 'start') !== Boolean(draft.reversed) ? 'from' : 'to');
 
-export function streetDraftHandles(draft: StreetDraft): StreetHandle[] {
+/**
+ * The two rings. `drop` counts the drops of the screen: the APK keeps a dragged native ring where the
+ * finger left it unless its key changes, and a drop that does not move the end (past the street's
+ * end, off the street) left the ring away from the violet line (José 27/11).
+ */
+export function streetDraftHandles(draft: StreetDraft, drop = 0): StreetHandle[] {
   if (draft.mode !== 'street' || !draft.pick) return [];
   const { fromM, toM } = pickedRange(draft.pick);
   const lengthM = Math.round(toM - fromM);
   const handles: StreetHandle[] = [];
   for (const handle of ['start', 'end'] as const) {
     const point = pointAtMeasure(draft.pick.axis, axisSide(draft, handle) === 'from' ? fromM : toM);
-    if (point) handles.push({ handle, point: { lat: point.lat, lng: point.lng }, label: stationLabel(handle === 'start' ? 0 : lengthM) });
+    if (!point) continue;
+    const label = stationLabel(handle === 'start' ? 0 : lengthM);
+    handles.push({ handle, point: { lat: point.lat, lng: point.lng }, label, key: `${handle}-${point.lat.toFixed(7)},${point.lng.toFixed(7)}-${drop}` });
   }
   return handles;
 }
@@ -141,7 +160,8 @@ export function dragStreetEnd(draft: StreetDraft, handle: StreetEnd, point: Work
   if (draft.mode !== 'street' || !draft.pick) return { draft, problem: null };
   const projected = projectToLine(draft.pick.axis, point);
   if (!projected || projected.distanceM > HANDLE_REACH_M) return { draft, problem: HANDLE_OFF_STREET };
-  return { draft: moveEnd(draft, draft.pick, handle, projected.measureM), problem: null };
+  const atStreetEnd = projected.measureM <= ROUNDING_M || projected.measureM >= lengthOfLine(draft.pick.axis) - ROUNDING_M;
+  return { draft: moveEnd(draft, draft.pick, handle, projected.measureM), problem: atStreetEnd && projected.distanceM > HANDLE_PAST_END_M ? HANDLE_PAST_END : null };
 }
 
 /** «−10 m» / «+10 m»: an end moved along the person's chainage, for when the finger is too coarse. */

@@ -253,7 +253,7 @@ Proyecto `15540754270713720465`. Cada pantalla en móvil, tablet y escritorio; l
 | Slug | Pantalla |
 | --- | --- |
 | `o-01-mapa-obra` | Mapa de la obra |
-| `o-02-mapa-definir` | Definir el área de trabajo |
+| `o-02-mapa-definir` | Definir el área de trabajo · **APK 27/11, inventado sobre el diseño** (José: «el área del mapa es muy muy pequeña»; el diseño también deja ~40 % de mapa): Deshacer y Cancelar como íconos en la fila del título, ±10 m flotando arriba del mapa, nombre y ancho en una fila, largo en una línea, etapas en una fila deslizable, formulario plegable (`editor-calle-plegar`) a «resumen + Guardar calle»; girado o tablet, panel lateral de 380 dp. Pendiente de la mirada de José |
 | `o-03-mapa-calle` | Una calle y sus tramos |
 | `o-04-mapa-etapas` | Etapas de la obra |
 | `o-05-mapa-trabajos` | Trabajos sobre la obra |

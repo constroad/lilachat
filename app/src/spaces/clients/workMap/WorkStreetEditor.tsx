@@ -1,106 +1,55 @@
 import { useEffect, useMemo, useState } from 'react';
-import { KeyboardAvoidingView, Modal, Pressable, Text, TextInput, View } from 'react-native';
+import { KeyboardAvoidingView, Modal, Pressable, ScrollView, Text, View } from 'react-native';
 import { randomUUID } from 'expo-crypto';
-import { Footprints, Navigation, Pause, Play, Save, Square, Undo2, X } from 'lucide-react-native';
-import { DRAW_MODES, dragStreetEnd, pickedStreetFrame, type MapFrame, EMPTY_STREET, nudgeStreetEnd, streetDraftHandles, type StreetEnd, handPointsLabel, metersLabel, modeChangeLoss, setDrawMode, streetDraftArea, streetDraftEnds, streetDraftHint, streetDraftLengthM, streetDraftLines, streetDraftPins, streetDraftProblem, tapStreetDraft, undoStreetDraft, WORK_MAP_DRAFT_COLOR, WORK_MAP_PLANNED_COLOR, walkedDraft, walkHint, walkPositionPins, workMapView, type DrawMode, type PlaceAsk, type StreetDraft, type TapFeatures, type WorkMap, type WorkMapPoint, type WorkMapStage } from '@lilachat/shared';
+import { Footprints, Pause, Play, Square } from 'lucide-react-native';
+import { dragStreetEnd, pickedStreetFrame, type MapFrame, EMPTY_STREET, nudgeStreetEnd, streetDraftHandles, type StreetEnd, handPointsLabel, modeChangeLoss, setDrawMode, streetDraftHint, streetDraftLines, streetDraftPins, streetDraftProblem, tapStreetDraft, undoStreetDraft, walkedDraft, walkHint, walkPositionPins, workMapView, type DrawMode, type PlaceAsk, type StreetDraft, type TapFeatures, type WorkMap, type WorkMapPoint } from '@lilachat/shared';
 import { useCurrentLocation } from '../../../chat/location/useCurrentLocation';
 import { useColores } from '../../../ui/tema';
+import { useDisposicion } from '../../../ui/useDisposicion';
 import { useMargenes } from '../../../ui/useMargenes';
 import { WorkMapSurface } from './WorkMapSurface';
 import type { StreetSend } from './workProgressSender';
 import { useGpsWalk } from './useGpsWalk';
 import { PlaceSearch } from './PlaceSearch';
+import { EditorLegend, EditorTopBar, EndNudges, ModeSwitch, StreetForm, SwitchQuestion } from './WorkStreetEditorParts';
 
 const NO_STREETS: WorkMap = { streets: [], scopes: [], progress: [], works: [], stages: [] };
-const FIELD = 'mt-1 h-12 rounded-xl border border-outline/25 bg-background px-3 text-[15px] text-on-surface';
-const LABEL = 'text-[12px] font-semibold uppercase text-on-surface-variant';
-const LENGTH_HINT = 'Medido en el mapa';
 const NO_PINS: never[] = [];
-/** One step of «−10 m» / «+10 m»: a finger lands within a few meters, the buttons finish the job. */
-const NUDGE_M = 10;
 const GPS_DENIED = 'Lilachat no tiene permiso de ubicación. Actívalo en Ajustes o dibuja la calle de otra forma.';
+/** A rotated phone or a tablet: the controls go to a side panel this wide and the map keeps the rest (dp). */
+const SIDE_PANEL_WIDTH = 380;
 
 type EditorProps = { open: boolean; title: string; map: WorkMap | null; send: StreetSend; onClose: () => void; onSaved: (message: string) => void; /** «Busca un lugar o pega el enlace» (José 08/11). */ findPlace?: PlaceAsk; /** The service's place (Portal da5382a5): where a map without streets opens. */ start?: WorkMapPoint };
 
-/** «Tocar la calle» first: it is the fast one (audit 07/11). «A mano» is for a pasaje the map lacks. */
-function ModeSwitch({ mode, onMode }: { mode: DrawMode; onMode: (mode: DrawMode) => void }) {
-  return (
-    <View accessibilityRole="radiogroup" className="mt-2 flex-row gap-1 rounded-xl bg-on-primary/15 p-1">
-      {DRAW_MODES.map((one) => (
-        <Pressable key={one.mode} testID={`editor-modo-${one.mode}`} accessibilityRole="radio" accessibilityState={{ checked: mode === one.mode }} onPress={() => onMode(one.mode)} className={`h-10 flex-1 items-center justify-center rounded-lg ${mode === one.mode ? 'bg-surface' : ''}`}>
-          <Text className={`text-[14px] font-semibold ${mode === one.mode ? 'text-primary' : 'text-on-primary'}`}>{one.label}</Text>
-        </Pressable>
-      ))}
-    </View>
-  );
-}
-
-/** Design o-02, audited 07/11: tap the street, then where the work starts and ends on it; or draw it by hand. */
-/** «Cambiar de forma borra lo que marcaste»: asked before a switch erases a street (audit 08/11). */
-function SwitchQuestion(props: { question: string; onYes: () => void; onNo: () => void }) {
-  return (
-    <View testID="editor-calle-cambiar-modo" className="mt-2 rounded-xl bg-on-primary/15 p-3">
-      <Text className="text-[14px] font-semibold text-on-primary">{props.question}</Text>
-      <View className="mt-2 flex-row gap-2">
-        <Pressable testID="editor-calle-cambiar-si" onPress={props.onYes} className="h-11 flex-1 items-center justify-center rounded-xl bg-surface"><Text className="text-[14px] font-semibold text-primary">Cambiar</Text></Pressable>
-        <Pressable testID="editor-calle-cambiar-no" onPress={props.onNo} className="h-11 flex-1 items-center justify-center rounded-xl bg-on-primary/15"><Text className="text-[14px] font-semibold text-on-primary">Seguir aquí</Text></Pressable>
-      </View>
-    </View>
-  );
-}
-
-/** The stage chosen with the street (o-02): it rides on a stretch over the whole street. */
-function StageField(props: { stages: WorkMapStage[]; stageId?: string; onPick: (stageId?: string) => void }) {
-  if (!props.stages.length) return null;
-  const options = [{ id: '', name: 'Sin etapa' }, ...props.stages];
-  return (
-    <View className="mt-3">
-      <Text className={LABEL}>Etapa</Text>
-      <View className="mt-1 flex-row flex-wrap gap-2">
-        {options.map((stage) => {
-          const on = (props.stageId ?? '') === stage.id;
-          return <Pressable key={stage.id || 'ninguna'} testID={`editor-calle-etapa-${stage.id || 'ninguna'}`} onPress={() => props.onPick(stage.id || undefined)} className={`h-10 justify-center rounded-xl border px-3 ${on ? 'border-primary bg-primary/10' : 'border-outline/25'}`}><Text className={`text-[14px] font-semibold ${on ? 'text-primary' : 'text-on-surface'}`}>{stage.name}</Text></Pressable>;
-        })}
-      </View>
-    </View>
-  );
-}
-
-/** Legend and north over the editor's map (design o-02): what the violet line is, and which way is up. */
-function EditorLegend() {
+/** «Pausa / Seguir / Terminar» while walking, «Empezar a caminar» before (design o-13). */
+function GpsButtons(props: { walk: ReturnType<typeof useGpsWalk> }) {
   const colors = useColores();
+  const gps = props.walk;
+  if (!gps.walk.walking) {
+    return (
+      <Pressable testID="editor-gps-empezar" onPress={() => void gps.start()} className="mt-2 h-12 flex-row items-center justify-center gap-2 rounded-xl bg-surface">
+        <Footprints size={20} color={colors.primary} /><Text className="text-[16px] font-bold text-primary">Empezar a caminar</Text>
+      </Pressable>
+    );
+  }
   return (
-    <>
-      <View testID="editor-leyenda" pointerEvents="none" className="absolute bottom-3 left-3 gap-1 rounded-xl border border-outline/15 bg-surface px-3 py-2">
-        <View className="flex-row items-center gap-2"><View className="h-1 w-6 rounded-full" style={{ backgroundColor: WORK_MAP_DRAFT_COLOR }} /><Text className="text-[12px] font-semibold text-on-surface">Calle nueva</Text></View>
-        <View className="flex-row items-center gap-2"><View className="h-0 w-6 border-t-2 border-dashed" style={{ borderColor: WORK_MAP_PLANNED_COLOR }} /><Text className="text-[12px] font-semibold text-on-surface">Calles de la obra</Text></View>
-      </View>
-      <View testID="editor-norte" accessibilityLabel="Norte arriba" pointerEvents="none" className="absolute left-3 top-3 h-11 w-11 items-center justify-center rounded-full border border-outline/15 bg-surface">
-        <Navigation size={14} color={colors['on-surface']} /><Text className="text-[10px] font-bold text-on-surface">N</Text>
-      </View>
-    </>
-  );
-}
-
-/** «Inicio −10 m +10 m · Fin −10 m +10 m»: the ends of the picked street, to the meter (José 08/11). */
-function EndNudges({ onNudge }: { onNudge: (handle: StreetEnd, deltaM: number) => void }) {
-  const ends: Array<{ handle: StreetEnd; label: string; key: string }> = [{ handle: 'start', label: 'Inicio', key: 'inicio' }, { handle: 'end', label: 'Fin', key: 'fin' }];
-  return (
-    <View testID="editor-extremos" className="mt-2 flex-row gap-2">
-      {ends.map((end) => (
-        <View key={end.key} className="flex-1 flex-row items-center gap-1">
-          <Text className="pr-1 text-[13px] font-semibold text-on-primary">{end.label}</Text>
-          {[-NUDGE_M, NUDGE_M].map((deltaM) => (
-            <Pressable key={deltaM} testID={`editor-${end.key}-${deltaM < 0 ? 'menos' : 'mas'}`} accessibilityLabel={`${end.label} 10 m hacia ${deltaM < 0 ? 'atrás' : 'adelante'}`} onPress={() => onNudge(end.handle, deltaM)} className="h-11 flex-1 items-center justify-center rounded-lg bg-on-primary/15">
-              <Text className="font-mono text-[13px] font-bold text-on-primary">{deltaM < 0 ? '−10 m' : '+10 m'}</Text>
-            </Pressable>
-          ))}
-        </View>
-      ))}
+    <View className="mt-2 flex-row gap-2">
+      <Pressable testID={gps.walk.paused ? 'editor-gps-seguir' : 'editor-gps-pausa'} onPress={gps.walk.paused ? gps.resume : gps.pause} className="h-12 flex-1 flex-row items-center justify-center gap-2 rounded-xl bg-surface">
+        {gps.walk.paused ? <Play size={18} color={colors.primary} /> : <Pause size={18} color={colors.primary} />}
+        <Text className="text-[16px] font-bold text-primary">{gps.walk.paused ? 'Seguir' : 'Pausa'}</Text>
+      </Pressable>
+      <Pressable testID="editor-gps-terminar" onPress={gps.stop} className="h-12 flex-1 flex-row items-center justify-center gap-2 rounded-xl bg-surface">
+        <Square size={18} color={colors.primary} /><Text className="text-[16px] font-bold text-primary">Terminar</Text>
+      </Pressable>
     </View>
   );
 }
 
+/**
+ * Design o-02, audited 07/11: tap the street, then where the work starts and ends on it; or draw it by
+ * hand. José 27/11: the map is the protagonist. On a phone, a one-line band over it and a form that
+ * folds under it; rotated or on a tablet, the band and the form go to a side panel.
+ */
 export function WorkStreetEditor(props: EditorProps) {
   const [draft, setDraft] = useState<StreetDraft>(EMPTY_STREET);
   const [entryId] = useState(() => randomUUID());
@@ -113,15 +62,18 @@ export function WorkStreetEditor(props: EditorProps) {
   useEffect(() => { setDraft((before) => (before.mode === 'gps' ? walkedDraft(before, gps.walk) : before)); }, [gps.walk]);
   const { current } = useCurrentLocation(props.open && !view.bounds && !props.start);
   const margins = useMargenes();
-  const colors = useColores();
+  const { amplia } = useDisposicion();
   const change = (next: Partial<StreetDraft>) => {
     setError(null);
     setDraft((before) => ({ ...before, ...next }));
   };
-  const handles = useMemo(() => streetDraftHandles(draft), [draft]);
+  // Every drop re-keys the rings: a native ring stays where the finger left it otherwise (José 27/11).
+  const [drops, setDrops] = useState(0);
+  const handles = useMemo(() => streetDraftHandles(draft, drops), [draft, drops]);
   const [focus, setFocus] = useState<WorkMapPoint | null>(null);
   const onHandleDrop = (handle: StreetEnd, point: WorkMapPoint) => {
     const dropped = dragStreetEnd(draft, handle, point);
+    setDrops((count) => count + 1);
     setDraft(dropped.draft);
     setError(dropped.problem);
   };
@@ -142,71 +94,48 @@ export function WorkStreetEditor(props: EditorProps) {
     if (sent.ok) props.onSaved(sent.message);
     else setError(sent.message);
   };
+  const undo = () => { setError(null); if (draft.mode === 'gps') gps.undo(); else setDraft(undoStreetDraft); };
+  const onMode = (mode: DrawMode) => { const question = modeChangeLoss(draft, mode); if (question) setSwitching({ mode, question }); else switchTo(mode); };
+  const band = (
+    <View className="bg-primary px-4 pb-3" style={{ paddingTop: margins.cabecera + 4 }}>
+      <EditorTopBar kicker={props.title} canUndo={draft.points.length > 0} onUndo={undo} onCancel={props.onClose} />
+      {draft.points.length ? null : <PlaceSearch ask={props.findPlace} near={focus ?? props.start} onPick={setFocus} />}
+      <ModeSwitch mode={draft.mode} onMode={onMode} />
+      {switching ? <SwitchQuestion question={switching.question} onYes={() => switchTo(switching.mode)} onNo={() => setSwitching(null)} /> : null}
+      <View className="mt-2 flex-row items-center justify-between gap-2">
+        <Text testID="editor-calle-ayuda" className="flex-1 text-[13px] font-semibold text-on-primary">{draft.mode === 'gps' ? (gps.denied ? GPS_DENIED : walkHint(gps.walk)) : streetDraftHint(draft)}</Text>
+        {draft.mode === 'hand' ? <Text testID="editor-calle-puntos" className="rounded-md bg-on-primary/15 px-2 py-0.5 font-mono text-[12px] text-on-primary">{handPointsLabel(draft.points.length)}</Text> : null}
+      </View>
+      {draft.mode === 'gps' ? <GpsButtons walk={gps} /> : null}
+    </View>
+  );
+  const form = <StreetForm draft={draft} stages={props.map?.stages ?? []} error={error} saving={saving} change={change} onSave={() => void save()} foldable={!amplia} />;
+  // overflow-hidden: with the keyboard open the map shrinks and its buttons spilled over the header (E2E 12/11).
+  const mapArea = (
+    <View className="flex-1 overflow-hidden">
+      {props.open ? <WorkMapSurface view={view} moves pins={handles.length ? NO_PINS : [...streetDraftPins(draft), ...walkPositionPins(gps.walk)]} stretches={streetDraftLines(draft)} onTap={onTap} handles={handles} onHandleDrop={onHandleDrop} focus={focus} frame={frame} near={props.start ?? (current.state === 'ready' ? current.location : null)} /> : null}
+      <EditorLegend />
+      {handles.length ? <EndNudges onNudge={(handle, deltaM) => { setError(null); setDraft((before) => nudgeStreetEnd(before, handle, deltaM)); }} /> : null}
+    </View>
+  );
   return (
     <Modal visible={props.open} animationType="slide" onRequestClose={() => { if (!draft.points.length) props.onClose(); }}>
-      <KeyboardAvoidingView behavior="padding" className="flex-1 bg-background" testID="editor-calle">
-        <View className="bg-primary px-4 pb-3" style={{ paddingTop: margins.cabecera + 8 }}>
-          <Text className="font-mono text-[11px] font-bold uppercase tracking-[2px] text-on-primary/80" numberOfLines={1}>{props.title}</Text>
-          <Text className="text-[20px] font-bold text-on-primary">Definir área de trabajo</Text>
-          {draft.points.length ? null : <PlaceSearch ask={props.findPlace} near={focus ?? props.start} onPick={setFocus} />}
-          <ModeSwitch mode={draft.mode} onMode={(mode) => { const question = modeChangeLoss(draft, mode); if (question) setSwitching({ mode, question }); else switchTo(mode); }} />
-          {switching ? <SwitchQuestion question={switching.question} onYes={() => switchTo(switching.mode)} onNo={() => setSwitching(null)} /> : null}
-          <View className="mt-2 flex-row items-center justify-between gap-2">
-            <Text testID="editor-calle-ayuda" className="flex-1 text-[15px] font-semibold text-on-primary">{draft.mode === 'gps' ? (gps.denied ? GPS_DENIED : walkHint(gps.walk)) : streetDraftHint(draft)}</Text>
-            {draft.mode === 'hand' ? <Text testID="editor-calle-puntos" className="rounded-md bg-on-primary/15 px-2 py-0.5 font-mono text-[12px] text-on-primary">{handPointsLabel(draft.points.length)}</Text> : null}
-          </View>
-          {draft.mode === 'gps' && gps.walk.walking ? (
-            <View className="mt-2 flex-row gap-2">
-              <Pressable testID={gps.walk.paused ? 'editor-gps-seguir' : 'editor-gps-pausa'} onPress={gps.walk.paused ? gps.resume : gps.pause} className="h-14 flex-1 flex-row items-center justify-center gap-2 rounded-xl bg-surface">
-                {gps.walk.paused ? <Play size={18} color={colors.primary} /> : <Pause size={18} color={colors.primary} />}
-                <Text className="text-[16px] font-bold text-primary">{gps.walk.paused ? 'Seguir' : 'Pausa'}</Text>
-              </Pressable>
-              <Pressable testID="editor-gps-terminar" onPress={gps.stop} className="h-14 flex-1 flex-row items-center justify-center gap-2 rounded-xl bg-surface">
-                <Square size={18} color={colors.primary} /><Text className="text-[16px] font-bold text-primary">Terminar</Text>
-              </Pressable>
+      <KeyboardAvoidingView behavior="padding" className={`flex-1 bg-background ${amplia ? 'flex-row' : ''}`} testID="editor-calle">
+        {amplia ? (
+          <>
+            {mapArea}
+            <View testID="editor-calle-panel" className="border-l border-outline/15 bg-surface" style={{ width: SIDE_PANEL_WIDTH }}>
+              {band}
+              <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 12, paddingBottom: margins.pie + 12 }}>{form}</ScrollView>
             </View>
-          ) : null}
-          {draft.mode === 'gps' && !gps.walk.walking ? (
-            <Pressable testID="editor-gps-empezar" onPress={() => void gps.start()} className="mt-2 h-14 flex-row items-center justify-center gap-2 rounded-xl bg-surface">
-              <Footprints size={20} color={colors.primary} /><Text className="text-[16px] font-bold text-primary">Empezar a caminar</Text>
-            </Pressable>
-          ) : null}
-          {handles.length ? <EndNudges onNudge={(handle, deltaM) => { setError(null); setDraft((before) => nudgeStreetEnd(before, handle, deltaM)); }} /> : null}
-          <View className="mt-2 flex-row gap-2">
-            <Pressable testID="editor-calle-deshacer" disabled={!draft.points.length} onPress={() => { setError(null); if (draft.mode === 'gps') gps.undo(); else setDraft(undoStreetDraft); }} className={`h-11 flex-1 flex-row items-center justify-center gap-2 rounded-xl bg-on-primary/15 ${draft.points.length ? '' : 'opacity-50'}`}>
-              <Undo2 size={16} color={colors['on-primary']} /><Text className="text-[14px] font-semibold text-on-primary">Deshacer</Text>
-            </Pressable>
-            <Pressable testID="editor-calle-cancelar" onPress={props.onClose} className="h-11 flex-1 flex-row items-center justify-center gap-2 rounded-xl bg-on-primary/15">
-              <X size={16} color={colors['on-primary']} /><Text className="text-[14px] font-semibold text-on-primary">Cancelar</Text>
-            </Pressable>
-          </View>
-        </View>
-        {/* overflow-hidden: with the keyboard open the map shrinks and its buttons spilled over the header (E2E 12/11). */}
-        <View className="flex-1 overflow-hidden">
-          {props.open ? <WorkMapSurface view={view} moves pins={handles.length ? NO_PINS : [...streetDraftPins(draft), ...walkPositionPins(gps.walk)]} stretches={streetDraftLines(draft)} onTap={onTap} handles={handles} onHandleDrop={onHandleDrop} focus={focus} frame={frame} near={props.start ?? (current.state === 'ready' ? current.location : null)} /> : null}
-          <EditorLegend />
-        </View>
-        <View className="border-t border-outline/15 bg-surface px-4 pt-3" style={{ paddingBottom: margins.pie + 12 }}>
-          <Text className={LABEL}>Nombre</Text>
-          <TextInput testID="editor-calle-nombre" value={draft.name} maxLength={80} placeholder="Jr. Los Pinos" onChangeText={(name) => change({ name })} className={FIELD} />
-          <View className="mt-3 flex-row gap-3">
-            <View className="flex-1">
-              <View className="flex-row items-center justify-between"><Text className={LABEL}>Largo</Text><Text className="text-[11px] font-bold text-primary">Auto</Text></View>
-              <Text testID="editor-calle-largo" className="mt-1 py-3 font-mono text-[15px] text-on-surface">{metersLabel(streetDraftLengthM(draft))}</Text>
-              <Text testID="editor-calle-extremos" className="font-mono text-[11px] text-on-surface-variant">{streetDraftEnds(draft) ?? LENGTH_HINT}</Text>
-            </View>
-            <View className="flex-1">
-              <Text className={LABEL}>Ancho (m)</Text>
-              <TextInput testID="editor-calle-ancho" keyboardType="decimal-pad" value={draft.widthM === null ? '' : String(draft.widthM)} placeholder="6.0" onChangeText={(text) => change({ widthM: text.trim() ? Number(text.replace(',', '.')) : null })} className={FIELD} />
-            </View>
-          </View>
-          <StageField stages={props.map?.stages ?? []} stageId={draft.stageId} onPick={(stageId) => change({ stageId })} />
-          {streetDraftArea(draft) ? <View className="mt-3 flex-row items-center justify-between rounded-xl border border-outline/15 bg-background px-3 py-2"><Text className="text-[13px] text-on-surface-variant">Área neta</Text><Text testID="editor-calle-area" className="font-mono text-[15px] font-bold text-on-surface">{streetDraftArea(draft)}</Text></View> : null}
-          {error ? <Text testID="editor-calle-error" className="mt-2 text-[13px] font-semibold text-error">{error}</Text> : null}
-          <Pressable testID="editor-calle-guardar" disabled={saving} onPress={() => void save()} className={`mt-3 h-12 flex-row items-center justify-center gap-2 rounded-xl bg-primary ${saving ? 'opacity-60' : ''}`}>
-            <Save size={18} color={colors['on-primary']} /><Text className="text-[15px] font-semibold text-on-primary">{saving ? 'Guardando…' : 'Guardar calle'}</Text>
-          </Pressable>
-        </View>
+          </>
+        ) : (
+          <>
+            {band}
+            {mapArea}
+            <View className="border-t border-outline/15 bg-surface px-4 pt-2" style={{ paddingBottom: margins.pie + 8 }}>{form}</View>
+          </>
+        )}
       </KeyboardAvoidingView>
     </Modal>
   );

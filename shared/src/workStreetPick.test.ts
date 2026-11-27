@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { EMPTY_STREET, streetDraftLengthM, streetDraftPins, streetDraftProblem, DRAFT_NEEDS_STREET } from './workStreetDraft.js';
-import { dragStreetEnd, handPointsLabel, pickedStreetFrame, HANDLE_OFF_STREET, modeChangeLoss, NO_STREET_THERE, nudgeStreetEnd, setDrawMode, streetDraftArea, streetDraftEnds, streetDraftHandles, streetDraftHint, tapStreetDraft, undoStreetDraft } from './workStreetPick.js';
+import { dragStreetEnd, handPointsLabel, pickedStreetFrame, HANDLE_OFF_STREET, HANDLE_PAST_END, modeChangeLoss, NO_STREET_THERE, nudgeStreetEnd, setDrawMode, streetDraftArea, streetDraftEnds, streetDraftHandles, streetDraftHint, tapStreetDraft, undoStreetDraft } from './workStreetPick.js';
 
 /** Audit 07/11 (José: «fácil y fluido para un ingeniero de campo»): tap the street, then its start and end. */
 const M_PER_DEG_LNG = 111_195 * Math.cos((12 * Math.PI) / 180);
@@ -219,6 +219,34 @@ describe('trimming a picked street by its ends', () => {
   it('«Deshacer» after a drag gives back the whole street\'s end', () => {
     const draft = undoStreetDraft(dragStreetEnd(whole(), 'end', east(400)).draft);
     expect(streetDraftLengthM(draft)).toBe(500);
+  });
+
+  /** José 27/11: the rings said 0+000 and 0+065 but the violet line covered only a piece near the end. */
+  const endsOf = (draft: ReturnType<typeof whole>) => [draft.points[0]!, draft.points[draft.points.length - 1]!];
+  const ringsOf = (draft: ReturnType<typeof whole>) => streetDraftHandles(draft).map((one) => one.point);
+
+  it('the violet line runs between the two rings once the start is marked', () => {
+    const marked = tapStreetDraft(whole(), at(200)).draft;
+    const [first, last] = endsOf(marked);
+    const [start, end] = ringsOf(marked);
+    expect(first!.lng).toBeCloseTo(start!.lng, 7);
+    expect(last!.lng).toBeCloseTo(end!.lng, 7);
+    expect(streetDraftLengthM(marked)).toBe(300);
+  });
+
+  it('a drop that leaves an end where it was still gives its ring a new key, so the ring goes back to the line', () => {
+    const before = dragStreetEnd(whole(), 'end', east(65)).draft;
+    const { draft } = dragStreetEnd(before, 'start', east(-30));
+    expect(ringsOf(draft)[0]!.lng).toBeCloseTo(ringsOf(before)[0]!.lng, 7);
+    expect(streetDraftHandles(draft, 1)[0]!.key).not.toBe(streetDraftHandles(before, 0)[0]!.key);
+  });
+
+  it('a ring dropped past where the map\'s street ends says why it stops there', () => {
+    const { draft, problem } = dragStreetEnd(whole(), 'start', east(-30));
+    expect(problem).toBe(HANDLE_PAST_END);
+    expect(streetDraftEnds(draft)).toBe('Inicio 0+000 · Fin 0+500');
+    expect(dragStreetEnd(whole(), 'start', east(-3)).problem).toBeNull();
+    expect(dragStreetEnd(whole(), 'end', east(530)).problem).toBe(HANDLE_PAST_END);
   });
 
   it('with a street picked, the hint says the ends can be dragged', () => {

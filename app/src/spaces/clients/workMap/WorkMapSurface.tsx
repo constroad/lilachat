@@ -135,7 +135,7 @@ export function WorkMapSurface(props: { view: WorkMapView; moves: boolean; pins?
         <Layer id="work-map-icon-pin-badge" type="circle" paint={{ 'circle-color': '#ffffff', 'circle-radius': 8, 'circle-translate': [14, -14] }} />
         <Layer id="work-map-icon-pin-count" type="symbol" layout={{ 'text-field': ['get', 'label'], 'text-font': PIN_FONT, 'text-size': 10, 'text-offset': [1.4, -1.4], 'text-allow-overlap': true }} paint={{ 'text-color': '#6d28d9' }} />
       </GeoJSONSource>
-      {(props.handles ?? NO_HANDLES).map((handle) => <EndHandle key={`${handle.handle}-${handle.label}`} handle={handle} onDrop={props.onHandleDrop} />)}
+      {(props.handles ?? NO_HANDLES).map((handle) => <EndHandle key={handle.key} handle={handle} onDrop={props.onHandleDrop} />)}
     </MapSurface>
     <MapControls map={map} camera={camera} bottomInset={props.controlsInset} />
     </View>

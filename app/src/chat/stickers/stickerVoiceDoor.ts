@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import * as FileSystem from 'expo-file-system/legacy';
-import { canUseStickerVoice, type StickerVoiceId } from '@lilachat/shared';
+import { stickerVoiceSpaceOf, type StickerVoiceId } from '@lilachat/shared';
 import { BASE_URL } from '../../api/client';
 import { useCurrentSpaceId, useMySpaces } from '../../spaces/currentSpace';
 import { audioBase64Of } from './spokenVoice';
@@ -38,10 +38,10 @@ async function listenVoice(jwt: string, request: { voiceId: StickerVoiceId; text
   }
 }
 
-/** The voice door when I am an owner or admin of the open space; null for everyone else (José 27/11: «solo admins»). */
+/** The voice door when I manage a space (the open one first); null for everyone else (José 27/11: «solo admins»). */
 export function useStickerVoiceDoor(jwt: string): StickerVoiceDoor | null {
   const spaceId = useCurrentSpaceId();
   const { spaces } = useMySpaces(jwt);
-  const role = spaces?.find((space) => space.id === spaceId)?.role;
-  return useMemo(() => (spaceId && canUseStickerVoice(role) ? { spaceId, listen: (voiceId, text) => listenVoice(jwt, { voiceId, text, spaceId }) } : null), [jwt, spaceId, role]);
+  const voiceSpaceId = stickerVoiceSpaceOf(spaceId, spaces);
+  return useMemo(() => (voiceSpaceId ? { spaceId: voiceSpaceId, listen: (voiceId, text) => listenVoice(jwt, { voiceId, text, spaceId: voiceSpaceId }) } : null), [jwt, voiceSpaceId]);
 }

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { parseStickerSound, stickerSoundField, stickerSoundLabelOf } from './soundStickers.js';
-import { canUseStickerVoice, STICKER_VOICES, stickerVoiceFileName, voiceTextOf, MAX_VOICE_TEXT } from './stickerVoice.js';
+import { canUseStickerVoice, STICKER_VOICES, stickerVoiceSpaceOf, stickerVoiceFileName, voiceTextOf, MAX_VOICE_TEXT } from './stickerVoice.js';
 
 /** José 27/11: «voces… las de latino español»; «solo admins, y deja solo Valeria y Daniel». */
 describe('the sticker voices', () => {
@@ -59,5 +59,25 @@ describe('a saved voice sound', () => {
   it('a recorded sound, or a voice field without sound, is not a voice', () => {
     expect(stickerSoundLabelOf({ audioUrl: 'https://x/files/a/sticker-sonido.m4a' })).toBe('Sonido propio');
     expect(stickerSoundLabelOf({ soundVoiceId: 'daniel' })).toBeNull();
+  });
+});
+
+/** José 27/11: «aún no veo el generar voz» — in Personal or a direct chat there is no open space. */
+describe('stickerVoiceSpaceOf', () => {
+  const spaces = [
+    { id: 'member-space', role: 'member' as const },
+    { id: 'admin-space', role: 'admin' as const },
+    { id: 'owner-space', role: 'owner' as const },
+  ];
+  it('uses the open space when I manage it', () => {
+    expect(stickerVoiceSpaceOf('owner-space', spaces)).toBe('owner-space');
+  });
+  it('with no open space, or one I only belong to, falls back to the first space I manage', () => {
+    expect(stickerVoiceSpaceOf(null, spaces)).toBe('admin-space');
+    expect(stickerVoiceSpaceOf('member-space', spaces)).toBe('admin-space');
+  });
+  it('is null for someone who manages no space, or before the spaces load', () => {
+    expect(stickerVoiceSpaceOf(null, [{ id: 'member-space', role: 'member' }])).toBeNull();
+    expect(stickerVoiceSpaceOf('x', null)).toBeNull();
   });
 });

@@ -26,6 +26,17 @@ export function canUseStickerVoice(role: WorkspaceRole | null | undefined): bool
   return role ? canManageMembers(role) : false;
 }
 
+/**
+ * The space a voice is asked from (its agentes app signs it and its daily cap counts it): the open one when I manage
+ * it, otherwise the first space I manage (José 27/11: in Personal or a direct chat «Voz» did not show). Null for
+ * whoever manages no space.
+ */
+export function stickerVoiceSpaceOf(openSpaceId: string | null | undefined, spaces: ReadonlyArray<{ id: string; role: WorkspaceRole }> | null | undefined): string | null {
+  if (!spaces) return null;
+  const managed = spaces.filter((space) => canUseStickerVoice(space.role));
+  return (managed.find((space) => space.id === openSpaceId) ?? managed[0])?.id ?? null;
+}
+
 /** The phrase to speak, trimmed, or null when it is empty, too long or not text. */
 export function voiceTextOf(raw: unknown): string | null {
   if (typeof raw !== 'string') return null;

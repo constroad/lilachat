@@ -11,6 +11,7 @@ import { removeSpaceLogo, updateSpace, uploadSpaceLogo } from './spacesApi';
 import { elegirFotoRedonda } from '../chat/fotoDeGrupo';
 import { IntegrationsSection } from './IntegrationsSection';
 import { DeleteSpaceScreen } from './DeleteSpaceScreen';
+import { CameraLogoRow } from './CameraLogoRow';
 
 const NAME_MAX = 60;
 
@@ -88,7 +89,7 @@ export function SpaceSettingsScreen(props: { space: ClientWorkspace; jwt: string
             <Text className="flex-1 text-[14px] text-on-surface-variant">{`${membersLabel(space.members)} activos`}</Text>
           </View>
           {error ? <Text testID="error-ajustes-espacio" className="mt-3 text-[13px] text-error">{error}</Text> : null}
-          <IdentitySection space={space} name={name} rubro={rubro} logoUrl={logoUrl} busy={busy} onName={setName} onRubro={setRubro} onChangeLogo={() => void changeLogo()} onRemoveLogo={() => void removeLogo()} />
+          <IdentitySection space={space} jwt={props.jwt} onSaved={props.onSaved} onError={setError} name={name} rubro={rubro} logoUrl={logoUrl} busy={busy} onName={setName} onRubro={setRubro} onChangeLogo={() => void changeLogo()} onRemoveLogo={() => void removeLogo()} />
           <JoinSection code={code} approval={approval} busy={busy} onNewCode={newCode} onApproval={setApproval} />
           <NoticesSection taskNotices={taskNotices} onTaskNotices={setTaskNotices} />
           <IntegrationsSection jwt={props.jwt} spaceId={space.id} onOpenApp={props.onOpenApp} />
@@ -99,7 +100,7 @@ export function SpaceSettingsScreen(props: { space: ClientWorkspace; jwt: string
   );
 }
 
-type IdentityProps = { space: ClientWorkspace; name: string; rubro: string; logoUrl?: string; busy: boolean; onName: (name: string) => void; onRubro: (rubro: string) => void; onChangeLogo: () => void; onRemoveLogo: () => void };
+type IdentityProps = { space: ClientWorkspace; jwt: string; name: string; rubro: string; logoUrl?: string; busy: boolean; onName: (name: string) => void; onRubro: (rubro: string) => void; onChangeLogo: () => void; onRemoveLogo: () => void; onSaved: (space: ClientWorkspace) => void; onError: (message: string) => void };
 
 /** «Espacio»: its logo, name and trade. */
 function IdentitySection(props: IdentityProps) {
@@ -117,6 +118,7 @@ function IdentitySection(props: IdentityProps) {
           </View>
         </View>
       </View>
+      <CameraLogoRow space={props.space} jwt={props.jwt} onSaved={props.onSaved} onError={props.onError} />
       <Text className="mb-1.5 mt-4 text-[14px] font-semibold text-on-surface">Nombre del espacio</Text>
       <TextInput testID="input-nombre-ajustes" value={props.name} onChangeText={props.onName} maxLength={NAME_MAX} className="min-h-[48px] rounded-xl border border-outline/25 bg-background px-3 text-[16px] text-on-surface" />
       <Text className="mb-1.5 mt-4 text-[14px] font-semibold text-on-surface">Rubro</Text>

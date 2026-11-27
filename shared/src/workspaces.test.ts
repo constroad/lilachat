@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { emailInviteLine, canDeleteSpace, confirmsSpaceName, countdownLabel, invitedByLine, owesItsName, accountOwesItsName, spacesToOpen, canChangeRole, canDeactivate, canManageMembers, joinCodePrefix, makeJoinCode, normalizeChannelName, normalizeJoinCode, statusAfterJoin, withoutClosedIncognito, workspacesOf } from './workspaces.js';
+import { emailInviteLine, canDeleteSpace, confirmsSpaceName, countdownLabel, invitedByLine, owesItsName, accountOwesItsName, spacesToOpen, canChangeRole, canDeactivate, canManageMembers, joinCodePrefix, makeJoinCode, normalizeChannelName, normalizeJoinCode, statusAfterJoin, withoutClosedIncognito, workspacesOf, stampLogoOf } from './workspaces.js';
 
 /** E1 (José, 20/10): personal account plus company spaces; join with a code or be added by phone. */
 describe('join code', () => {
@@ -187,5 +187,15 @@ describe('emailInviteLine', () => {
   it('without a date it says only how', () => {
     expect(emailInviteLine(undefined, now)).toBe('Invitado por correo');
     expect(emailInviteLine('no-date', now)).toBe('Invitado por correo');
+  });
+});
+
+/** José 27/11: the round avatar in the app, the square logo on the camera's photos. */
+describe('stampLogoOf', () => {
+  it('is the camera logo, else the space logo, else none', () => {
+    expect(stampLogoOf({ logoUrl: 'https://x/round.png', cameraLogoUrl: 'https://x/square.png' })).toBe('https://x/square.png');
+    expect(stampLogoOf({ logoUrl: 'https://x/round.png' })).toBe('https://x/round.png');
+    expect(stampLogoOf({})).toBeNull();
+    expect(stampLogoOf(null)).toBeNull();
   });
 });

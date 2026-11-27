@@ -16,7 +16,7 @@ import { useAreaRemove, useAreaReport } from './useAreas';
 import { useZonePlace } from './useZonePlace';
 import { useFileViewer } from '../useFileViewer';
 import { arShotEvidence, type CapturedEvidence } from '../useDriveUpload';
-import { getCurrentSpaceId, useSpaceLogo } from '../../currentSpace';
+import { getCurrentSpaceId, useStampLogo } from '../../currentSpace';
 import { useCameraLogo } from '../../../chat/camara/cameraLogoPref';
 import { freshPoint } from '../../../chat/location/freshPoint';
 
@@ -52,7 +52,7 @@ export function AreasScreen(props: Props) {
   const modeNow = useRef(mode.kind);
   modeNow.current = mode.kind;
   const logoOn = useCameraLogo();
-  const spaceLogo = useSpaceLogo(getCurrentSpaceId());
+  const spaceLogo = useStampLogo(getCurrentSpaceId());
   const stampsLogo = logoOn && Boolean(spaceLogo);
   const measured = async (reading: ArMeasured) => {
     const point = place.point ?? (await freshPoint().catch(() => null));

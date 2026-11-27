@@ -87,6 +87,8 @@ export type ClientWorkspace = {
   name: string;
   rubro?: string;
   logoUrl?: string;
+  /** The camera stamp's logo (José 27/11); without it the stamp uses `logoUrl`. */
+  cameraLogoUrl?: string;
   joinPolicy: JoinPolicy;
   role: WorkspaceRole;
   status: WorkspaceMemberStatus;
@@ -181,4 +183,9 @@ export function emailInviteLine(sentAt: string | undefined, now: Date = new Date
   const today = inLima(now);
   if (day.toISOString().slice(0, 10) === today.toISOString().slice(0, 10)) return 'Invitado por correo hoy';
   return `Invitado por correo el ${day.getUTCDate()} ${MONTHS[day.getUTCMonth()]}`;
+}
+
+/** The logo the camera stamps on photos (José 27/11): the space's camera logo, else its logo, else none. */
+export function stampLogoOf(space: { logoUrl?: string; cameraLogoUrl?: string } | null | undefined): string | null {
+  return space?.cameraLogoUrl ?? space?.logoUrl ?? null;
 }

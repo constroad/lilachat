@@ -84,6 +84,15 @@ describe('useCurrentSpaceLogo', () => {
     act(() => setCurrentSpaceId(null));
     expect(logo.result.current).toBeNull();
   });
+
+  it('prefers the camera logo when the space has one (José 27/11: square on the photos, round in the app)', () => {
+    localStorage.setItem('lilachat.espacios', JSON.stringify({ userId: 'u1', spaces: [{ id: 'w1', name: 'Constroad', status: 'active', logoUrl: 'https://x/round.png', cameraLogoUrl: 'https://x/square.png' }] }));
+    vi.stubGlobal('fetch', vi.fn(() => new Promise<Response>(() => undefined)));
+    renderHook(() => useMySpaces('t', 'u1'));
+    const logo = renderHook(() => useCurrentSpaceLogo());
+    act(() => setCurrentSpaceId('w1'));
+    expect(logo.result.current).toBe('https://x/square.png');
+  });
 });
 
 /**

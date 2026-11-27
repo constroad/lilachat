@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useSyncExternalStore } from 'react';
-import { withLiveUnread, withoutClosedIncognito, workspacesOf, type ClientWorkspace } from '@lilachat/shared';
+import { stampLogoOf, withLiveUnread, withoutClosedIncognito, workspacesOf, type ClientWorkspace } from '@lilachat/shared';
 import { mySpaces } from './spacesApi';
 
 /** Which space the list shows (E1): `null` is the personal account. Remembered in this browser. */
@@ -26,11 +26,11 @@ const subscribe = (listener: () => void) => {
 
 export const useCurrentSpaceId = () => useSyncExternalStore(subscribe, () => currentId);
 
-/** The open space's logo from the spaces already read: the camera shows it top right (José 13/11). */
+/** The open space's logo for the camera stamp (José 13/11): its camera logo, else its logo (José 27/11). */
 export function useCurrentSpaceLogo(): string | null {
   const id = useSyncExternalStore(subscribe, () => currentId);
   const list = useSyncExternalStore(subscribe, () => spaces);
-  return list?.find((space) => space.id === id)?.logoUrl ?? null;
+  return stampLogoOf(list?.find((space) => space.id === id));
 }
 
 export function setCurrentSpaceId(spaceId: string | null): void {

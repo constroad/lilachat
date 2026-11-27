@@ -4,6 +4,7 @@ import { canDeleteSpace, membersLabel, SPACE_RUBROS, type ClientWorkspace } from
 import { FieldError, Overlay, PrimaryButton } from '../ui/Overlay';
 import { useConfirm } from '../ui/useConfirm';
 import { SpaceLogo } from './SpaceLogo';
+import { CameraLogoRow } from './CameraLogoRow';
 import { removeSpaceLogo, updateSpace, uploadSpaceLogo } from './spacesApi';
 import { IntegrationsSection } from './IntegrationsSection';
 import { DeleteSpaceDialog } from './DeleteSpaceDialog';
@@ -84,6 +85,7 @@ export function SpaceSettingsDialog(props: { space: ClientWorkspace; jwt: string
           </div>
         </div>
       </div>
+      <CameraLogoRow space={space} jwt={props.jwt} onSaved={props.onSaved} onError={setError} />
       <label htmlFor="nombre-ajustes" className="mb-1.5 mt-4 block text-sm font-semibold">Nombre del espacio</label>
       <input id="nombre-ajustes" data-testid="input-nombre-ajustes" value={name} maxLength={NAME_MAX} onChange={(event) => setName(event.target.value)} className="h-11 w-full rounded-xl border border-outline/25 bg-background px-3 text-sm outline-none focus:border-primary" />
       <label htmlFor="rubro-ajustes" className="mb-1.5 mt-4 block text-sm font-semibold">Rubro</label>

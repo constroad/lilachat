@@ -60,21 +60,24 @@ export function mediaLibrary(jwt: string, params: { type: MediaLibraryType; spac
   return api<{ items: MediaLibraryItem[]; hasMore: boolean }>(`/media/library?${query}`, { jwt });
 }
 
+/** Which logo: the space's (`logo`) or the camera stamp's (`camera-logo`, José 27/11). */
+export type SpaceLogoKind = 'logo' | 'camera-logo';
+
 /** The space's logo (design e1-12): the file goes as multipart, the common `api` sends JSON. */
-export async function uploadSpaceLogo(jwt: string, spaceId: string, file: File): Promise<{ ok: true; workspace: ClientWorkspace } | { ok: false; message: string }> {
+export async function uploadSpaceLogo(jwt: string, spaceId: string, file: File, kind: SpaceLogoKind = 'logo'): Promise<{ ok: true; workspace: ClientWorkspace } | { ok: false; message: string }> {
   // Portal's standard (28/10): a logo with transparency stays PNG.
   const logo = await shrinkPhotoBlob(file, file.name);
   const form = new FormData();
   form.append('file', logo.blob, logo.name);
   try {
-    const response = await fetch(`/api${path(`/${spaceId}/logo`)}`, { method: 'POST', headers: { Authorization: `Bearer ${jwt}` }, body: form });
+    const response = await fetch(`/api${path(`/${spaceId}/${kind}`)}`, { method: 'POST', headers: { Authorization: `Bearer ${jwt}` }, body: form });
     const payload = (await response.json().catch(() => ({}))) as { workspace?: ClientWorkspace; message?: string };
     return response.ok && payload.workspace ? { ok: true, workspace: payload.workspace } : { ok: false, message: payload.message ?? 'No se pudo cambiar el logo.' };
   } catch {
     return { ok: false, message: 'Sin conexión. Revisa tu internet.' };
   }
 }
-export const removeSpaceLogo = (jwt: string, spaceId: string) => api<{ workspace: ClientWorkspace }>(path(`/${spaceId}/logo`), { jwt, method: 'DELETE' });
+export const removeSpaceLogo = (jwt: string, spaceId: string, kind: SpaceLogoKind = 'logo') => api<{ workspace: ClientWorkspace }>(path(`/${spaceId}/${kind}`), { jwt, method: 'DELETE' });
 
 /** «Menciones y actividad» (design e-19): one tab of a space, or only the counts for the list's chips. */
 export function spaceActivity(jwt: string, spaceId: string, params: { type?: ActivityType; countsOnly?: boolean } = {}) {

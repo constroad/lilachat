@@ -21,7 +21,12 @@ contenido de los canales de cliente (cobranza, Drive, informes), Dali y el mapa 
   - `GET /` mis espacios (`?incognito=<id>` trae el oculto abierto), `POST /` crear.
   - `GET /preview/:code` y `POST /join` (con límite por IP).
   - `GET /invitations`, `POST /invitations/:id/accept`.
-  - `PATCH /:id`, `POST|DELETE /:id/logo`, `POST /:id/delete`, `POST /:id/leave`.
+  - `PATCH /:id`, `POST|DELETE /:id/logo`, `POST|DELETE /:id/camera-logo`, `POST /:id/delete`, `POST /:id/leave`.
+  - Logo de la cámara (27/11, José: el avatar redondo en la app y el ícono cuadrado en las fotos): `cameraLogoUrl`
+    opcional del espacio (`setWorkspaceLogo(…, field)`); la marca de la cámara usa `stampLogoOf` (shared: el de la
+    cámara, si no el del espacio). Se cambia en «Ajustes del espacio», fila «Logo de la cámara» (web
+    `CameraLogoRow.tsx`, APK `CameraLogoRow.tsx`); la cámara lo lee con `useCurrentSpaceLogo` (web) y `useStampLogo`
+    (APK: cámara y Áreas). Constroad tiene desde el 27/11 el avatar redondo de la marca nueva (propuesta A).
   - `GET|POST /:id/members`, `PATCH|DELETE /:id/members/:memberId`.
   - `GET|POST /:id/channels`, `DELETE /:id/channels/:chatId`, `POST …/join`.
   - `GET|POST|DELETE /:id/channels/:chatId/shares…`, `GET …/people`,

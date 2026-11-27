@@ -86,12 +86,15 @@ export function spaceActivity(jwt: string, spaceId: string, params: { type?: Act
 /** A photo picked on the phone, as the round-photo upload takes it. */
 type PickedPhoto = Parameters<typeof subirFotoRedonda>[0]['foto'];
 
-export async function uploadSpaceLogo(jwt: string, spaceId: string, photo: PickedPhoto): Promise<{ ok: true; workspace: ClientWorkspace } | { ok: false; message: string }> {
-  const sent = await subirFotoRedonda({ url: url(`/${spaceId}/logo`), jwt, foto: photo });
+/** Which logo: the space's (`logo`) or the camera stamp's (`camera-logo`, José 27/11). */
+export type SpaceLogoKind = 'logo' | 'camera-logo';
+
+export async function uploadSpaceLogo(jwt: string, spaceId: string, photo: PickedPhoto, kind: SpaceLogoKind = 'logo'): Promise<{ ok: true; workspace: ClientWorkspace } | { ok: false; message: string }> {
+  const sent = await subirFotoRedonda({ url: url(`/${spaceId}/${kind}`), jwt, foto: photo });
   if (!sent.ok) return { ok: false, message: sent.motivo };
   return { ok: true, workspace: sent.payload.workspace as ClientWorkspace };
 }
-export const removeSpaceLogo = (jwt: string, spaceId: string) => jsonCall<{ workspace: ClientWorkspace }>(url(`/${spaceId}/logo`), jwt, { method: 'DELETE' });
+export const removeSpaceLogo = (jwt: string, spaceId: string, kind: SpaceLogoKind = 'logo') => jsonCall<{ workspace: ClientWorkspace }>(url(`/${spaceId}/${kind}`), jwt, { method: 'DELETE' });
 /** Integraciones (`specs/BOTS-API.spec.md`): the space's installed apps, and uninstalling one. */
 export const spaceApps = (jwt: string, spaceId: string) => jsonCall<{ apps: SpaceApp[] }>(url(`/${spaceId}/apps`), jwt);
 export const availableApps = (jwt: string, spaceId: string) => jsonCall<{ apps: AvailableApp[] }>(url(`/${spaceId}/available-apps`), jwt);

@@ -9,7 +9,7 @@ import { recordingLabel, VIDEO_BITRATE, type GeoPoint, type Timemark, type Timem
 import { Modal } from '../../ui/Modal';
 import { reportarError } from '../../ui/reportarError';
 import { useMargenes } from '../../ui/useMargenes';
-import { getCurrentSpaceId, useSpaceLogo } from '../../spaces/currentSpace';
+import { getCurrentSpaceId, useStampLogo } from '../../spaces/currentSpace';
 import { FLASH_LABEL, NEXT_FLASH, type FlashMode } from './flash';
 import { CameraChips } from './CameraChips';
 import { StampOverlay } from './StampOverlay';
@@ -173,7 +173,7 @@ function StampLayer(props: { taken: TakenMedia | null; showShot: boolean; look: 
 function useStampLook() {
   const live = useLiveStamp();
   const logoOn = useCameraLogo();
-  const spaceLogo = useSpaceLogo(getCurrentSpaceId());
+  const spaceLogo = useStampLogo(getCurrentSpaceId());
   const logoUrl = logoOn && spaceLogo ? spaceLogo : null;
   return { live, logoOn, spaceLogo, logoUrl };
 }

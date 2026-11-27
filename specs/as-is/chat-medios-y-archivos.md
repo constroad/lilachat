@@ -143,7 +143,7 @@ Los archivos viven en el disco propio de Lilachat (pendiente 82); los viejos sig
 | Medios de chats secretos | Cifrados de punta a punta | No abre chats secretos |
 | Cámara con sello | Sí, cámara única | Sí en el navegador del celular (12/11) |
 | Cámara en horizontal | Sí (controles a la derecha) | No verificado |
-| Logo del espacio en el sello | Sí (chip) | Sí (preferencia `lilachat.camara.logo`) |
+| Logo del espacio en el sello (el «logo de la cámara» si el espacio tiene uno, si no el del espacio: `stampLogoOf`, 27/11) | Sí (chip) | Sí (preferencia `lilachat.camara.logo`) |
 | Audio del video con pantalla apagada | Sí (`expo-video`) | No aplica |
 | Mini reproductor de video | No (descartado para YouTube por sus términos) | Sí (`MiniVideoPlayer.tsx`) |
 | Adjuntar en un hilo | No | Sí (ver `chat-hilos.md`) |

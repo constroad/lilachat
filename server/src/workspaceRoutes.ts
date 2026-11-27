@@ -67,13 +67,16 @@ export function buildWorkspaceRouter(uploader: MediaUploader = defaultMediaUploa
   router.get('/invitations', handled(async (req, res) => res.json({ invitations: await invitationsOf(me(req)) })));
   router.post('/invitations/:id/accept', handled(async (req, res) => res.json(await acceptInvitation(req.params.id!, me(req)))));
   // The logo (design e1-12): an image, kept relative like every media and served absolute.
-  router.post('/:id/logo', multerDeAvatar.single('file'), handled(async (req, res) => {
-    await logoEditor(req.params.id!, me(req));
-    const upload = await subirFotoRedonda({ uploader, file: req.file, carpeta: `espacio-${req.params.id}`, nombrePorDefecto: 'logo.png', siNoEsImagen: 'El logo tiene que ser una imagen.' });
-    if (!upload.ok) return res.status(upload.status).json({ message: upload.message });
-    res.json({ workspace: await setWorkspaceLogo(req.params.id!, me(req), upload.url) });
-  }));
-  router.delete('/:id/logo', handled(async (req, res) => res.json({ workspace: await setWorkspaceLogo(req.params.id!, me(req), null) })));
+  // The camera stamp has its own (José 27/11: the round avatar in the app, the square one on the photos).
+  for (const [path, field] of [['logo', 'logoUrl'], ['camera-logo', 'cameraLogoUrl']] as const) {
+    router.post(`/:id/${path}`, multerDeAvatar.single('file'), handled(async (req, res) => {
+      await logoEditor(req.params.id!, me(req));
+      const upload = await subirFotoRedonda({ uploader, file: req.file, carpeta: `espacio-${req.params.id}`, nombrePorDefecto: 'logo.png', siNoEsImagen: 'El logo tiene que ser una imagen.' });
+      if (!upload.ok) return res.status(upload.status).json({ message: upload.message });
+      res.json({ workspace: await setWorkspaceLogo(req.params.id!, me(req), upload.url, field) });
+    }));
+    router.delete(`/:id/${path}`, handled(async (req, res) => res.json({ workspace: await setWorkspaceLogo(req.params.id!, me(req), null, field) })));
+  }
   router.patch('/:id', handled(async (req, res) => res.json({ workspace: await updateWorkspace(req.params.id!, me(req), req.body ?? {}) })));
   // José 10/11: the owner deletes the space, typing its name.
   router.post('/:id/delete', handled(async (req, res) => {

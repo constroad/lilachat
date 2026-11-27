@@ -13,6 +13,8 @@ export type Workspace = {
   name: string;
   rubro?: string;
   logoUrl?: string;
+  /** The camera stamp's logo (José 27/11): the square one, while the app shows the round `logoUrl`. */
+  cameraLogoUrl?: string;
   ownerId: Types.ObjectId;
   joinCode: string;
   joinPolicy: JoinPolicy;
@@ -69,6 +71,7 @@ const workspaceSchema = new Schema<Workspace>(
     name: { type: String, required: true, trim: true, maxlength: 60 },
     rubro: { type: String, trim: true, maxlength: 40 },
     logoUrl: { type: String },
+    cameraLogoUrl: { type: String },
     ownerId: { type: Schema.Types.ObjectId, required: true },
     joinCode: { type: String, required: true },
     joinPolicy: { type: String, enum: ['open', 'approval'], default: 'approval' },

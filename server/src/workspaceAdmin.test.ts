@@ -169,6 +169,25 @@ describe('the space logo (e1-12)', () => {
     expect(removed.body.workspace.logoUrl).toBeUndefined();
   });
 
+  it('the camera has its own logo (José 27/11: round avatar in the app, the square one on the photos)', async () => {
+    // Arrange
+    const space = await createSpace();
+    await request(app).post('/api/workspaces/join').set('Authorization', jwt('ana')).send({ code: space.joinCode });
+    await WorkspaceMemberModel.updateOne({ userId: users.ana }, { $set: { status: 'active' } });
+    const png = Buffer.from('89504e470d0a1a0a', 'hex');
+    // Act
+    const denied = await request(app).post(`/api/workspaces/${space.id}/camera-logo`).set('Authorization', jwt('ana')).attach('file', png, { filename: 'sello.png', contentType: 'image/png' });
+    const uploaded = await request(app).post(`/api/workspaces/${space.id}/camera-logo`).set('Authorization', jwt('jose')).attach('file', png, { filename: 'sello.png', contentType: 'image/png' });
+    // Assert: it does not touch the space logo, and every member gets it
+    expect(denied.status).toBe(403);
+    expect(uploaded.status).toBe(200);
+    expect(uploaded.body.workspace.cameraLogoUrl).toMatch(/\/files\/espacio-[a-f0-9]{24}\/sello\.png$/);
+    expect(uploaded.body.workspace.logoUrl).toBeUndefined();
+    expect((await mySpaces('ana'))[0]!.cameraLogoUrl).toBe(uploaded.body.workspace.cameraLogoUrl);
+    const removed = await request(app).delete(`/api/workspaces/${space.id}/camera-logo`).set('Authorization', jwt('jose')).expect(200);
+    expect(removed.body.workspace.cameraLogoUrl).toBeUndefined();
+  });
+
   it('a file that is not an image is refused', async () => {
     const space = await createSpace();
     const sent = await request(app).post(`/api/workspaces/${space.id}/logo`).set('Authorization', jwt('jose')).attach('file', Buffer.from('%PDF-1.4'), { filename: 'x.pdf', contentType: 'application/pdf' });

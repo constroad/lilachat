@@ -57,6 +57,7 @@ export function toClientWorkspace(workspace: Workspace, member: Pick<WorkspaceMe
     name: workspace.name,
     rubro: workspace.rubro,
     logoUrl: workspace.logoUrl ? toAbsoluteMediaUrl(workspace.logoUrl) : undefined,
+    cameraLogoUrl: workspace.cameraLogoUrl ? toAbsoluteMediaUrl(workspace.cameraLogoUrl) : undefined,
     joinPolicy: workspace.joinPolicy,
     role: member.role,
     status: member.status,
@@ -309,10 +310,13 @@ export async function logoEditor(workspaceId: string, actorId: Types.ObjectId): 
   return actor;
 }
 
-/** Sets the logo (a relative URL) or takes it away (`null`): the initials come back. */
-export async function setWorkspaceLogo(workspaceId: string, actorId: Types.ObjectId, url: string | null) {
+/** Which logo: the space's (rail, avatar) or the camera stamp's (José 27/11). */
+export type LogoField = 'logoUrl' | 'cameraLogoUrl';
+
+/** Sets the logo (a relative URL) or takes it away (`null`): the initials, or for the camera the space's logo, come back. */
+export async function setWorkspaceLogo(workspaceId: string, actorId: Types.ObjectId, url: string | null, field: LogoField = 'logoUrl') {
   const actor = await logoEditor(workspaceId, actorId);
-  const updated = await WorkspaceModel.findOneAndUpdate({ _id: actor.workspaceId }, url ? { $set: { logoUrl: url } } : { $unset: { logoUrl: 1 } }, { returnDocument: 'after' }).lean<Workspace>();
+  const updated = await WorkspaceModel.findOneAndUpdate({ _id: actor.workspaceId }, url ? { $set: { [field]: url } } : { $unset: { [field]: 1 } }, { returnDocument: 'after' }).lean<Workspace>();
   if (!updated) throw new WorkspaceError(404, NOT_FOUND);
   noticeSpacesChanged(await activeIdsOf(updated._id));
   return toClientWorkspace(updated, actor);

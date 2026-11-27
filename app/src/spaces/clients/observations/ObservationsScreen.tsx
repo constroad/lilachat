@@ -1,8 +1,8 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { FieldQueueStrip } from '../FieldQueueStrip';
 import { Image, Linking, Pressable, ScrollView, Text, View } from 'react-native';
 import { Camera, Play } from 'lucide-react-native';
-import { approximateLine, evidenceBadge, LIFTING_TYPE, observationCounts, observationNumber, observationPlace, observationsIn, registeredLine, reportTypeLabel, STATUS_PILLS, type Observation, type ObservationDocument, type ObservationStatus, type SpaceClientService } from '@lilachat/shared';
+import { approximateLine, evidenceBadge, LIFTING_TYPE, observationCounts, observationToLift, observationNumber, observationPlace, observationsIn, registeredLine, reportTypeLabel, STATUS_PILLS, type Observation, type ObservationDocument, type ObservationStatus, type SpaceClientService } from '@lilachat/shared';
 import { useColores } from '../../../ui/tema';
 import { Pill } from '../reports/ReportSections';
 import { LiftObservationScreen } from './LiftObservationScreen';
@@ -10,7 +10,7 @@ import { NewObservationScreen } from './NewObservationScreen';
 import { BottomAction, ObservationHeader, ObservationMapView } from './ObservationParts';
 import { startObservation, useBackTo, useObservationReport, type ObservationTarget } from './useObservations';
 
-type Props = ObservationTarget & { service: SpaceClientService; type: string; reportId?: string; portalUrl?: string; onClose: (changed: boolean) => void };
+type Props = ObservationTarget & { service: SpaceClientService; type: string; reportId?: string; portalUrl?: string; /** From the map's «Levantar» (José 27/11): open straight on that observation. */ lift?: { id: string; text: string }; onClose: (changed: boolean) => void };
 type Open = { kind: 'list' } | { kind: 'new'; start: Started } | { kind: 'one'; observation: Observation };
 type Started = Extract<Awaited<ReturnType<typeof startObservation>>, { shot: unknown }>;
 
@@ -102,6 +102,15 @@ export function ObservationsScreen(props: Props) {
   // A lift answers with the lifting report (LEV-OBS) even from the registry: this screen keeps asking for its own.
   const lifted = useCallback(() => written(undefined), [written]);
   const report = draft?.ok ? draft.document : null;
+  // The map's «Levantar» opens its observation once the lifting report arrives; not found, the list shows.
+  const liftAsked = useRef(props.lift ?? null);
+  useEffect(() => {
+    const asked = liftAsked.current;
+    if (!asked || !lastReport) return;
+    liftAsked.current = null;
+    const one = observationToLift(lastReport.observations, asked);
+    if (one) setOpen({ kind: 'one', observation: one });
+  }, [lastReport]);
   const [notice, setNotice] = useState<string | null>(null);
   // §5-ter rule 2: the first tap opens the camera; the form comes after the shot.
   const begin = useCallback(async () => {

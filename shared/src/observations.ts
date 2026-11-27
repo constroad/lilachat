@@ -139,6 +139,17 @@ export const observationsIn = (observations: readonly Observation[], status: Obs
 
 const PERCENT = 100;
 /** Total, lifted, pending and the progress (design `ob-07b`). */
+const sameText = (left: string, right: string) => left.trim().toLowerCase() === right.trim().toLowerCase();
+
+/**
+ * «Levantar» from the map's observation list (José 27/11): the open observation of the lifting report that a map row
+ * is — by id, or by its text when the map holds another id. Null when it is lifted already or the report lacks it.
+ */
+export function observationToLift(observations: readonly Observation[], row: { id: string; text: string }): Observation | null {
+  const open = observationsIn(observations, 'open');
+  return open.find((one) => one.id === row.id) ?? open.find((one) => sameText(one.note, row.text)) ?? null;
+}
+
 export function observationCounts(observations: readonly Observation[]): { total: number; open: number; lifted: number; percent: number } {
   const lifted = observationsIn(observations, 'lifted').length;
   const total = observations.length;

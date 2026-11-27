@@ -16,6 +16,7 @@ import {
   observationWorkMap,
   registeredLine,
   type Observation,
+  observationToLift,
 } from './observations.js';
 import { WORK_MAP_MIN_FRAME_DEG } from './workMap.js';
 
@@ -156,3 +157,23 @@ describe('an approximate place (Portal marks it past 15 m)', () => {
   });
 });
 
+
+/** José 27/11: «sí, agrega el botón Levantar» on the map's observation list. */
+describe('observationToLift', () => {
+  const base = { lat: null, lng: null, at: null, media: [], liftMedia: [] };
+  const report = [
+    { ...base, id: 'obs-1', code: 'OBS-001', note: 'Parche 1', status: 'open' as const },
+    { ...base, id: 'obs-2', code: 'OBS-002', note: 'Parche 2', status: 'lifted' as const },
+    { ...base, id: 'obs-3', code: 'OBS-003', note: '  parche 29 ', status: 'open' as const },
+  ];
+  it('finds the open observation the map row is, by its id', () => {
+    expect(observationToLift(report, { id: 'obs-1', text: 'otro texto' })?.id).toBe('obs-1');
+  });
+  it('without the same id, matches its text (trimmed, any case)', () => {
+    expect(observationToLift(report, { id: 'map-29', text: 'Parche 29' })?.id).toBe('obs-3');
+  });
+  it('an observation already lifted, or one the report does not have, gives nothing: the list opens instead', () => {
+    expect(observationToLift(report, { id: 'obs-2', text: 'Parche 2' })).toBeNull();
+    expect(observationToLift(report, { id: 'x', text: 'Parche 99' })).toBeNull();
+  });
+});

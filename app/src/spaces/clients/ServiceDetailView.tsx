@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { BackHandler, Linking, Pressable, ScrollView, Text, View } from 'react-native';
 import { ExternalLink, FilePlus, FileText } from 'lucide-react-native';
-import { AREA_TYPE, savedAnswerLine, draftToContinue, isObservationType, CLIENT_SERVICE_STATUS_LABELS, SERVICE_REPORT_ACTION, serviceValuesOf, detailRows, detailSheet, serviceTabs, openingSheets, moreInPortal, portalMapTabUrl, type ChannelLinks, type DetailTabKey, type ServiceAskResult, type ServiceTabItem, type ServiceTabKey, type ServiceDetail, type ShownServiceAnswer, type SpaceClientService } from '@lilachat/shared';
+import { LIFTING_TYPE, AREA_TYPE, savedAnswerLine, draftToContinue, isObservationType, CLIENT_SERVICE_STATUS_LABELS, SERVICE_REPORT_ACTION, serviceValuesOf, detailRows, detailSheet, serviceTabs, openingSheets, moreInPortal, portalMapTabUrl, type ChannelLinks, type DetailTabKey, type ServiceAskResult, type ServiceTabItem, type ServiceTabKey, type ServiceDetail, type ShownServiceAnswer, type SpaceClientService } from '@lilachat/shared';
 import { useColores } from '../../ui/tema';
 import type { ViewableFile } from '@lilachat/shared';
 import { RecordSheet } from './RecordSheet';
@@ -23,6 +23,7 @@ import { useServiceAsk, type ServiceAskTarget } from './useServiceAsk';
 import { CreateReportSheet } from './reports/CreateReportSheet';
 import { ReportDocumentScreen } from './reports/ReportDocumentScreen';
 import { ObservationsScreen } from './observations/ObservationsScreen';
+import type { LiftRow } from './workMap/WorkMapItems';
 import { AreasScreen } from './areas/AreasScreen';
 
 type OpenFile = (file: ViewableFile, siblings?: readonly ViewableFile[]) => void;
@@ -149,7 +150,7 @@ function ServiceDriveOnly(props: ServiceDetailProps) {
   );
 }
 
-type BodyProps = ServiceDetailProps & { answer: ShownServiceAnswer<ServiceDetail> | null; onRetry: () => void; tab: ServiceTabKey; startTab: DetailTabKey; onOpenFile: OpenFile; onReported: () => void; onCreate: () => void; onContinueReport: (draft: { type: string; reportId: string }) => void };
+type BodyProps = ServiceDetailProps & { answer: ShownServiceAnswer<ServiceDetail> | null; onRetry: () => void; tab: ServiceTabKey; startTab: DetailTabKey; onOpenFile: OpenFile; onReported: () => void; onCreate: () => void; onContinueReport: (draft: { type: string; reportId: string }) => void; onLift: (row: LiftRow) => void };
 
 function PortalLink(props: { url: string; label: string; testID: string }) {
   const colors = useColores();
@@ -202,7 +203,7 @@ function ServiceBody(props: BodyProps) {
   const detail = answer.value;
   const serviceId = service.id;
   if (tab === 'drive') return <ServiceDrive target={target} service={service} chatId={props.chatId} onBack={props.onBack} marks={detail.photoMarks} />;
-  if (tab === 'map' && props.links) return <ServiceMapPanel jwt={target.jwt} links={doorMapLinks(props.links, target, props.chatId, serviceId)} target={{ kind: 'service', clientId: target.clientId, serviceId }} title={service.name} badge={<Text className={`rounded-full border px-2 py-0.5 text-[11px] font-bold uppercase ${STATUS_TONE[service.status]}`}>{CLIENT_SERVICE_STATUS_LABELS[service.status]}</Text>} drawUrl={portalMapTabUrl(detail.service.url)} discharges={detail.discharges} mapPhotos={detail.mapPhotos} start={detail.service.location} send={workProgressSender(target, props.chatId, serviceId)} drawStreet={workStreetSender(target, props.chatId, serviceId)} deleteStreet={workStreetDeleteSender(target, props.chatId, serviceId)} editMap={mapEditSender(target, props.chatId, serviceId)} admin={props.seesMoney} uploadPhoto={mapPhotoUploader(target, props.chatId, serviceId)} uploadTrace={mapTraceUploader(target, props.chatId, serviceId)} mapInReport={detail.service.mapInReport} />;
+  if (tab === 'map' && props.links) return <ServiceMapPanel jwt={target.jwt} links={doorMapLinks(props.links, target, props.chatId, serviceId)} target={{ kind: 'service', clientId: target.clientId, serviceId }} title={service.name} badge={<Text className={`rounded-full border px-2 py-0.5 text-[11px] font-bold uppercase ${STATUS_TONE[service.status]}`}>{CLIENT_SERVICE_STATUS_LABELS[service.status]}</Text>} drawUrl={portalMapTabUrl(detail.service.url)} discharges={detail.discharges} mapPhotos={detail.mapPhotos} start={detail.service.location} send={workProgressSender(target, props.chatId, serviceId)} drawStreet={workStreetSender(target, props.chatId, serviceId)} deleteStreet={workStreetDeleteSender(target, props.chatId, serviceId)} editMap={mapEditSender(target, props.chatId, serviceId)} admin={props.seesMoney} uploadPhoto={mapPhotoUploader(target, props.chatId, serviceId)} uploadTrace={mapTraceUploader(target, props.chatId, serviceId)} mapInReport={detail.service.mapInReport} onLift={props.onLift} />;
   if (tab !== 'orders' && tab !== 'reports') return null;
   return <ServiceLists detail={detail} target={target} serviceId={serviceId} tab={tab} links={props.links} seesMoney={props.seesMoney} admin={Boolean(props.admin)} startOrderId={tab === 'orders' && props.startTab === 'orders' ? props.startOrderId : undefined} startReportId={tab === 'reports' ? props.startReportId : undefined} onOpenFile={props.onOpenFile} onReported={props.onReported} onContinueReport={props.onContinueReport} />;
 }
@@ -219,7 +220,7 @@ function ServiceRecordsDetail(props: ServiceDetailProps) {
   useBackToList(props.onBack);
   // José 05/11: a field report is filled here, not in Portal's public page; it takes the detail's place.
   const [picker, setPicker] = useState(false);
-  const [report, setReport] = useState<{ type: string; reportId?: string; responsible?: string } | null>(null);
+  const [report, setReport] = useState<{ type: string; reportId?: string; responsible?: string; lift?: LiftRow } | null>(null);
   // Back from the report, the detail opens on Informes, where it was.
   const [startTab, setStartTab] = useState<DetailTabKey>(props.startReportId ? 'reports' : 'orders');
   const [tab, setTab] = useState<ServiceTabKey>(props.startReportId ? 'reports' : 'orders');
@@ -233,13 +234,13 @@ function ServiceRecordsDetail(props: ServiceDetailProps) {
     if (changed) askAgain();
   }, [askAgain]);
   // José 11/11: the registry and the lifting of observations have their own screens (designs ob-01…ob-03).
-  if (report && isObservationType(report.type)) return <ObservationsScreen target={props.target} chatId={props.chatId} serviceId={props.service.id} service={props.service} type={report.type} {...(report.reportId ? { reportId: report.reportId } : {})} portalUrl={portalUrl} onClose={closeReport} />;
+  if (report && isObservationType(report.type)) return <ObservationsScreen target={props.target} chatId={props.chatId} serviceId={props.service.id} service={props.service} type={report.type} {...(report.reportId ? { reportId: report.reportId } : {})} {...(report.lift ? { lift: report.lift } : {})} portalUrl={portalUrl} onClose={closeReport} />;
   if (report?.type === AREA_TYPE) return <AreasScreen to={{ target: props.target, chatId: props.chatId, serviceId: props.service.id }} service={props.service} links={props.links} {...(report.reportId ? { reportId: report.reportId } : {})} onClose={closeReport} />;
   if (report) return <ReportDocumentScreen target={props.target} chatId={props.chatId} service={props.service} type={report.type} {...(report.reportId ? { reportId: report.reportId } : {})} {...(report.responsible ? { responsible: report.responsible } : {})} portalUrl={portalUrl} links={props.links} admin={Boolean(props.admin)} onClose={closeReport} />;
   const tabs = answer?.ok ? serviceTabs(answer.value, Boolean(props.seesDrive), Boolean(props.links)) : [];
   // José 20/11 (design mapa-v2): the map takes the rest of the screen and moves, outside the scroll.
   const mapOpen = tab === 'map' && Boolean(props.links) && Boolean(answer?.ok);
-  const body = <ServiceBody {...props} answer={answer} onRetry={askAgain} tab={tab} startTab={startTab} startReportId={startReportId} onOpenFile={files.open} onReported={askAgain} onCreate={() => setPicker(true)} onContinueReport={setReport} />;
+  const body = <ServiceBody {...props} answer={answer} onRetry={askAgain} tab={tab} startTab={startTab} startReportId={startReportId} onOpenFile={files.open} onReported={askAgain} onCreate={() => setPicker(true)} onContinueReport={setReport} onLift={(lift) => setReport({ type: LIFTING_TYPE, lift })} />;
   const extras = (
     <>
       <CreateReportSheet visible={picker} portalUrl={portalUrl} seesMoney={props.seesMoney} people={props.people ?? []} onPick={(code, responsible) => { setPicker(false); setReport({ type: code, responsible }); }} onClose={() => setPicker(false)} />

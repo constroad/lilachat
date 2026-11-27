@@ -127,6 +127,10 @@ José 20/11: espacio perdido arriba, el cliente repetido, los días debían flot
   (9abf42a49, `DARK_WORK_MAP_COLORS`): tierra azul marino, calles pizarra más claras y avenidas más
   brillantes, parques verdes, agua oscura y nombres claros con halo. Cubre todas las vistas de mapa
   (`WorkMapSurface`/`WorkMapCanvas`); el «Editar croquis» embebido es de Portal.
+- «Levantar» en la lista de observaciones del mapa (APK, José 27/11): cada observación pendiente lleva el botón
+  (`WorkMapItems › ObservationList`, `onLift` por `WorkMapBoard` → `ServiceMapPanel` → `ServiceDetailView`), que
+  abre «Levantamiento de observaciones» (LEV-OBS) directo en ella: `observationToLift` (shared) la busca por id
+  o por su texto entre las pendientes del informe; si no está, se ve la lista. La web todavía no lo tiene.
   El trozo del mapa pesa ~256 KB comprimidos y baja al abrir.
 - Archivos propios de la web: `WorkMapCanvas.tsx`, `WorkMapOverlays.tsx`, `CutFields.tsx`,
   `useWorkMap.ts`, `maplibre-csp.d.ts`.

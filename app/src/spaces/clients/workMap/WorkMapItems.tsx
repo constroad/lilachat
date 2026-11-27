@@ -38,21 +38,32 @@ function MarkList(props: { map: WorkMap; onPick: (pick: MapPick) => void }) {
   );
 }
 
-function ObservationList(props: { map: WorkMap; onPick: (pick: MapPick) => void }) {
+/** A map row to lift (José 27/11 «agrega el botón Levantar»): it opens «Levantamiento de observaciones» on it. */
+export type LiftRow = { id: string; text: string };
+
+function ObservationList(props: { map: WorkMap; onPick: (pick: MapPick) => void; onLift?: (row: LiftRow) => void }) {
   const rows = useMemo(() => observationRowsOf(props.map.observations ?? []), [props.map.observations]);
+  const open = useMemo(() => new Set((props.map.observations ?? []).filter((one) => one.status === 'open').map((one) => one.id)), [props.map.observations]);
   if (!rows.length) return null;
   return (
     <View testID="mapa-observaciones" className="pt-4">
       <Text className={`${KICKER} pb-2`}>Observaciones</Text>
       <View className="gap-1 rounded-xl border-[1.5px] border-outline/15 bg-surface p-2">
         {rows.map((row) => (
-          <Pressable key={row.id} testID={`mapa-observacion-${row.id}`} onPress={() => props.onPick({ kind: 'observation', id: row.id })} className={ROW}>
-            <View className="min-w-0 flex-1">
-              <Text numberOfLines={2} className="text-[14px] font-semibold text-on-surface">{row.text}</Text>
-              <Text className="text-[13px] text-on-surface-variant">{row.placed ? row.photos : `${row.photos} · sin ubicación`}</Text>
-            </View>
-            <StatusPill status={row.status} />
-          </Pressable>
+          <View key={row.id} className="flex-row items-center gap-2">
+            <Pressable testID={`mapa-observacion-${row.id}`} onPress={() => props.onPick({ kind: 'observation', id: row.id })} className={`${ROW} min-w-0 flex-1`}>
+              <View className="min-w-0 flex-1">
+                <Text numberOfLines={2} className="text-[14px] font-semibold text-on-surface">{row.text}</Text>
+                <Text className="text-[13px] text-on-surface-variant">{row.placed ? row.photos : `${row.photos} · sin ubicación`}</Text>
+              </View>
+              <StatusPill status={row.status} />
+            </Pressable>
+            {props.onLift && open.has(row.id) ? (
+              <Pressable testID={`levantar-${row.id}`} accessibilityRole="button" accessibilityLabel={`Levantar ${row.text}`} onPress={() => props.onLift?.({ id: row.id, text: row.text })} className="min-h-[44px] justify-center rounded-full bg-primary px-3">
+                <Text className="text-[13px] font-semibold text-on-primary">Levantar</Text>
+              </Pressable>
+            ) : null}
+          </View>
         ))}
       </View>
     </View>
@@ -60,11 +71,11 @@ function ObservationList(props: { map: WorkMap; onPick: (pick: MapPick) => void 
 }
 
 /** «Dibujos» by type and «Observaciones», open first (José 19/11); a tap opens the full map there. */
-export function WorkMapItems(props: { map: WorkMap; onPick: (pick: MapPick) => void }) {
+export function WorkMapItems(props: { map: WorkMap; onPick: (pick: MapPick) => void; onLift?: (row: LiftRow) => void }) {
   return (
     <View>
       <MarkList map={props.map} onPick={props.onPick} />
-      <ObservationList map={props.map} onPick={props.onPick} />
+      <ObservationList map={props.map} onPick={props.onPick} onLift={props.onLift} />
     </View>
   );
 }

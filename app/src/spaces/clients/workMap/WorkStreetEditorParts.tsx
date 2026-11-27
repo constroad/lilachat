@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { DecimalInput } from '../../../ui/DecimalInput';
 import { ChevronDown, ChevronUp, Navigation, Save, Undo2, X } from 'lucide-react-native';
 import { DRAW_MODES, metersLabel, streetDraftArea, streetDraftEnds, streetDraftLengthM, WORK_MAP_DRAFT_COLOR, WORK_MAP_PLANNED_COLOR, type DrawMode, type StreetDraft, type StreetEnd, type WorkMapStage } from '@lilachat/shared';
 import { useColores, useTema } from '../../../ui/tema';
@@ -154,7 +155,7 @@ export function StreetForm(props: StreetFormProps) {
             </View>
             <View className="w-24">
               <Text className={LABEL}>Ancho (m)</Text>
-              <TextInput testID="editor-calle-ancho" keyboardType="decimal-pad" value={draft.widthM === null ? '' : String(draft.widthM)} placeholder="6.0" onChangeText={(text) => props.change({ widthM: text.trim() ? Number(text.replace(',', '.')) : null })} className={FIELD} />
+              <DecimalInput testID="editor-calle-ancho" value={draft.widthM} placeholder="6.0" onValue={(widthM) => props.change({ widthM })} className={FIELD} />
             </View>
           </View>
           <View className="mt-2 flex-row items-center gap-2">

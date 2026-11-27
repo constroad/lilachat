@@ -1,5 +1,6 @@
 import { useContext, useMemo, useState } from 'react';
 import { Pressable, Text, TextInput, View } from 'react-native';
+import { DecimalInput } from '../../../ui/DecimalInput';
 import { randomUUID } from 'expo-crypto';
 import type { CapturedShot } from '../../../chat/camara/cameraRequests';
 import { Camera, Check, Crosshair, Minus, Plus, Send } from 'lucide-react-native';
@@ -94,7 +95,7 @@ function Reach(props: { draft: ManualProgressDraft; lengthM: number; widthM?: nu
         </View>
         <View className="flex-1 pl-3">
           <Text className={`${KICKER} text-primary`}>Hasta dónde (m)</Text>
-          <TextInput testID="avance-manual-hasta" keyboardType="decimal-pad" value={String(draft.toM)} onChangeText={(text) => props.onChange({ ...draft, toM: Number(text.replace(',', '.')) || 0 })} className="mt-1 h-12 rounded-xl border border-outline/25 bg-background px-3 font-mono text-[20px] font-bold text-primary" />
+          <DecimalInput testID="avance-manual-hasta" value={draft.toM} onValue={(toM) => props.onChange({ ...draft, toM: toM ?? 0 })} className="mt-1 h-12 rounded-xl border border-outline/25 bg-background px-3 font-mono text-[20px] font-bold text-primary" />
           <Text testID="avance-manual-hasta-progresiva" className="mt-0.5 font-mono text-[12px] text-on-surface-variant">Progresiva {stationLabel(draft.toM)}</Text>
         </View>
       </View>

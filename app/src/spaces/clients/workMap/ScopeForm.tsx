@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Pressable, Text, TextInput, View } from 'react-native';
+import { DecimalInput } from '../../../ui/DecimalInput';
 import { randomUUID } from 'expo-crypto';
 import { Check, Plus, Save } from 'lucide-react-native';
 import { createdOrRefusal, labelFormIdle, runLabelCreate, runScopeSave, sendWorkStage, sendWorkTag, toggleScopeWork, WORK_TAG_COLORS, workStageRequest, workTagRequest, type LabelForm, type MapEditSend, type ScopeDraft, type WorkMap } from '@lilachat/shared';
@@ -9,7 +10,6 @@ import { KICKER } from './WorkMapPanel';
 const FIELD = 'mt-1 h-12 rounded-xl border border-outline/25 bg-background px-3 text-[15px] text-on-surface';
 const LABEL = 'text-[12px] font-semibold uppercase text-on-surface-variant';
 const CHIP = 'h-10 flex-row items-center gap-1.5 rounded-full border px-3';
-const numberOrNull = (text: string): number | null => (text.trim() === '' ? null : Number(text.replace(',', '.')));
 
 type NewLabelProps = { testID: string; placeholder: string; colors?: readonly string[]; onCreate: (name: string, color: string) => Promise<string | null> };
 
@@ -78,8 +78,8 @@ export function ScopeForm(props: FormProps) {
     <View testID="tramo-formulario" className="rounded-xl border-[1.5px] border-primary/30 bg-surface p-4">
       <Text className={KICKER}>{props.scopeId ? 'Editar tramo' : 'Nuevo tramo'}</Text>
       <View className="mt-2 flex-row gap-3">
-        <View className="flex-1"><Text className={LABEL}>Desde (m)</Text><TextInput testID="tramo-desde" keyboardType="decimal-pad" value={draft.fromM === null ? '' : String(draft.fromM)} onChangeText={(text) => change({ fromM: numberOrNull(text) })} className={`${FIELD} font-mono`} /></View>
-        <View className="flex-1"><Text className={LABEL}>Hasta (m)</Text><TextInput testID="tramo-hasta" keyboardType="decimal-pad" value={draft.toM === null ? '' : String(draft.toM)} onChangeText={(text) => change({ toM: numberOrNull(text) })} className={`${FIELD} font-mono`} /></View>
+        <View className="flex-1"><Text className={LABEL}>Desde (m)</Text><DecimalInput testID="tramo-desde" value={draft.fromM} onValue={(fromM) => change({ fromM })} className={`${FIELD} font-mono`} /></View>
+        <View className="flex-1"><Text className={LABEL}>Hasta (m)</Text><DecimalInput testID="tramo-hasta" value={draft.toM} onValue={(toM) => change({ toM })} className={`${FIELD} font-mono`} /></View>
       </View>
       <Text className={`${LABEL} mt-3`}>Trabajos</Text>
       <View className="mt-1 flex-row flex-wrap gap-2">

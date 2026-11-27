@@ -267,6 +267,10 @@ Motores puros, con test, usados por web y APK:
   violeta (`editorBandTone`, `useBandTone` en `WorkStreetEditorParts.tsx`).
 - **27/11** «Mi ubicación» (APK, todo `WorkMapSurface`) movía el mapa sin marcar dónde está el
   teléfono. Ahora dibuja el punto azul con halo (capa `work-map-me`, `myLocationDot.ts`) al ubicarse.
+- **27/11** Decimales en el APK: «Ancho» del editor de calle, «Desde/Hasta» del tramo y «Hasta dónde»
+  del avance manual guardaban «3.10» como «310» (el campo se reescribía desde el número y «3.» volvía
+  a «3»). Ahora usan `DecimalInput` (`app/src/ui/DecimalInput.tsx`, motor `decimalText.ts`): guarda el
+  texto tecleado, acepta coma o punto. El largo de la calle sigue medido en el mapa (Portal lo calcula).
 - **27/11** Arreglo: la línea violeta no unía los dos aros. Causa: en el APK el aro arrastrado se
   queda donde lo soltó el dedo si su punto no cambia (el aro del inicio tenía la clave fija
   `start-0+000`); pasaba al soltarlo más allá del fin de la calle del mapa (se recorta al extremo) o

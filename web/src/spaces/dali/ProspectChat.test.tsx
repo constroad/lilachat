@@ -88,4 +88,32 @@ describe('ProspectChat (dl-02 header and strip)', () => {
     expect(screen.queryByTestId('cabecera-llamar')).toBeNull();
     expect(screen.queryByTestId('franja-prospecto')).toBeNull();
   });
+
+  it('«Recordarme» opens «Próxima acción», from the chat itself (José 27/11)', () => {
+    // Arrange
+    show(CARMEN);
+    // Act
+    fireEvent.click(screen.getByTestId('franja-recordatorio'));
+    // Assert
+    expect(screen.getByTestId('franja-recordatorio').textContent).toContain('Recordarme');
+    expect(screen.getByTestId('guardar-proxima-accion')).toBeTruthy();
+  });
+
+  it('a reminder already set says when, and late in red once its hour passed', () => {
+    show({ ...CARMEN, nextAction: { kind: 'call', at: '2020-01-01T14:00:00.000Z', assigneeId: 'u-me' } });
+    const button = screen.getByTestId('franja-recordatorio');
+    expect(button.textContent).not.toContain('Recordarme');
+    expect(button.className).toContain('text-error');
+  });
+
+  it('on a phone the reminder is a bell that still says what it does', () => {
+    show(CARMEN, { phone: true });
+    expect(screen.getByTestId('franja-recordatorio').getAttribute('aria-label')).toBe('Recordarme');
+    expect(screen.getByTestId('franja-recordatorio').textContent).toBe('');
+  });
+
+  it('a closed prospect has no reminder', () => {
+    show({ ...CARMEN, result: { outcome: 'won', at: '2026-11-17T15:00:00.000Z' } });
+    expect(screen.queryByTestId('franja-recordatorio')).toBeNull();
+  });
 });

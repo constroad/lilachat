@@ -1,9 +1,10 @@
 import { useContext, useEffect, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
-import { CheckCircle2, ChevronRight, MessageCircle, Phone, RotateCcw } from 'lucide-react';
-import { LOSS_REASON_LABEL, prospectNameOf, shownProspectPhone, type ProspectView } from '@lilachat/shared';
+import { Bell, BellRing, CheckCircle2, ChevronRight, MessageCircle, Phone, RotateCcw } from 'lucide-react';
+import { LOSS_REASON_LABEL, prospectNameOf, shownProspectPhone, stripReminderOf, type ProspectView } from '@lilachat/shared';
 import type { OwnHeader } from '../../chat/Conversation';
 import { OriginPill, OutlineButton, Pill, ProspectAvatar, SheetInColumn, SolidButton, TextButton } from './daliParts';
+import { NextActionDialog } from './NextActionDialog';
 import { ProspectSheet } from './ProspectSheet';
 import { ResultDialog } from './ResultDialog';
 import { sendChange, sendHandBack, useProspectOfChat, type ChangeOutcome } from './sellerDesk';
@@ -32,7 +33,7 @@ const NO_LINE = ' ';
  */
 export function ProspectChat(props: Props & { children: (parts: ProspectChatParts) => ReactNode }) {
   const { prospect, setProspect, reload } = useProspectOfChat(props.jwt, props.spaceId, props.chatId);
-  const [open, setOpen] = useState<'sheet' | 'result' | null>(null);
+  const [open, setOpen] = useState<'sheet' | 'result' | 'next' | null>(null);
   const [now] = useState(() => new Date());
   // A wide inbox shows the ficha in its third column; elsewhere it opens from the header.
   const inColumn = useContext(SheetInColumn);
@@ -40,7 +41,7 @@ export function ProspectChat(props: Props & { children: (parts: ProspectChatPart
     setOpen(null);
   }, [props.chatId]);
   const settle = (outcome: ChangeOutcome) => {
-    if (open === 'result') setOpen(null);
+    if (open === 'result' || open === 'next') setOpen(null);
     if (outcome.ok) return setProspect(outcome.prospect);
     props.onNotice(outcome.message);
     if (outcome.stale) reload();
@@ -48,12 +49,13 @@ export function ProspectChat(props: Props & { children: (parts: ProspectChatPart
   const parts: ProspectChatParts = prospect
     ? {
         ownHeader: { avatar: <HeaderInitials name={prospectNameOf(prospect)} phone={props.phone} />, subtitle: <HeaderLine prospect={prospect} />, actions: <HeaderActions phone={props.phone} withSheet={inColumn} prospect={prospect} onSheet={() => setOpen('sheet')} onResult={() => setOpen('result')} /> },
-        strip: <Strip prospect={prospect} phone={props.phone} onTake={async () => settle(await sendChange(props.jwt, props.spaceId, prospect, { assignee: 'me' }))} onHandBack={async () => settle(await sendHandBack(props.jwt, props.spaceId, prospect))} />,
+        strip: <Strip prospect={prospect} phone={props.phone} now={now} onRemind={() => setOpen('next')} onTake={async () => settle(await sendChange(props.jwt, props.spaceId, prospect, { assignee: 'me' }))} onHandBack={async () => settle(await sendHandBack(props.jwt, props.spaceId, prospect))} />,
       }
     : { ownHeader: { avatar: <HeaderInitials name={props.chatName ?? ''} phone={props.phone} />, subtitle: NO_LINE, actions: null }, strip: null };
   return (
     <>
       {props.children(parts)}
+      {prospect && open === 'next' ? <NextActionDialog jwt={props.jwt} spaceId={props.spaceId} prospect={prospect} now={now} onDone={settle} onClose={() => setOpen(null)} /> : null}
       {prospect && open === 'result' ? <ResultDialog jwt={props.jwt} spaceId={props.spaceId} prospect={prospect} onDone={settle} onClose={() => setOpen(null)} /> : null}
       {prospect && open === 'sheet'
         ? createPortal(
@@ -103,7 +105,7 @@ function HeaderActions(props: { phone?: boolean; withSheet: boolean; prospect: P
   );
 }
 
-function Strip(props: { prospect: ProspectView; phone?: boolean; onTake: () => void; onHandBack: () => void }) {
+function Strip(props: { prospect: ProspectView; phone?: boolean; now: Date; onRemind: () => void; onTake: () => void; onHandBack: () => void }) {
   const { prospect } = props;
   const open = !prospect.result;
   return (
@@ -112,7 +114,22 @@ function Strip(props: { prospect: ProspectView; phone?: boolean; onTake: () => v
       <span className="flex-1" />
       {open && prospect.attendedBy === 'human' ? <TextButton testId="franja-devolver-a-dali" onClick={props.onHandBack}><RotateCcw size={14} /> Devolver a Dali</TextButton> : null}
       {open && !prospect.assignee ? <TextButton testId="franja-tomar" onClick={props.onTake}>Tomar</TextButton> : null}
+      <RemindButton prospect={prospect} phone={props.phone} now={props.now} onClick={props.onRemind} />
     </div>
+  );
+}
+
+/** José 27/11: a reminder to insist, from the chat itself; it is the prospect's «Próxima acción» (dl-09). */
+function RemindButton(props: { prospect: ProspectView; phone?: boolean; now: Date; onClick: () => void }) {
+  const reminder = stripReminderOf(props.prospect, props.now);
+  if (!reminder) return null;
+  const Icon = reminder.planned ? BellRing : Bell;
+  const tone = reminder.late ? 'text-error' : 'text-primary';
+  const label = reminder.planned ? `Recordatorio: ${reminder.label}` : reminder.label;
+  return props.phone ? (
+    <button type="button" data-testid="franja-recordatorio" aria-label={label} title={label} onClick={props.onClick} className={`grid h-10 w-10 shrink-0 place-items-center rounded-full hover:bg-background ${tone}`}><Icon size={18} /></button>
+  ) : (
+    <button type="button" data-testid="franja-recordatorio" title={label} onClick={props.onClick} className={`inline-flex h-9 shrink-0 items-center gap-1.5 rounded-lg px-3 text-[13px] font-semibold hover:bg-background ${tone}`}><Icon size={14} /> {reminder.label}</button>
   );
 }
 

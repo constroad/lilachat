@@ -131,7 +131,11 @@ remitentes posibles, así que cada mensaje trae el suyo.
   Grupos de WhatsApp (fase 1, 20/11): sección propia «Grupos de WhatsApp» bajo «Mensajes directos», que
   solo aparece cuando el espacio tiene al menos uno (`DaliChats.test.tsx`: sin grupos, ningún encabezado).
 - `ProspectChat.tsx`: cabecera (iniciales, teléfono, origen, Llamar con el marcador, Ficha, Marcar resultado)
-  y franja (quién atiende, Dali en pausa, Tomar, Devolver a Dali).
+  y franja (quién atiende, Dali en pausa, Tomar, Devolver a Dali, y la campana del recordatorio).
+- Recordatorio desde el chat (José 27/11, «volver a insistir»): la campana de la franja abre la misma
+  «Próxima acción» (`NextActionDialog` / `NextActionSheet`). Sin próxima acción dice «Recordarme»; con una,
+  cuándo suena («Mañana 09:00»), en rojo si ya pasó. Cerrado el prospecto, no aparece. Un solo sistema:
+  `stripReminderOf` (shared, `prospectSheet.ts`). En el teléfono web y en el APK es solo el ícono.
 - `ProspectSheet.tsx` + `prospectSheetBlocks.tsx`: la ficha. `ClientDocumentsCard.tsx`, `DocumentFieldRow.tsx`
   (Confirmar · Corregir) y `FieldGeoMap.tsx` (el lote del KML).
 - Hojas y diálogos: `NextActionDialog.tsx`, `ResultDialog.tsx`, `FollowUpsSheet.tsx`, `TeachDaliDialog.tsx`.
@@ -322,7 +326,7 @@ Lo que Stitch inventó y no va está listado en la spec (fase 2, pantallas de la
   `prospectFunnelView.test.ts` (12), `prospectInboxRows.test.ts` (20), `prospectPlan.test.ts` (11),
   `prospectReview.test.ts` (7), `daliKnowledge.test.ts` (8), `daliTeach.test.ts` (9).
 - Web: `web/src/spaces/dali/DaliInbox.test.tsx` (7), `DaliChats.test.tsx` (4, 20/11: +2 de grupos de WhatsApp fase 1),
-  `ProspectChat.test.tsx` (7), `DaliPanel.test.tsx` (3), `DaliHeader.test.tsx` (6, 20/11: +1 del punto de no leídos),
+  `ProspectChat.test.tsx` (11, 27/11: +4 del recordatorio), `DaliPanel.test.tsx` (3), `DaliHeader.test.tsx` (6, 20/11: +1 del punto de no leídos),
   `ClientDocumentsCard.test.tsx` (3), `DocumentFieldRow.test.tsx` (4).
   También `web/src/chat/BurbujaDeMensaje.person.test.tsx` y `filasDeLaConversacion.test.ts` (según spec).
 - APK: sin tests unitarios en `app/src/spaces/dali/`. La lógica está en `shared/`. Verificado.

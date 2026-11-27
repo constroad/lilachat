@@ -112,6 +112,9 @@ Pregunta a la app por `link.status` y `link.revoke`. Lilachat no guarda nada.
 - Detalle de la app: `AppCommandsPanel.tsx`, `AppItemEditor.tsx`, `AppItemsSection.tsx`,
   `AppSchedulesSection.tsx`, `ScheduleSheet.tsx`, `AppSettingsSections.tsx`.
 
+- `web/src/chat/tarjetas/` también guarda tarjetas de la info del chat que no son de un bot:
+  `ChecklistsCard.tsx` y `RemindersCard.tsx` (27/11). Están documentadas en `chat-agenda-encuestas-checklists.md`.
+
 ## 3. Diferencias APK vs web
 
 - El formulario es una hoja de abajo en el APK y un diálogo en la web. En la computadora, un

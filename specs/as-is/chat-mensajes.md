@@ -86,6 +86,8 @@ la búsqueda y las tarjetas de enlace. Hilos, medios, agenda y stickers tienen s
 ### Web/PWA (`web/src/chat/`)
 
 - Conversación: `Conversation.tsx`, `ConversacionConAcciones.tsx`, `contextoDeLaConversacion.tsx`.
+  La info del chat (`PanelDeInfo`) recibe sus tarjetas de `ConversacionConAcciones`: checklists, recordatorios
+  (`tarjetas/RemindersCard.tsx`, 27/11; editar = quien puede crear recordatorios), fijados y destacados.
 - Lista: `ListaDeMensajes.tsx`, `filasDeLaConversacion.ts`, `useMessageWindow.ts`, `windowOnScreen.ts`.
 - Burbuja: `BurbujaDeMensaje.tsx` (también las líneas de aviso del sistema), `TextoDelMensaje.tsx`, `LinkedText.tsx`.
 - Tarjeta de un bot: `BotCardView.tsx`. Una acción puede traer `open: { route }` en vez de un `button.click`:

@@ -13,6 +13,7 @@ import {
   prospectDialUrl,
   prospectResultLabelOf,
   prospectStripOf,
+  stripReminderOf,
   quoteAmountOf,
   quoteSentLabelOf,
   documentSentLabelOf,
@@ -69,6 +70,30 @@ describe('prospectStripOf (dl-02 strip)', () => {
     expect(lost.result).toEqual({ won: false, label: 'Perdido · Precio' });
     expect([lost.canTake, lost.canHandBack]).toEqual([false, false]);
     expect(prospectStripOf(carmen({ assignee: ROSA, result: { outcome: 'won', at: '2026-11-17T15:00:00.000Z' } })).result).toEqual({ won: true, label: 'Ganado' });
+  });
+});
+
+/** José 27/11: «el me dijo que me iba a avisar… me hubiera gustado agregar un recordatorio para volver a insistir». */
+describe('stripReminderOf (the reminder in the strip of the chat)', () => {
+  it('without a next action it offers «Recordarme»', () => {
+    // Act
+    const reminder = stripReminderOf(carmen(), NOW);
+    // Assert
+    expect(reminder).toEqual({ label: 'Recordarme', planned: false, late: false });
+  });
+
+  it('with one it says when, so the chat shows it was already set', () => {
+    const reminder = stripReminderOf(carmen({ nextAction: { kind: 'whatsapp', at: '2026-11-18T14:00:00.000Z', assigneeId: ME } }), NOW);
+    expect(reminder).toEqual({ label: 'Mañana 09:00', planned: true, late: false });
+  });
+
+  it('one whose hour already passed is late', () => {
+    const reminder = stripReminderOf(carmen({ nextAction: { kind: 'call', at: '2026-11-17T14:00:00.000Z', assigneeId: ME } }), NOW);
+    expect(reminder).toEqual({ label: 'Hoy 09:00', planned: true, late: true });
+  });
+
+  it('a closed prospect has nothing to remind', () => {
+    expect(stripReminderOf(carmen({ result: { outcome: 'won', at: '2026-11-17T15:00:00.000Z' } }), NOW)).toBeNull();
   });
 });
 

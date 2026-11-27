@@ -59,6 +59,20 @@ export function prospectStripOf(prospect: Pick<ProspectView, 'result' | 'assigne
   };
 }
 
+/** The reminder button of the strip: «Recordarme», or when the next action is due, late once its hour passed. */
+export type StripReminder = { label: string; planned: boolean; late: boolean };
+
+/**
+ * José 27/11: from the prospect's chat, a reminder to insist. It opens the same «Próxima acción» (dl-09), so there is
+ * one reminder per prospect; a closed one has nothing to remind.
+ */
+export function stripReminderOf(prospect: Pick<ProspectView, 'result' | 'nextAction'>, now: Date): StripReminder | null {
+  if (prospect.result) return null;
+  const planned = prospect.nextAction;
+  if (!planned) return { label: 'Recordarme', planned: false, late: false };
+  return { label: nextActionWhenOf(planned.at, now), planned: true, late: Date.parse(planned.at) < now.getTime() };
+}
+
 const stepState = (index: number, current: number): StageStep['state'] => {
   if (index < current) return 'done';
   return index === current ? 'current' : 'next';

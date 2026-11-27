@@ -3,6 +3,7 @@ import type { MessageTarget, NotificationLevel, WinkId } from '@lilachat/shared'
 import { alreadyGreeted, newAlbumId, peopleNamesOf } from '@lilachat/shared';
 import { Suspense, useCallback, useEffect, useMemo, useState, type ComponentProps, type ReactNode } from 'react';
 import { PanelDeInfo } from './info/PanelDeInfo';
+import { RemindersCard } from './tarjetas/RemindersCard';
 import type { ChatAction } from './menuDelChat';
 import { BLOCKED_BY_ME_COMPOSER, fijadosVigentes, memberMay, memberPermissionDenied, puedeFijarEnElChat } from '@lilachat/shared';
 import { formatClock, formatDayLabel, INCOGNITO_COMPOSER } from '@lilachat/shared';
@@ -358,7 +359,7 @@ export function ConversacionConAcciones(
           onVerFoto={openPhoto}
           onViewPerson={showPerson}
           onChannelDeleted={props.onChannelDeleted}
-          tarjetas={<>{chat.encrypted ? null : <ChecklistsCard chatId={chat.id} jwt={props.jwt} onOpen={(seq) => setSalto({ seq, vez: Date.now() })} />}<TarjetaDeFijados fijados={fijados} nombreDe={nombreDe} textoLocal={textoLocal} onVerTodos={() => setVerFijados(true)} />{chat.encrypted ? null : <TarjetaDeDestacados chatId={chat.id} jwt={props.jwt} yo={yo} cuantos={destacados.seqs.size} onIr={(seq) => setSalto({ seq, vez: Date.now() })} />}</>}
+          tarjetas={<>{chat.encrypted ? null : <ChecklistsCard chatId={chat.id} jwt={props.jwt} onOpen={(seq) => setSalto({ seq, vez: Date.now() })} />}{chat.encrypted ? null : <RemindersCard chatId={chat.id} jwt={props.jwt} onEdit={editReminder} />}<TarjetaDeFijados fijados={fijados} nombreDe={nombreDe} textoLocal={textoLocal} onVerTodos={() => setVerFijados(true)} />{chat.encrypted ? null : <TarjetaDeDestacados chatId={chat.id} jwt={props.jwt} yo={yo} cuantos={destacados.seqs.size} onIr={(seq) => setSalto({ seq, vez: Date.now() })} />}</>}
         />
         </PanelBoundary>
       ) : null}

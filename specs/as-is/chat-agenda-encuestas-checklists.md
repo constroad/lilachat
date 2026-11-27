@@ -61,6 +61,9 @@ La cola de tarjetas y la línea de Pendientes están en `bots-asistente-rutinas-
 - Crear checklist: `agenda/CreateChecklistOverlay.tsx`.
 - Tarjetas en el chat: `tarjetas/TarjetaDelMensaje.tsx`, `EncuestaEnElChat.tsx`, `EventoEnElChat.tsx`, `RecordatorioEnElChat.tsx`, `ChecklistEnElChat.tsx`, `EstadosDeTarjeta.tsx`, `useTarjeta.ts` (diseño `w3c-web-tarjetas`).
 - Checklist: opciones `tarjetas/ChecklistOptionsDialog.tsx`, tarea `tarjetas/TaskDialog.tsx`, tarjeta de la info `tarjetas/ChecklistsCard.tsx`.
+- Recordatorios del chat en la info (27/11, José: el detalle del canal no los listaba en la web): `tarjetas/RemindersCard.tsx`,
+  como `RecordatoriosDelGrupo` del APK. Lee `GET /reminders/del-chat/:chatId`; quien puede administrarlos los abre para editar.
+  En cualquier chat no secreto (canal, grupo, 1:1). Test `RemindersCard.test.tsx` (5).
 - Agenda: `agenda/AgendaOverlay.tsx`, `LineaDePendientes.tsx`, detalle `EventDetailPane.tsx` con Van · Tal vez · No van al lado (29/10; diseño `w3c-web-agenda`).
 - Mis tareas: `agenda/MisTareas.tsx`. Lugares: `agenda/PlaceLinksWeb.tsx`.
 - El recordatorio que suena llega como línea del chat con acciones de mensaje (`LineaDeSistema.test.tsx`).

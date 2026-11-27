@@ -1,13 +1,14 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { Pressable, Text, View } from 'react-native';
-import { ChevronRight, MessageCircle, Phone } from 'lucide-react-native';
-import { prospectNameOf, prospectStripOf, shownProspectPhone, type ProspectView } from '@lilachat/shared';
+import { Bell, BellRing, ChevronRight, MessageCircle, Phone } from 'lucide-react-native';
+import { prospectNameOf, prospectStripOf, shownProspectPhone, stripReminderOf, type ChangeOutcome, type ProspectView } from '@lilachat/shared';
 import type { ProspectHeader } from '../../chat/EncabezadoDelChat';
 import { Avatar } from '../../ui/Avatar';
 import { useColores } from '../../ui/tema';
 import { OriginPill, Pill, TextButton, useNow } from './daliParts';
 import { callProspect } from './prospectSheetBlocks';
-import { ProspectSheetScreen, useOneChangeAtATime } from './ProspectSheetScreen';
+import { NextActionSheet } from './NextActionSheet';
+import { applyOutcome, ProspectSheetScreen, useOneChangeAtATime } from './ProspectSheetScreen';
 import { sendChange, sendHandBack, useProspectOfChat } from './sellerDesk';
 
 /** The chat header's circle (dp), as every chat's. */
@@ -31,19 +32,30 @@ export function useProspectDoor(params: DoorParams): ProspectDoor {
   const { jwt, spaceId, chatId } = params;
   const { prospect, setProspect, reload } = useProspectOfChat(jwt, spaceId, chatId, params.enabled);
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [planning, setPlanning] = useState(false);
   const run = useOneChangeAtATime(setProspect, reload);
   useEffect(() => {
     setSheetOpen(false);
+    setPlanning(false);
   }, [chatId]);
   if (!params.enabled || !spaceId) return NO_DOOR;
   const composerNote = <WhatsAppNote />;
   if (!prospect) return { header: { avatar: <Avatar nombre={params.name.replace(/^# /, '')} tamano={HEADER_AVATAR} />, subtitle: <View className="h-6" />, actions: null }, strip: null, screen: null, composerNote };
   const close = () => setSheetOpen(false);
+  const settlePlan = (outcome: ChangeOutcome) => {
+    setPlanning(false);
+    applyOutcome(outcome, setProspect, reload);
+  };
   return {
     header: { avatar: <ProspectCircle prospect={prospect} />, subtitle: <ProspectLine prospect={prospect} />, actions: <HeaderActions prospect={prospect} onSheet={() => setSheetOpen(true)} /> },
-    strip: <ProspectStrip prospect={prospect} onTake={() => void run(() => sendChange(jwt, spaceId, prospect, { assignee: 'me' }))} onHandBack={() => void run(() => sendHandBack(jwt, spaceId, prospect))} />,
+    strip: <ProspectStrip prospect={prospect} onRemind={() => setPlanning(true)} onTake={() => void run(() => sendChange(jwt, spaceId, prospect, { assignee: 'me' }))} onHandBack={() => void run(() => sendHandBack(jwt, spaceId, prospect))} />,
     // Inside the chat, «Abrir conversación» only closes the ficha: the conversation is under it.
-    screen: sheetOpen ? <ChatProspectSheet visible prospect={prospect} jwt={jwt} spaceId={spaceId} me={params.me} onChanged={setProspect} onStale={reload} onClose={close} onOpenConversation={close} /> : null,
+    screen: (
+      <>
+        {sheetOpen ? <ChatProspectSheet visible prospect={prospect} jwt={jwt} spaceId={spaceId} me={params.me} onChanged={setProspect} onStale={reload} onClose={close} onOpenConversation={close} /> : null}
+        {planning ? <ChatNextActionSheet prospect={prospect} jwt={jwt} spaceId={spaceId} onDone={settlePlan} onClose={() => setPlanning(false)} /> : null}
+      </>
+    ),
     composerNote,
   };
 }
@@ -91,7 +103,7 @@ function HeaderActions({ prospect, onSheet }: { prospect: ProspectView; onSheet:
 }
 
 /** Who attends it and whether Dali is paused; «Devolver a Dali» while a person answers; «Tomar» while nobody has it. */
-function ProspectStrip({ prospect, onTake, onHandBack }: { prospect: ProspectView; onTake: () => void; onHandBack: () => void }) {
+function ProspectStrip({ prospect, onRemind, onTake, onHandBack }: { prospect: ProspectView; onRemind: () => void; onTake: () => void; onHandBack: () => void }) {
   const strip = prospectStripOf(prospect);
   return (
     <View testID="franja-prospecto" className="min-h-[48px] flex-row items-center gap-2 border-b border-outline/10 bg-surface px-3">
@@ -107,8 +119,31 @@ function ProspectStrip({ prospect, onTake, onHandBack }: { prospect: ProspectVie
       </View>
       {strip.canHandBack ? <TextButton testID="franja-devolver-a-dali" onPress={onHandBack}>Devolver a Dali</TextButton> : null}
       {strip.canTake ? <TextButton testID="franja-tomar" onPress={onTake}>Tomar</TextButton> : null}
+      <RemindButton prospect={prospect} onPress={onRemind} />
     </View>
   );
+}
+
+/**
+ * José 27/11: a reminder to insist, from the chat itself: the prospect's «Próxima acción» (dl-09). A bell beside the
+ * strip's actions; ringing once set, red once its hour passed. Its own minute keeps «late» true without the chat.
+ */
+function RemindButton({ prospect, onPress }: { prospect: ProspectView; onPress: () => void }) {
+  const colors = useColores();
+  const reminder = stripReminderOf(prospect, useNow(Boolean(prospect.nextAction)));
+  if (!reminder) return null;
+  const Icon = reminder.planned ? BellRing : Bell;
+  return (
+    <Pressable testID="franja-recordatorio" accessibilityRole="button" accessibilityLabel={reminder.planned ? `Recordatorio: ${reminder.label}` : reminder.label} onPress={onPress} className="h-11 w-11 items-center justify-center">
+      <Icon size={20} color={reminder.late ? colors.error : colors.primary} />
+    </Pressable>
+  );
+}
+
+/** «Próxima acción» over the chat, mounted only while open, with its own minute (as the ficha). */
+function ChatNextActionSheet(props: { prospect: ProspectView; jwt: string; spaceId: string; onDone: (outcome: ChangeOutcome) => void; onClose: () => void }) {
+  const now = useNow(true);
+  return <NextActionSheet visible {...props} now={now} />;
 }
 
 /** Over the composer of a prospect's channel: what is written there leaves Lilachat. */

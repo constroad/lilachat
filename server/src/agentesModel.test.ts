@@ -41,7 +41,7 @@ beforeEach(async () => {
   await BotInstallationModel.create([install(other!._id, space, 'portal'), install(lilaAppId, space, 'lila'), install(lilaAppId, otherSpace, 'lila-other')]);
 });
 
-describe('lilaDoorFor: the Lila app installation that signs a model task', () => {
+describe('lilaDoorFor: the installation of an agentes app that signs a model task', () => {
   it('is the Lila installation of a space where the chat member is active', async () => {
     // Act
     const door = await lilaDoorFor([String(jose)]);
@@ -53,6 +53,17 @@ describe('lilaDoorFor: the Lila app installation that signs a model task', () =>
   it('is none for someone without an active space that has Lila', async () => {
     expect(await lilaDoorFor([String(stranger)])).toBeNull();
     expect(await lilaDoorFor([])).toBeNull();
+  });
+
+  it('any app agentes hosts signs it, not only Lila (José 27/11 via Agentes; in production Lila had no installation)', async () => {
+    // Arrange: no Lila installation; a Dali-like app on agentes' host, and Portal on its own host
+    await BotInstallationModel.deleteMany({ appId: lilaAppId });
+    const dali = await BotAppModel.create({ clientId: 'lca_test_dali', clientSecretHash: 'h3', name: 'Dali', redirectUris: ['https://agentes.test/cb'], webhookUrl: 'https://agentes.test/v1/channels/lilachat/events' });
+    await BotInstallationModel.create({ appId: dali._id, workspaceId: space, botUserId: new Types.ObjectId(), tokenHash: 'dali', signingSecret: 'secret-dali', installedBy: jose });
+    // Act
+    const door = await lilaDoorFor([String(jose)]);
+    // Assert: Dali's, never Portal's (another host) even though Portal is installed in the same space
+    expect(door).toMatchObject({ signingSecret: 'secret-dali', webhookUrl: 'https://agentes.test/v1/channels/lilachat/events' });
   });
 
   it('skips a revoked installation', async () => {

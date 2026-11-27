@@ -93,9 +93,12 @@ Montaje en `server/src/app.ts` (líneas 160–166): `/api/oauth`, `/api/bots/app
 - Síncronos (se espera la respuesta): `command.invoked`, `shortcut.invoked`, `form.submitted`,
   `form.preview.requested`, `link.status`, `link.revoke`, `dali.knowledge.requested`, `dali.faq.add`,
   `visit.draft.requested` y los `client.*.requested` del canal del cliente.
-- `llm.task.requested` (18/11): una tarea del modelo que Lilachat le pide a agentes por la app Lila
-  (`agentesModel.ts`, 10 s). La firma la instalación de Lila de un espacio de un miembro del chat
-  (`developerAppClientIds()` de `botApps.ts`). Agentes elige el modelo; Lilachat no guarda claves.
+- `llm.task.requested` (18/11): una tarea del modelo que Lilachat le pide a agentes (`agentesModel.ts`, 10 s).
+  Desde el 27/11 (José, vía Agentes; agentes 22ef01d) la firma una instalación viva de CUALQUIER app alojada en
+  agentes (`agentesApps`: el host del webhook de la app de desarrollador Lila, `developerAppClientIds()`) en un
+  espacio de un miembro del chat; antes solo Lila, que en producción no tenía instalaciones, así que respondía
+  `not_configured` siempre. El consumo va a la empresa de esa instalación. Agentes elige el modelo; Lilachat no
+  guarda claves.
 - `GET /api/bots/commands/:id/context` (18/11, José: una sola Lila): el nombre del chat y sus últimos
   mensajes (`{ from, text }`, el mismo corte de 40 mensajes y 8000 caracteres del asistente) para que la
   Lila de agentes conteste `/lila <pregunta>` en un canal. Solo vale una corrida viva de `/lila` (15 min)

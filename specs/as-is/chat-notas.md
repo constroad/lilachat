@@ -51,7 +51,7 @@ Diseño en Stitch `nl-01` a `nl-03` (ver §5). Prototipo navegable en https://cl
 - **El enlace guardado va limpio:** sin `igsh`, `utm_*`, `si`, `fbclid`, `mibextid` ni `_t`/`_r` (`shared/src/linkNotes.ts › cleanLinkUrl`).
 - **«Solo pide comentar»:** el post dice «Comenta NICHO…» y casi nada más (`commentBaitOf`).
 - **La categoría** (`linkClassifier.ts` → `agentesModel.ts`):
-  - Lilachat pide la tarea `link.classify` (o `link.propose` al encender) a agentes con el evento firmado `llm.task.requested` de la app Lila, contestado en el cuerpo (10 s).
+  - Lilachat pide la tarea `link.classify` (o `link.propose` al encender) a agentes con el evento firmado `llm.task.requested` (lo firma cualquier app de agentes instalada en el espacio, 27/11), contestado en el cuerpo (10 s).
   - Lo firma la instalación de Lila de un espacio donde un miembro del chat está activo; el consumo va a esa empresa. Sin ese espacio, «Sin categoría».
   - Agentes elige el modelo (hoy Haiku 5.5, unos US$ 0.0002 por enlace). Lilachat no nombra proveedor ni guarda clave.
   - La respuesta se valida como la de un cliente hostil: solo un nombre de la lista o uno nuevo corto.

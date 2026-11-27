@@ -7,8 +7,8 @@ import { BotAppModel, BotInstallationModel } from './bots/botModels.js';
 /**
  * Lilachat asks agentes for a model task (José, 18/11): it holds no model key and names no provider; agentes picks
  * the model per task (agentes `core/llm/tasks.ts`). The ask travels as the signed webhook event
- * `llm.task.requested` of the Lila app, answered in the body like a form preview. It is signed with the Lila
- * installation of a space where a member of the chat is active; that space's company carries the usage.
+ * `llm.task.requested`, answered in the body like a form preview. It is signed with the installation of an agentes
+ * app in a space where a member of the chat is active; that installation's company carries the usage.
  */
 /** The tasks agentes accepts from Lilachat (agentes `core/llm/tasks.ts`). With a schema the answer is JSON; without, text. */
 export type ModelTask = {
@@ -26,13 +26,28 @@ const ASK_TIMEOUT_MS = 10_000;
 
 type Door = { _id: Types.ObjectId; workspaceId: Types.ObjectId; signingSecret: string; webhookUrl: string };
 
-/** The Lila app's live installation in a space where one of these people is an active member. */
+type AgentesApp = { _id: Types.ObjectId; webhookUrl: string };
+
+/**
+ * The apps agentes hosts: those whose webhook is on the host of its developer app (Lila). Any of them may sign a model
+ * task or a sticker voice (José 27/11 via Agentes: in production Lila had no installation; Dali, Portal and Inframaq
+ * did). An app of another product on its own host never signs.
+ */
+export async function agentesApps(): Promise<AgentesApp[]> {
+  const developer = await BotAppModel.findOne({ clientId: { $in: developerAppClientIds() }, webhookUrl: { $exists: true } }).select('webhookUrl').lean();
+  if (!developer?.webhookUrl) return [];
+  const host = new URL(developer.webhookUrl).host;
+  const apps = await BotAppModel.find({ webhookUrl: { $exists: true } }).select('_id webhookUrl').lean();
+  return apps.flatMap((app) => (app.webhookUrl && new URL(app.webhookUrl).host === host ? [{ _id: app._id, webhookUrl: app.webhookUrl }] : []));
+}
+
+/** A live installation of an agentes app in a space where one of these people is an active member. */
 export async function lilaDoorFor(memberIds: readonly string[]): Promise<Door | null> {
   const ids = memberIds.filter((id) => Types.ObjectId.isValid(id)).map((id) => new Types.ObjectId(id));
   if (ids.length === 0) return null;
   const [spaces, apps] = await Promise.all([
     WorkspaceMemberModel.distinct('workspaceId', { userId: { $in: ids }, status: 'active' }),
-    BotAppModel.find({ clientId: { $in: developerAppClientIds() } }).select('_id webhookUrl').lean(),
+    agentesApps(),
   ]);
   if (spaces.length === 0 || apps.length === 0) return null;
   const installation = await BotInstallationModel.findOne({ appId: { $in: apps.map((app) => app._id) }, workspaceId: { $in: spaces }, revokedAt: { $exists: false } })

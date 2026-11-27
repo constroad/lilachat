@@ -1,7 +1,7 @@
 import { Types } from 'mongoose';
 import { eventSignature } from './bots/botSecrets.js';
-import { developerAppClientIds } from './bots/botApps.js';
-import { BotAppModel, BotInstallationModel } from './bots/botModels.js';
+import { BotInstallationModel } from './bots/botModels.js';
+import { agentesApps } from './agentesModel.js';
 import type { StickerVoiceSpeaker, VoiceOutcome } from './stickerVoice.js';
 
 /** agentes waits 15 s for Voice Studio before its own 503; a little more here so its answer arrives. */
@@ -19,10 +19,7 @@ type VoiceDoor = { _id: Types.ObjectId; signingSecret: string; webhookUrl: strin
  */
 async function agentesDoorFor(spaceId: string): Promise<VoiceDoor | null> {
   if (!Types.ObjectId.isValid(spaceId)) return null;
-  const developer = await BotAppModel.findOne({ clientId: { $in: developerAppClientIds() }, webhookUrl: { $exists: true } }).select('webhookUrl').lean();
-  if (!developer?.webhookUrl) return null;
-  const host = new URL(developer.webhookUrl).host;
-  const apps = (await BotAppModel.find({ webhookUrl: { $exists: true } }).select('_id webhookUrl').lean()).filter((app) => app.webhookUrl && new URL(app.webhookUrl).host === host);
+  const apps = await agentesApps();
   const installation = await BotInstallationModel.findOne({ appId: { $in: apps.map((app) => app._id) }, workspaceId: new Types.ObjectId(spaceId), revokedAt: { $exists: false } })
     .select('_id signingSecret appId')
     .lean();

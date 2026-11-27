@@ -1,7 +1,7 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { renderHook } from '@testing-library/react';
-import { NO_HIDDEN_LAYERS, type WorkMap, type WorkMapView, type WorkStage } from '@lilachat/shared';
+import { NO_HIDDEN_LAYERS, type WorkMap, type WorkMapView } from '@lilachat/shared';
 import { ClientServices } from './ClientChannelParts';
 import { DriveFileMenu } from './DriveFileMenu';
 import { useDrivePaste } from './useDrivePaste';
@@ -96,19 +96,12 @@ describe('«Capas y leyenda» (design cc-04)', () => {
   });
 });
 
-describe('«Servicios» on a phone (design cc-01 mobile)', () => {
-  const stages: WorkStage[] = [{ _id: 's1', title: 'Inicio', stage: 1, items: [{ id: 'a', text: 'Firmar acta de inicio', doneBy: null, doneAt: null }] }];
+describe('«Servicios» of a client channel', () => {
   const client = { id: 'x', chat_id: 'c', name: 'CONSORCIO', live: true, archived_since: null, last_activity_at: null, last_order_at: null, orders_total: 0, archived_group: '2-6' as const, services: [] };
 
-  it('shows the open tasks first and «Ver en Checklist» takes there', () => {
-    // Arrange
-    const onOpen = vi.fn();
-    render(<ClientServices client={client} records={[]} target={null} pending={{ stages, label: 'Ver en Checklist', onOpen }} />);
-    // Act
-    fireEvent.click(screen.getByTestId('ver-en-checklist'));
-    // Assert
-    expect(screen.getByTestId('servicios-pendientes')).toHaveTextContent('Pendientes · 1');
-    expect(screen.getByTestId('servicios-pendientes')).toHaveTextContent('Firmar acta de inicio');
-    expect(onOpen).toHaveBeenCalled();
+  it('has no «Pendientes» block: they live in Checklist (José 27/11: «no tiene sentido si tenemos un tab de checklist»)', () => {
+    render(<ClientServices client={client} records={[]} target={null} />);
+    expect(screen.queryByTestId('servicios-pendientes')).toBeNull();
+    expect(screen.queryByText(/Pendientes ·/)).toBeNull();
   });
 });

@@ -166,6 +166,10 @@ Lo demás (editar, borrar, reenviar, fijar, destacar, info, reacciones, mencione
 
 ## 4. Historia reciente (16/10 → 19/11)
 
+- **27/11:** José cambia el criterio del 20/11: el nombre de la cabecera del
+  chat va en UNA línea cortada con «…», como WhatsApp (chats individuales,
+  Dali, canales y canales de cliente). Web `Conversation.tsx` (`truncate`,
+  `titulo-del-chat`), app `EncabezadoDelChat.tsx` (`numberOfLines={1}`).
 - **20/11:** José, de nuevo, nombre de obra cortado a una línea en la cabecera
   del chat (web `Conversation.tsx`, app `EncabezadoDelChat.tsx`): ahora 2
   líneas (`line-clamp-2`/`numberOfLines={2}`), sin techo de alto en el

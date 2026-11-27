@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { AlertCircle, Archive, ChevronRight, FolderOpen, Link2, Search } from 'lucide-react';
-import { archivedBanner, ARCHIVED_COMPOSER_NOTE, filterServices, pendingPreview, serviceAccessOf, serviceSegmentsOf, orderFocusOf, type ChannelLinks, type ServiceFilter, type ClientRecord, type SpaceClient, type SpaceClientService, type WorkStage } from '@lilachat/shared';
+import { Archive, FolderOpen, Link2, Search } from 'lucide-react';
+import { archivedBanner, ARCHIVED_COMPOSER_NOTE, filterServices, serviceAccessOf, serviceSegmentsOf, orderFocusOf, type ChannelLinks, type ServiceFilter, type ClientRecord, type SpaceClient, type SpaceClientService } from '@lilachat/shared';
 import { ServiceDetailWeb } from './ServiceDetailWeb';
 import { ServiceCard } from './ServiceCardWeb';
 import type { ServiceAskTarget } from './useServiceAsk';
@@ -41,31 +41,6 @@ function ServiceFilters(props: { query: string; onQuery: (query: string) => void
   );
 }
 
-/** Design cc-01 mobile: the open tasks over the list, «Ver en Checklist» takes there. */
-function PendingBlock(props: { pending: ChannelPending }) {
-  const { tasks, total } = pendingPreview(props.pending.stages, new Date());
-  if (!total) return null;
-  return (
-    <section data-testid="servicios-pendientes" className="rounded-2xl border border-outline/15 border-t-[3px] border-t-warning bg-surface p-3">
-      <p className="flex items-center justify-between px-1 pb-2 font-mono text-[11px] font-bold uppercase tracking-[0.16em] text-warning">
-        {`Pendientes · ${total}`}
-        <button type="button" data-testid="ver-en-checklist" onClick={props.pending.onOpen} className="inline-flex items-center gap-0.5 font-sans text-[13px] font-semibold normal-case tracking-normal text-primary">{props.pending.label} <ChevronRight size={14} /></button>
-      </p>
-      <ul className="flex flex-col gap-1.5">
-        {tasks.map((task) => (
-          <li key={`${task.stageId}-${task.item.id}`} className="flex items-start gap-2 rounded-xl border border-warning/25 bg-warning/5 px-3 py-2">
-            <AlertCircle size={16} className="mt-0.5 shrink-0 text-warning" />
-            <span className="min-w-0"><span className="block text-[14px] font-semibold text-on-surface">{task.item.text}</span><span className="block text-[12px] text-on-surface-variant">{`Etapa ${task.stage}`}</span></span>
-          </li>
-        ))}
-      </ul>
-    </section>
-  );
-}
-
-/** The plan's stages and the way to «Checklist»: only on a phone, where «Pendientes» is not a tab. */
-export type ChannelPending = { stages: readonly WorkStage[]; /** «Ver en Checklist», or «Ver pendientes» for whoever has no checklist. */ label: string; onOpen: () => void };
-
 function ListHead(props: { client: SpaceClient; links?: ChannelLinks; seesDrive: boolean }) {
   const { links } = props;
   return (
@@ -90,7 +65,7 @@ const HEAD_BUTTON = 'inline-flex h-10 items-center gap-1.5 rounded-xl border bor
  * Completados · Todos», and a card per service; on a phone the open tasks go first. The service
  * opens under the channel's tabs (tablet, computer) or over the whole screen (phone).
  */
-export function ClientServices(props: { /** Who can be a report's responsible. */ people?: readonly string[]; /** The channel hides its chrome while a service is open on a phone. */ onServiceOpen?: (open: boolean) => void; client: SpaceClient; records: ClientRecord[] | null; target: ServiceAskTarget | null; links?: ChannelLinks; /** The message of the order's card that sent here. */ focusSeq?: number | null; onFocused?: () => void; /** A card's `open: { route: 'service' }` (agentes, 20/11): the service to open directly, no order lookup. */ focusServiceId?: string | null; /** With it, an «INFORME» card's report opens on top of Informes (José 25/11). */ focusReportId?: string | null; onServiceFocused?: () => void; pending?: ChannelPending }) {
+export function ClientServices(props: { /** Who can be a report's responsible. */ people?: readonly string[]; /** The channel hides its chrome while a service is open on a phone. */ onServiceOpen?: (open: boolean) => void; client: SpaceClient; records: ClientRecord[] | null; target: ServiceAskTarget | null; links?: ChannelLinks; /** The message of the order's card that sent here. */ focusSeq?: number | null; onFocused?: () => void; /** A card's `open: { route: 'service' }` (agentes, 20/11): the service to open directly, no order lookup. */ focusServiceId?: string | null; /** With it, an «INFORME» card's report opens on top of Informes (José 25/11). */ focusReportId?: string | null; onServiceFocused?: () => void }) {
   const [query, setQuery] = useState('');
   const [opened, setOpened] = useState<SpaceClientService | null>(null);
   const [filter, setFilter] = useState<ServiceFilter>('all');
@@ -131,7 +106,6 @@ export function ClientServices(props: { /** Who can be a report's responsible. *
   return (
     <div data-testid="servicios-cliente" className="min-h-0 flex-1 overflow-y-auto bg-background p-4 md:p-6">
       <div className="mx-auto flex max-w-5xl flex-col gap-4">
-        {props.pending ? <PendingBlock pending={props.pending} /> : null}
         <ListHead client={props.client} links={props.links} seesDrive={sees.drive} />
         {total > 1 ? <ServiceFilters query={query} onQuery={setQuery} filter={filter} onFilter={setFilter} counts={counts} /> : null}
         {total === 0 ? <p className="pt-10 text-center text-sm text-on-surface-variant">Este cliente todavía no tiene servicios.</p> : null}

@@ -26,7 +26,7 @@ import { PendingWeb, TaskDetailWeb, type OpenTask } from './workPlan/WorkListsWe
 import { ClientAccountWeb } from '../spaces/clients/ClientAccountWeb';
 import { CHANNEL_TAB_LABELS, channelTabsFor, checklistHoldsPending, pendingTasks, type ChannelLinks, type ChannelTab, type WorkStage } from '@lilachat/shared';
 import { useClientOfChat, useClientsOfChannelSpace } from '../spaces/clients/useSpaceClients';
-import { ArchivedClientBanner, ArchivedComposerNote, ClientServices, type ChannelPending } from '../spaces/clients/ClientChannelParts';
+import { ArchivedClientBanner, ArchivedComposerNote, ClientServices } from '../spaces/clients/ClientChannelParts';
 import { useCompactShell } from '../spaces/clients/ServiceShellWeb';
 import { ChecklistSegmentsWeb } from './workPlan/ChecklistSegmentsWeb';
 import { useClientRecords } from '../spaces/clients/useSpaceClients';
@@ -244,7 +244,7 @@ export function Conversation(props: {
       ) : isClientChannel && client && shownTab === 'account' && props.jwtParaEnlaces && chat.workspaceId ? (
         <ClientAccountWeb target={{ jwt: props.jwtParaEnlaces, spaceId: chat.workspaceId, clientId: client.id }} services={client.services} />
       ) : isClientChannel && client && shownTab === 'services' ? (
-        <ClientServicesPanel people={props.people ?? []} client={client} jwt={props.jwtParaEnlaces} spaceId={chat.workspaceId} links={links} focusSeq={focusSeq} onFocused={clearFocus} focusServiceId={focusServiceId} focusReportId={focusReportId} onServiceFocused={clearServiceFocus} onServiceOpen={setServiceOpen} pending={compact && hasStages ? { stages: workPlan.stages ?? [], label: holdsPending ? 'Ver en Checklist' : 'Ver pendientes', onOpen: () => setChannelTab(holdsPending ? 'checklist' : 'pending') } : undefined} />
+        <ClientServicesPanel people={props.people ?? []} client={client} jwt={props.jwtParaEnlaces} spaceId={chat.workspaceId} links={links} focusSeq={focusSeq} onFocused={clearFocus} focusServiceId={focusServiceId} focusReportId={focusReportId} onServiceFocused={clearServiceFocus} onServiceOpen={setServiceOpen} />
       ) : props.app && appTab === 'info' ? (
         <div data-testid="informacion-app" className="min-h-0 flex-1 overflow-y-auto bg-background p-4 md:p-8">
           <div className="mx-auto max-w-3xl">
@@ -375,8 +375,8 @@ function CabeceraDeLaConversacion(props: HeaderProps) {
       <button type="button" data-testid="btn-info-del-chat" aria-label={`Info. de ${title}`} onClick={props.onAbrirInfo} className={`flex min-w-0 flex-1 items-center rounded-lg text-left ${tight ? 'gap-2.5' : 'gap-3'}`}>
         <HeaderAvatar {...props} title={title} />
         <div className="min-w-0 flex-1">
-          {/* José 20/11 «otra vez el nombre de la obra en una sola línea»: 2 líneas, no 1. */}
-          <h2 className="line-clamp-2 text-base font-bold leading-tight">{title}</h2>
+          {/* José 27/11: one line cut with «…», like WhatsApp (it replaces the 2 lines of 20/11). */}
+          <h2 data-testid="titulo-del-chat" className="truncate text-base font-bold leading-tight">{title}</h2>
           <HeaderLine {...props} />
         </div>
       </button>
@@ -436,13 +436,13 @@ function BannerWithSession() {
 }
 
 /** «Servicios» asks for its records only while it is open. */
-function ClientServicesPanel(props: { people: readonly string[]; client: NonNullable<ReturnType<typeof useClientOfChat>>; jwt?: string; spaceId?: string; links: ChannelLinks; focusSeq: number | null; onFocused: () => void; focusServiceId: string | null; focusReportId: string | null; onServiceFocused: () => void; onServiceOpen: (open: boolean) => void; pending?: ChannelPending }) {
+function ClientServicesPanel(props: { people: readonly string[]; client: NonNullable<ReturnType<typeof useClientOfChat>>; jwt?: string; spaceId?: string; links: ChannelLinks; focusSeq: number | null; onFocused: () => void; focusServiceId: string | null; focusReportId: string | null; onServiceFocused: () => void; onServiceOpen: (open: boolean) => void }) {
   const records = useClientRecords(props.jwt, props.spaceId, props.client.id);
   // One target per channel: the screens under it ask Portal again when it changes, not at every message.
   const { jwt, spaceId } = props;
   const clientId = props.client.id;
   const target = useMemo(() => (jwt && spaceId ? { jwt, spaceId, clientId } : null), [jwt, spaceId, clientId]);
-  return <ClientServices people={props.people} client={props.client} records={records} focusSeq={props.focusSeq} onFocused={props.onFocused} focusServiceId={props.focusServiceId} focusReportId={props.focusReportId} onServiceFocused={props.onServiceFocused} target={target} links={props.links} onServiceOpen={props.onServiceOpen} pending={props.pending} />;
+  return <ClientServices people={props.people} client={props.client} records={records} focusSeq={props.focusSeq} onFocused={props.onFocused} focusServiceId={props.focusServiceId} focusReportId={props.focusReportId} onServiceFocused={props.onServiceFocused} target={target} links={props.links} onServiceOpen={props.onServiceOpen} />;
 }
 
 /**

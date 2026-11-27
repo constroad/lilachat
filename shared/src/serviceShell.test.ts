@@ -1,8 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { channelTabsFor, checklistHoldsPending, PENDING_PREVIEW_MAX, pendingPreview, SERVICE_SEGMENTS, serviceHeadLine, serviceSegmentsOf, serviceSlimLine, serviceTakesScreen, SHELL_WIDE_MIN_PX } from './serviceShell.js';
-import type { WorkStage } from './workStages.js';
-
-const stage = (stageNumber: number, items: Array<{ id: string; text: string; doneBy?: string; assignee?: string }>): WorkStage => ({ _id: `s${stageNumber}`, title: `Etapa ${stageNumber}`, stage: stageNumber, items: items.map((item) => ({ id: item.id, text: item.text, doneBy: item.doneBy ?? null, doneAt: null, assignee: item.assignee ?? null })) });
+import { channelTabsFor, checklistHoldsPending, SERVICE_SEGMENTS, serviceHeadLine, serviceSegmentsOf, serviceSlimLine, serviceTakesScreen, SHELL_WIDE_MIN_PX } from './serviceShell.js';
 
 describe('serviceTakesScreen', () => {
   it('takes the screen on a phone and keeps the channel tabs from a tablet up', () => {
@@ -73,21 +70,3 @@ describe('serviceSegmentsOf', () => {
   });
 });
 
-describe('pendingPreview', () => {
-  const now = new Date('2026-11-19T12:00:00Z');
-  it('shows the first open tasks and the total', () => {
-    const stages = [stage(1, [{ id: 'a', text: 'Firmar acta de inicio' }, { id: 'b', text: 'Hecha', doneBy: 'u1' }]), stage(2, [{ id: 'c', text: 'Enviar plano' }])];
-    const preview = pendingPreview(stages, now);
-    expect(preview.total).toBe(2);
-    expect(preview.tasks.map((task) => task.item.text)).toEqual(['Firmar acta de inicio', 'Enviar plano']);
-  });
-  it('caps the preview and keeps the total', () => {
-    const many = stage(1, Array.from({ length: PENDING_PREVIEW_MAX + 2 }, (_, index) => ({ id: `t${index}`, text: `Tarea ${index}` })));
-    const preview = pendingPreview([many], now);
-    expect(preview.tasks).toHaveLength(PENDING_PREVIEW_MAX);
-    expect(preview.total).toBe(PENDING_PREVIEW_MAX + 2);
-  });
-  it('is empty without stages', () => {
-    expect(pendingPreview([], now)).toEqual({ tasks: [], total: 0 });
-  });
-});

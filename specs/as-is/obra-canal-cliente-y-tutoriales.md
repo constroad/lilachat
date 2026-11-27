@@ -44,8 +44,9 @@ Plan» (`channelTabsFor`, `checklistHoldsPending`); quien no tiene Checklist con
   INFORMES y ÚLTIMO MOVIMIENTO («Hoy 09:40 · Observación Parche 12»). En el celular, la tarjeta suma la fila
   «2 pedidos · 3 informes · Hoy 09:40» y la barra «Último movimiento: … ›» (web `ServiceCardWeb.tsx`, APK
   `ServiceCard.tsx`; motor `shared/src/serviceFacts.ts` › `serviceCardFacts`).
-- En el celular, arriba, el bloque «Pendientes · N» con las 3 primeras tareas abiertas y «Ver en
-  Checklist» (o «Ver pendientes» para quien no tiene Checklist) (`pendingPreview`).
+- Sin bloque «Pendientes» arriba (José 27/11: «no tiene sentido si tenemos un tab de checklist»): se quitó
+  el bloque del diseño cc-01 móvil, `PendingBlock` y `pendingPreview`. Las tareas viven en Checklist (o en
+  Pendientes para quien no tiene Checklist).
 - Las cifras llegan en `SpaceClientService` (José 19/11): `ordersCount`, `reportsCount`, `stagesTotal` y
   `lastActivity` (ver `bots-api-y-tarjetas.md`). Un servicio sin datos llega 0/0/0 y muestra 0. Si un Portal
   viejo no las manda, la columna dice «—» y el celular oculta la fila: nunca se inventa una cifra.

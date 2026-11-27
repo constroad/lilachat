@@ -114,7 +114,7 @@ export function useChannelWork(params: { enabled: boolean; jwt: string; chatId: 
     </>
   );
   const fullScreen = shown === 'services' && serviceOpen && compact;
-  const layout = { compact, holdsPending, counts: { pending: open ? String(open) : '', plan: counter ?? '' }, onPending: () => setTab(holdsPending ? 'checklist' : 'pending') };
+  const layout = { compact, holdsPending, counts: { pending: open ? String(open) : '', plan: counter ?? '' } };
   const panel = <ChannelPanels fullScreen={fullScreen} layout={layout} onServiceOpen={setServiceOpen} shown={shown} focusSeq={focusSeq} clearFocus={clearFocus} focusServiceId={focusServiceId} focusReportId={focusReportId} clearServiceFocus={clearServiceFocus} client={client} records={records} plan={plan} stages={stages} target={target} people={people} params={params} nameOf={nameOf} toMessage={toMessage} openTask={openTask} setOpenTask={setOpenTask} links={links} />;
   return { tabs, panel, note: <ArchivedComposerNote client={client} />, client, openOrderCard: allowed.includes('services') ? openOrderCard : undefined, openService: allowed.includes('services') ? openService : undefined, fullScreen };
 }
@@ -123,7 +123,7 @@ type ChannelWorkParams = Parameters<typeof useChannelWork>[0];
 
 /** The open tab's panel of a client's channel, and the task sheet over it. */
 /** What the device changes (José 19/11): a phone holds «Pendientes» in «Checklist» and shows them over «Servicios». */
-type ChannelLayout = { compact: boolean; holdsPending: boolean; counts: { pending: string; plan: string }; onPending: () => void };
+type ChannelLayout = { compact: boolean; holdsPending: boolean; counts: { pending: string; plan: string } };
 
 function ChannelPanels(props: { fullScreen: boolean; layout: ChannelLayout; onServiceOpen: (open: boolean) => void; shown: Tab; focusSeq: number | null; clearFocus: () => void; focusServiceId: string | null; focusReportId: string | null; clearServiceFocus: () => void; client: SpaceClient; records: ReturnType<typeof useClientRecords>; plan: ReturnType<typeof useWorkPlan>; stages: WorkStage[]; target: ServiceAskTarget | null; people: ReadonlyMap<string, string>; params: ChannelWorkParams; nameOf: (userId: string) => string; toMessage: (seq: number) => void; openTask: OpenTask | null; setOpenTask: (task: OpenTask | null) => void; links: ChannelLinks }) {
   const { shown, client, plan, stages, target, params, nameOf, toMessage, setOpenTask } = props;
@@ -136,7 +136,7 @@ function ChannelPanels(props: { fullScreen: boolean; layout: ChannelLayout; onSe
     <>
       {shown === 'services' ? (
         <View className="bg-background" style={cover}>
-          <ClientServices onServiceOpen={props.onServiceOpen} compact={props.layout.compact} pending={props.layout.compact && stages.length ? { stages, label: props.layout.holdsPending ? 'Ver en Checklist' : 'Ver pendientes', onOpen: props.layout.onPending } : undefined} client={client} records={props.records} target={target} members={props.people} me={params.yo} links={props.links} focusSeq={props.focusSeq} onFocused={props.clearFocus} focusServiceId={props.focusServiceId} focusReportId={props.focusReportId} onServiceFocused={props.clearServiceFocus} />
+          <ClientServices onServiceOpen={props.onServiceOpen} compact={props.layout.compact} client={client} records={props.records} target={target} members={props.people} me={params.yo} links={props.links} focusSeq={props.focusSeq} onFocused={props.clearFocus} focusServiceId={props.focusServiceId} focusReportId={props.focusReportId} onServiceFocused={props.clearServiceFocus} />
         </View>
       ) : null}
       {shown === 'account' && target ? <View className="bg-background" style={cover}><ClientAccountPanel target={target} services={client.services} /></View> : null}

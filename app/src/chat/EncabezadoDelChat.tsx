@@ -94,8 +94,8 @@ export function EncabezadoDelChat(props: {
               propiedad de con quién se está hablando, y tiene que verse en la
               misma mirada que el nombre. */}
           {props.secreto ? <Lock size={13} color={colores.primary} /> : null}
-          {/* José 20/11 «otra vez el nombre de la obra en una sola línea»: 2 líneas, no 1. */}
-          <Text className="min-w-0 flex-1 text-base font-bold text-on-surface" numberOfLines={2}>
+          {/* José 27/11: one line cut with «…», like WhatsApp (it replaces the 2 lines of 20/11). */}
+          <Text className="min-w-0 flex-1 text-base font-bold text-on-surface" numberOfLines={1} ellipsizeMode="tail">
             {shownName}
           </Text>
         </View>

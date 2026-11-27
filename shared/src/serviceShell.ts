@@ -8,14 +8,9 @@
 import { channelTabs, type ChannelTab, type MyClientAccess } from './clientAccess.js';
 import { dayOf } from './serviceDetail.js';
 import { serviceStageLine, type ServiceFilter, type SpaceClientService } from './spaceClients.js';
-import { pendingTasks, type PendingTask } from './workFiles.js';
-import type { WorkStage } from './workStages.js';
 
 /** From this width (a tablet) the channel's tabs stay above an open service. */
 export const SHELL_WIDE_MIN_PX = 768;
-/** How many open tasks «Servicios» shows over the list on a phone (design cc-01 mobile). */
-export const PENDING_PREVIEW_MAX = 3;
-
 /** Under this height (a phone turned sideways) the channel's head and tabs would leave no room for the service. */
 export const SHELL_MIN_HEIGHT_PX = 500;
 
@@ -64,8 +59,3 @@ export function serviceSegmentsOf(counts: Record<ServiceFilter, number>): Array<
   return SERVICE_SEGMENTS.filter((key) => key !== 'rejected' || counts.rejected > 0).map((key) => ({ key, label: SEGMENT_LABELS[key], count: counts[key] }));
 }
 
-/** The block of open tasks over «Servicios» on a phone (design cc-01 mobile). */
-export function pendingPreview(stages: readonly WorkStage[], now: Date): { tasks: PendingTask[]; total: number } {
-  const open = pendingTasks(stages, now);
-  return { tasks: open.slice(0, PENDING_PREVIEW_MAX), total: open.length };
-}

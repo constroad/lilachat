@@ -1,4 +1,4 @@
-import { useReducer, useState, type ReactNode } from 'react';
+import { useContext, useReducer, useState, type ReactNode } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { Modal } from '../../ui/Modal';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -9,7 +9,7 @@ import { useMargenes } from '../../ui/useMargenes';
 import { useColores } from '../../ui/tema';
 import { StickerCanvas } from './StickerCanvas';
 import { CutoutTools } from './CutoutTools';
-import { useStickerCutout } from './useStickerCutout';
+import { StickerPhotoContext, useStickerCutout } from './useStickerCutout';
 import type { ApiOutcome } from './stickersApi';
 
 const EMOJIS = ['😂', '😍', '🔥', '👍', '🎉', '❤️', '😎', '🙏', '💯', '🥳', '😮', '😢', '🤝', '👏', '🚀', '⭐', '😅', '🤣', '😘', '🤔', '👌', '💪', '✅', '🏗️'];
@@ -33,7 +33,8 @@ function ToolButton(props: { testID: string; label: string; active?: boolean; di
  * add text and make the sticker, like WhatsApp»; design `s1-app-crear-sticker`).
  * Pick a photo, ML Kit removes the background on the phone, then text, emojis
  * and the pencil on top (move, pinch, rotate), white outline, and it is kept in
- * «Mis stickers» or sent to the chat.
+ * «Mis stickers» or sent to the chat. The photo comes picked by «Crear»
+ * (José 26/11), through `StickerPhotoContext`.
  */
 export function CreateSticker(props: { visible: boolean; chatName: string; onClose: () => void; onSave: (file: { uri: string; width: number; height: number }) => Promise<ApiOutcome<LibrarySticker>>; onSend: (sticker: LibrarySticker) => Promise<boolean> }) {
   const colors = useColores();
@@ -45,7 +46,8 @@ export function CreateSticker(props: { visible: boolean; chatName: string; onClo
   const [area, setArea] = useState({ width: 0, height: 0 });
   const [state, dispatch] = useReducer(editSticker, undefined, initialEditorState);
   const { visible, onClose } = props;
-  const cutout = useStickerCutout({ visible, automatic: state.cutout, strokes: state.maskStrokes, outline: state.outline, onCancel: onClose });
+  const picked = useContext(StickerPhotoContext);
+  const cutout = useStickerCutout({ visible, picked, automatic: state.cutout, strokes: state.maskStrokes, outline: state.outline });
   const { phase, view } = cutout;
 
   /** The automatic-background switch: on and off; with no mask yet (the model was downloading), tries again. */
@@ -116,10 +118,10 @@ export function CreateSticker(props: { visible: boolean; chatName: string; onClo
           </View>
 
           <View className="flex-1 px-4 py-4" onLayout={(event) => setArea({ width: event.nativeEvent.layout.width - 32, height: event.nativeEvent.layout.height - 32 })}>
-            {phase === 'picking' || phase === 'cutting' || area.width === 0 ? (
+            {phase === 'cutting' || area.width === 0 ? (
               <View className="flex-1 items-center justify-center gap-3">
                 <ActivityIndicator color="white" />
-                <Text style={{ color: 'white' }}>{phase === 'cutting' ? 'Quitando el fondo…' : 'Elige una foto'}</Text>
+                <Text style={{ color: 'white' }}>Quitando el fondo…</Text>
               </View>
             ) : (
               <StickerCanvas

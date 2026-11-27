@@ -9,6 +9,8 @@ const AUDIO_ACCEPT = '.mp3,.m4a,.wav,audio/mpeg,audio/mp4,audio/x-m4a,audio/wav,
 
 type Props = {
   pick: SoundPick;
+  /** A GIF has no sound of its own: «Sonido original» is not offered (design sc-01a). */
+  hasOwnSound: boolean;
   clipMs: number;
   voice: Blob | null;
   upload: File | null;
@@ -43,7 +45,9 @@ export function StickerSoundPicker(props: Props) {
       <h3 className="flex items-baseline justify-between gap-2 text-[12px] font-bold uppercase tracking-wider text-on-surface-variant">
         Sonido del sticker <span className="text-[12px] font-normal normal-case tracking-normal">Hasta 6 segundos</span>
       </h3>
-      <SoundOption testId="sonido-original" icon={<Music size={17} />} title="Sonido original" hint={`El audio del video, en el tramo elegido (${clipTime(props.clipMs)})`} checked={pick.kind === 'original'} disabled={disabled} onSelect={() => props.onPick({ kind: 'original' })} />
+      {props.hasOwnSound ? (
+        <SoundOption testId="sonido-original" icon={<Music size={17} />} title="Sonido original" hint={`El audio del video, en el tramo elegido (${clipTime(props.clipMs)})`} checked={pick.kind === 'original'} disabled={disabled} onSelect={() => props.onPick({ kind: 'original' })} />
+      ) : null}
       <SoundOption testId="sonido-grabar" icon={<Mic size={17} />} title="Grabar tu voz" hint="Mantén presionado para hablar, o toca para empezar y parar" checked={pick.kind === 'voice'} disabled={disabled} onSelect={() => props.onPick({ kind: 'voice' })}>
         {pick.kind === 'voice' ? <VoiceRecorder voice={props.voice} disabled={disabled} onVoice={props.onVoice} onNotice={props.onNotice} /> : null}
       </SoundOption>

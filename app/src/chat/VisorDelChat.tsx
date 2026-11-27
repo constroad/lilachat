@@ -2,7 +2,7 @@ import { useState, type ComponentProps, type ReactNode } from 'react';
 import { Alert } from 'react-native';
 import { abrirConOtraApp, compartirFoto, guardarEnGaleria } from './guardarYCompartir';
 import { VisorDeImagen } from './VisorDeImagen';
-import { saveGifSticker } from './stickers/useStickers';
+import { openChatGifInEditor } from './stickers/chatGifEditor';
 import { isPdf } from './pdf/pdfSource';
 
 type Foto = NonNullable<ComponentProps<typeof VisorDeImagen>['foto']>;
@@ -71,9 +71,12 @@ export function VisorDelChat(props: {
       if (!r.ok) props.onError(r.motivo ?? 'No se pudo eliminar.');
     })}
     onMakeSticker={gifSticker ? async (f) => {
-      setAvisoVisor('Convirtiendo en sticker…');
-      setAvisoVisor(await saveGifSticker(gifSticker.jwt, { chatId: gifSticker.chatId, seq: f.seq }));
-      setTimeout(() => setAvisoVisor(''), 3000);
+      // José 26/11: the GIF opens the sticker editor (to add a sound); the viewer gives way to it.
+      setAvisoVisor('Abriendo el GIF…');
+      const problem = await openChatGifInEditor({ ...gifSticker, seq: f.seq, url: f.url });
+      setAvisoVisor(problem ?? '');
+      if (problem) setTimeout(() => setAvisoVisor(''), 3000);
+      else props.onCambiar(null);
     } : undefined}
     onAbrirArchivo={async (f) => {
       if (isPdf(f.mime) && props.onOpenPdf?.(f.seq)) return props.onCambiar(null);

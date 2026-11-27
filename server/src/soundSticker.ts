@@ -52,6 +52,14 @@ async function audioOf(folder: string, source: string, window: ClipWindow | null
   return size >= MIN_AUDIO_BYTES ? readFile(target) : null;
 }
 
+/** How long one loop of the animated WebP lasts, never more than the asked window. */
+async function stickerLengthMs(webp: Buffer, windowMs: number): Promise<number> {
+  const { default: sharp } = await import('sharp');
+  const delays = (await sharp(webp, { animated: true }).metadata()).delay ?? [];
+  const total = delays.reduce((sum, delay) => sum + delay, 0);
+  return total > 0 ? Math.min(total, windowMs) : windowMs;
+}
+
 /** The real converter, one at a time: the mini serves every app. */
 export const videoToSoundSticker: VideoStickerConverter = ({ video, window, soundFrom }) =>
   oneAtATime(async () => {
@@ -67,7 +75,8 @@ export const videoToSoundSticker: VideoStickerConverter = ({ video, window, soun
       if (soundFrom === null) return { webp, audio: null };
       if (soundFrom === 'video') return { webp, audio: await audioOf(folder, source, window) };
       await writeFile(soundSource, soundFrom);
-      return { webp, audio: await audioOf(folder, soundSource, null) };
+      // A GIF shorter than 6 s: the chosen sound is cut to the sticker's own length, so both loop together.
+      return { webp, audio: await audioOf(folder, soundSource, { startMs: 0, durationMs: await stickerLengthMs(webp, window.durationMs) }) };
     } finally {
       await rm(folder, { recursive: true, force: true });
     }

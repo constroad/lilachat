@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, ScrollView, Text, useWindowDimensions, View } from 'react-native';
 import { Image } from 'expo-image';
-import { Clapperboard, Clock3, FolderHeart, ImagePlay, Star, WandSparkles } from 'lucide-react-native';
+import { Clock3, FolderHeart, Star, WandSparkles } from 'lucide-react-native';
 import { stickerSections, type LibrarySticker, type StickerSection } from '@lilachat/shared';
 import { useColores } from '../../ui/tema';
 import type { StickersState } from './useStickers';
@@ -22,7 +22,7 @@ const FILTERS: { key: Exclude<Filter, 'all'>; label: string; Icon: typeof Clock3
  * like WhatsApp: Recientes, Favoritos, Mis stickers, the default pack, and
  * «Crear» first. A tap sends; a long press offers favorite or removal.
  */
-export function StickerPanel(props: { stickers: StickersState; onSend: (sticker: LibrarySticker) => void; onCreate: () => void; /** «Desde un GIF» (pending 37): a GIF of the gallery becomes an animated sticker. */ onFromGif?: () => void; /** «Desde un video» (José 26/11): a clip of a gallery video, with its sound. */ onFromVideo?: () => void }) {
+export function StickerPanel(props: { stickers: StickersState; onSend: (sticker: LibrarySticker) => void; /** «Crear» (José 26/11): a photo, a video or a GIF of the gallery. */ onCreate: () => void }) {
   const colors = useColores();
   const { width } = useWindowDimensions();
   const [filter, setFilter] = useState<Filter>('all');
@@ -69,7 +69,7 @@ export function StickerPanel(props: { stickers: StickersState; onSend: (sticker:
                 ) : null}
               </View>
               <View className="flex-row flex-wrap" style={{ gap: GAP }}>
-                {index === 0 ? <CreateTiles side={side} onCreate={props.onCreate} onFromGif={props.onFromGif} onFromVideo={props.onFromVideo} /> : null}
+                {index === 0 ? <CreateTile side={side} onCreate={props.onCreate} /> : null}
                 {shown(section).map((sticker) => (
                   <Pressable key={`${section.key}-${sticker.id}`} testID={`sticker-${section.key}-${sticker.id}`} accessibilityLabel="Mandar el sticker" onPress={() => props.onSend(sticker)} onLongPress={() => showOptions(sticker)} className="items-center justify-center rounded-2xl border border-outline/10 bg-surface" style={{ width: side, height: side }}>
                     <Image source={{ uri: sticker.url }} style={{ width: side - 14, height: side - 14 }} contentFit="contain" recyclingKey={sticker.id} />
@@ -77,7 +77,7 @@ export function StickerPanel(props: { stickers: StickersState; onSend: (sticker:
                 ))}
               </View>
               {section.key === 'mine' && section.stickers.length === 0 ? (
-                <Text className="px-1 pt-3 text-[13px] text-on-surface-variant">Crea tu primer sticker desde una foto: se quita el fondo y le pones letras.</Text>
+                <Text className="px-1 pt-3 text-[13px] text-on-surface-variant">Crea tu primer sticker desde una foto, un video o un GIF.</Text>
               ) : null}
             </View>
           ))}
@@ -88,23 +88,16 @@ export function StickerPanel(props: { stickers: StickersState; onSend: (sticker:
   );
 }
 
-type CreateTile = { testID: string; label: string; Icon: typeof Clock3; onPress?: () => void };
-
-/** The first tiles of the panel: «Crear» from a photo, «Desde un GIF» and «Desde un video» (José 26/11). */
-function CreateTiles(props: { side: number; onCreate: () => void; onFromGif?: () => void; onFromVideo?: () => void }) {
-  const tiles: CreateTile[] = [
-    { testID: 'btn-crear-sticker', label: 'Crear', Icon: WandSparkles, onPress: props.onCreate },
-    { testID: 'btn-sticker-desde-gif', label: 'Desde un GIF', Icon: ImagePlay, onPress: props.onFromGif },
-    { testID: 'crear-desde-video', label: 'Desde un video', Icon: Clapperboard, onPress: props.onFromVideo },
-  ];
+/**
+ * The first tile of the panel (José 26/11, design sc-01a): one «Crear» for a
+ * photo, a video or a GIF; the three tiles that did the same thing are gone.
+ */
+function CreateTile(props: { side: number; onCreate: () => void }) {
   return (
-    <>
-      {tiles.filter((tile) => tile.onPress).map(({ testID, label, Icon, onPress }) => (
-        <Pressable key={testID} testID={testID} onPress={onPress} className="items-center justify-center rounded-2xl border-2 border-dashed border-primary/50 bg-primary/5" style={{ width: props.side, height: props.side }}>
-          <View className="h-9 w-9 items-center justify-center rounded-full bg-primary"><Icon size={18} color="white" /></View>
-          <Text className="mt-1 text-center text-[12px] font-semibold text-primary">{label}</Text>
-        </Pressable>
-      ))}
-    </>
+    <Pressable testID="btn-crear-sticker" onPress={props.onCreate} className="items-center justify-center rounded-2xl border-2 border-dashed border-primary/50 bg-primary/5 px-1" style={{ width: props.side, height: props.side }}>
+      <View className="h-9 w-9 items-center justify-center rounded-full bg-primary"><WandSparkles size={18} color="white" /></View>
+      <Text className="mt-1 text-center text-[12px] font-semibold text-primary">Crear</Text>
+      <Text numberOfLines={1} adjustsFontSizeToFit className="text-center text-[10px] text-on-surface-variant">Foto, video o GIF</Text>
+    </Pressable>
   );
 }

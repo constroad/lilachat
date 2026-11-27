@@ -348,7 +348,7 @@ function FilaDeMensaje({
           ) : null}
 
           {!isPending(item) && item.forwarded && !item.deletedAt ? <ForwardedLabel testID={`reenviado-${item.seq}`} className="px-3 pt-1 " /> : null}
-          {album ? <AlbumGrid items={album} selecting={enSeleccion} onSelect={onSeleccionar} onOpen={onVerImagen} /> : <MessageMedia item={item} mine={mine} selecting={enSeleccion} onSelect={onSeleccionar} onOpen={onVerImagen} onGifTap={jwt && !isPending(item) ? (seq) => showGifOptions({ jwt, chatId: item.chatId, seq, onOpen: () => onVerImagen?.(seq) }) : undefined} author={{ name: mine ? 'Tú' : (nombreAutor ?? ''), photo: fotoAutor }} />}
+          {album ? <AlbumGrid items={album} selecting={enSeleccion} onSelect={onSeleccionar} onOpen={onVerImagen} /> : <MessageMedia item={item} mine={mine} selecting={enSeleccion} onSelect={onSeleccionar} onOpen={onVerImagen} onGifTap={jwt && !isPending(item) ? (seq) => showGifOptions({ jwt, chatId: item.chatId, seq, url: item.media?.url ?? '', onOpen: () => onVerImagen?.(seq) }) : undefined} author={{ name: mine ? 'Tú' : (nombreAutor ?? ''), photo: fotoAutor }} />}
 
           {!isPending(item) && item.sharedBy && !item.deletedAt ? (
             <Text testID={`compartido-por-${item.seq}`} className="px-3 pt-1 text-[12px] text-on-surface-variant">{sharedByLine(item.sharedBy)}</Text>

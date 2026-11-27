@@ -12,6 +12,7 @@ import { KeyboardProvider } from 'react-native-keyboard-controller';
 import { ErrorBoundary } from './src/ui/ErrorBoundary';
 import { FrameMonitorHost } from './src/diagnostico/FrameMonitorHost';
 import { CameraHost } from './src/chat/camara/CameraHost';
+import { GifStickerEditorHost } from './src/chat/stickers/GifStickerEditorHost';
 import './global.css';
 import { listChats, olvidarPushDeEsteTelefono, refreshSession } from './src/api/client';
 import { olvidarCola } from './src/chat/outboxStore';
@@ -156,6 +157,8 @@ export default function App() {
           </FunScreen>
           {/* José 12/11: the new camera, asked from any screen (observations, avance, Drive). */}
           <CameraHost />
+          {/* José 26/11: a chat's GIF opens the sticker editor, from any chat, thread or channel. */}
+          <GifStickerEditorHost />
         </ErrorBoundary>
       </ProveedorTema>
     </SafeAreaProvider>

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { audioClipOf, galleryVideoRefusal, pickedAudioRefusal, pickedVideoOf, savedVideoStickerNotice, soundSummary, stickerSoundOf, videoStickerBlocker, videoStickerFields, type AudioClip } from './videoStickerSound';
+import { audioClipOf, galleryVideoRefusal, pickedAudioRefusal, pickedVideoOf, savedVideoStickerNotice, soundSummary, stickerSoundOf, videoStickerBlocker, videoStickerFields, videoStickerUploadOf, type AudioClip } from './videoStickerSound';
 
 const clip: AudioClip = { uri: 'file:///voz.m4a', name: 'voz.m4a', mime: 'audio/m4a', bytes: 40_000 };
 const video = { uri: 'file:///v.mp4', name: 'v.mp4', mime: 'video/mp4', bytes: 5_000_000 };
@@ -92,6 +92,11 @@ describe('pickedVideoOf', () => {
     expect(pickedVideoOf({ uri: 'file:///a', fileName: null, mimeType: null, fileSize: 10 })).toEqual({ uri: 'file:///a', name: 'sticker-video.mp4', mime: 'video/mp4', bytes: 10 });
     expect(pickedVideoOf({ uri: 'file:///b', fileName: 'b.mov', mimeType: 'video/quicktime' })).toEqual({ uri: 'file:///b', name: 'b.mov', mime: 'video/quicktime', bytes: undefined });
   });
+
+  it('keeps a GIF a GIF: the server cuts it like a video', () => {
+    expect(pickedVideoOf({ uri: 'file:///g', fileName: null, mimeType: 'image/gif', fileSize: 900 })).toEqual({ uri: 'file:///g', name: 'sticker.gif', mime: 'image/gif', bytes: 900 });
+    expect(pickedVideoOf({ uri: 'file:///h', fileName: 'risa.gif', mimeType: null })).toEqual({ uri: 'file:///h', name: 'risa.gif', mime: 'image/gif', bytes: undefined });
+  });
 });
 
 describe('galleryVideoRefusal', () => {
@@ -100,5 +105,27 @@ describe('galleryVideoRefusal', () => {
     expect(galleryVideoRefusal({ fileSize: 1_000, duration: 300 })).toBe('Ese video es muy corto: elige uno de medio segundo o más.');
     expect(galleryVideoRefusal({ fileSize: null, duration: null })).toBeNull();
     expect(galleryVideoRefusal({ fileSize: 1_000, duration: 12_000 })).toBeNull();
+  });
+});
+
+/** The form of `POST /api/stickers/from-video`: the clip as `file`, the sound file as `audio`, the window and the sound. */
+describe('videoStickerUploadOf', () => {
+  it('sends a GIF as part `file` typed image/gif, from 0 to 6 s', () => {
+    // Arrange
+    const gif = { uri: 'file:///cache/g.gif', name: 'sticker.gif', mime: 'image/gif' };
+    // Act
+    const upload = videoStickerUploadOf({ video: gif, trim: { startMs: 0, endMs: 6_000 }, choice: { kind: 'none' } });
+    // Assert
+    expect(upload).toEqual({ video: gif, audio: null, fields: [['startMs', '0'], ['endMs', '6000'], ['sound', 'none']] });
+  });
+
+  it('attaches a recorded voice as the audio part', () => {
+    const upload = videoStickerUploadOf({ video, trim, choice: { kind: 'voice', clip } });
+    expect(upload?.audio).toBe(clip);
+    expect(upload?.fields).toContainEqual(['sound', 'file']);
+  });
+
+  it('builds nothing while the voice is still missing', () => {
+    expect(videoStickerUploadOf({ video, trim, choice: { kind: 'voice', clip: null } })).toBeNull();
   });
 });

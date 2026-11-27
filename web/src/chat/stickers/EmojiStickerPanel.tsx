@@ -9,6 +9,7 @@ import { StickerPanel } from './StickerPanel';
 import { CreateStickerWeb } from './CreateStickerWeb';
 import { CreateStickerFromVideo } from './CreateStickerFromVideo';
 import { useStickers } from './useStickers';
+import { stickerSourceOf, type StickerSource } from './videoSticker';
 import type { StickerThread } from './stickersApi';
 import { lastPanelTab, type PanelTab } from '@lilachat/shared';
 
@@ -52,27 +53,34 @@ export default function EmojiStickerPanel({ onPickEmoji, chat, winks }: { onPick
   );
 }
 
+/** What «Crear» opened: the photo editor or the clip one (video or GIF), with the chosen file. */
+type Creating = { source: StickerSource; file: File };
+
 function Stickers({ chat }: { chat: StickerChat }) {
   const stickers = useStickers(chat.jwt, chat.me);
-  const [creating, setCreating] = useState(false);
-  const [fromVideo, setFromVideo] = useState(false);
+  const [creating, setCreating] = useState<Creating | null>(null);
+  const [notice, setNotice] = useState('');
   const target = { ...chat.thread, replyToSeq: chat.replyToSeq };
+  const create = (file: File) => {
+    const source = stickerSourceOf(file);
+    setNotice(source ? '' : 'Elige una foto, un video o un GIF.');
+    if (source) setCreating({ source, file });
+  };
+  const close = () => setCreating(null);
   return (
     <>
       <StickerPanel
         library={stickers.library}
         recents={stickers.recents}
         packs={stickers.packs}
-        error={stickers.error}
-        onSend={(sticker) => void stickers.send(chat.chatId, sticker, { ...chat.thread, replyToSeq: chat.replyToSeq }).then((sent) => sent && chat.onSent?.())}
-        onCreate={() => setCreating(true)}
-        onCreateFromVideo={() => setFromVideo(true)}
-        onGifPicked={(gif) => void stickers.saveGif(gif)}
+        error={notice || stickers.error}
+        onSend={(sticker) => void stickers.send(chat.chatId, sticker, target).then((sent) => sent && chat.onSent?.())}
+        onCreate={create}
         onToggleFavorite={(sticker) => void stickers.toggleFavorite(sticker)}
         onRemove={(sticker) => void stickers.remove(sticker)}
       />
-      {fromVideo ? <CreateStickerFromVideo chatName={chat.chatName} onClose={() => setFromVideo(false)} onSave={stickers.saveVideo} onSend={(sticker) => stickers.send(chat.chatId, sticker, target)} /> : null}
-      {creating ? <CreateStickerWeb chatName={chat.chatName} onClose={() => setCreating(false)} onSave={stickers.save} onSend={(sticker) => stickers.send(chat.chatId, sticker, { ...chat.thread, replyToSeq: chat.replyToSeq })} onRemove={stickers.remove} /> : null}
+      {creating?.source === 'clip' ? <CreateStickerFromVideo chatName={chat.chatName} initialClip={creating.file} onClose={close} onSave={stickers.saveVideo} onSend={(sticker) => stickers.send(chat.chatId, sticker, target)} /> : null}
+      {creating?.source === 'photo' ? <CreateStickerWeb chatName={chat.chatName} initialPhoto={creating.file} onClose={close} onSave={stickers.save} onSend={(sticker) => stickers.send(chat.chatId, sticker, target)} onRemove={stickers.remove} /> : null}
     </>
   );
 }

@@ -87,7 +87,7 @@ function drawReactionBar(cell: MessageCell, chat: CellDrawContext, placement: Pl
   };
   const toSticker = (seq: number) => {
     chat.onSelect?.(seq);
-    void convertGifToSticker(chat.jwt, target.chatId, seq);
+    void convertGifToSticker({ jwt: chat.jwt, chatId: target.chatId, seq, url: target.media?.url ?? '' });
   };
   return <BarraDeReacciones seq={target.seq} mia={cell.mine} conAvatar={false} centered={placement.centered} indent={placement.indent} miEmoji={miReaccion(target.reacciones, chat.myUserId)} onElegir={chat.onReact} onMas={chat.onMoreEmojis} onHilo={withThread ? openThread : undefined} onGifSticker={withGifSticker ? toSticker : undefined} />;
 }

@@ -15,9 +15,8 @@ function draw(params: { library: LibrarySticker[] | null; recents?: string[]; pa
 /** The web Stickers tab (José, 20/10; design `s1-web-stickers`), same as the app. */
 describe('StickerPanel (web)', () => {
   it('a new person: «Crear», how to start, and the default pack ready to send', () => {
-    const { onCreate, onSend } = draw({ library: [] });
-    fireEvent.click(screen.getByTestId('btn-crear-sticker'));
-    expect(onCreate).toHaveBeenCalled();
+    const { onSend } = draw({ library: [] });
+    expect(screen.getByTestId('btn-crear-sticker')).toBeInTheDocument();
     expect(screen.getByText(/Crea tu primer sticker/)).toBeInTheDocument();
     fireEvent.click(screen.getByTestId('sticker-pack:lila-1-pack:lila-1/cat'));
     expect(onSend).toHaveBeenCalledWith(expect.objectContaining({ id: 'pack:lila-1/cat' }));
@@ -69,23 +68,31 @@ describe('StickerPanel (web)', () => {
     expect(screen.queryByTestId('quitar-pack:lila-1-pack:lila-1/cat')).toBeNull();
   });
 
-  /** Pending 37 (José, 22/10): «Desde un GIF» next to «Crear». */
-  it('«Desde un GIF» hands the chosen GIF over', () => {
-    const onGifPicked = vi.fn();
-    render(<StickerPanel library={[]} recents={[]} packs={[pack]} error="" onSend={vi.fn()} onCreate={vi.fn()} onToggleFavorite={vi.fn()} onRemove={vi.fn()} onGifPicked={onGifPicked} />);
-    const gif = new File(['GIF89a'], 'risa.gif', { type: 'image/gif' });
-    fireEvent.change(screen.getByTestId('input-sticker-gif'), { target: { files: [gif] } });
-    expect(onGifPicked).toHaveBeenCalledWith(gif);
+  /** José 26/11 (design sc-01a): ONE «Crear» for a photo, a video or a GIF. */
+  it('one «Crear» tile, with its caption, and no «Desde un video» nor «Desde un GIF»', () => {
+    draw({ library: [] });
+    const tile = screen.getByTestId('btn-crear-sticker');
+    expect(tile).toHaveTextContent('Crear');
+    expect(tile).toHaveTextContent('Foto, video o GIF');
+    expect(screen.queryByTestId('crear-desde-video')).toBeNull();
+    expect(screen.queryByTestId('btn-sticker-desde-gif')).toBeNull();
+    expect(screen.getByTestId('input-crear-sticker')).toHaveAttribute('accept', 'image/*,video/*');
   });
 
-  /** José 26/11 (design ss-04): «Desde un video» opens the video sticker with sound. */
-  it('«Desde un video» opens its modal, and is not there when the chat cannot offer it', () => {
-    const onCreateFromVideo = vi.fn();
-    const { unmount } = render(<StickerPanel library={[]} recents={[]} packs={[pack]} error="" onSend={vi.fn()} onCreate={vi.fn()} onToggleFavorite={vi.fn()} onRemove={vi.fn()} onCreateFromVideo={onCreateFromVideo} />);
-    fireEvent.click(screen.getByTestId('crear-desde-video'));
-    expect(onCreateFromVideo).toHaveBeenCalled();
-    unmount();
-    draw({ library: [] });
-    expect(screen.queryByTestId('crear-desde-video')).toBeNull();
+  it('«Crear» opens the file picker, and the chosen file is handed over', () => {
+    const { onCreate } = draw({ library: [] });
+    const input = screen.getByTestId('input-crear-sticker') as HTMLInputElement;
+    const opened = vi.spyOn(input, 'click');
+    fireEvent.click(screen.getByTestId('btn-crear-sticker'));
+    expect(opened).toHaveBeenCalled();
+    const gif = new File(['GIF89a'], 'risa.gif', { type: 'image/gif' });
+    fireEvent.change(input, { target: { files: [gif] } });
+    expect(onCreate).toHaveBeenCalledWith(gif);
+  });
+
+  it('closing the picker without a file does nothing', () => {
+    const { onCreate } = draw({ library: [] });
+    fireEvent.change(screen.getByTestId('input-crear-sticker'), { target: { files: [] } });
+    expect(onCreate).not.toHaveBeenCalled();
   });
 });

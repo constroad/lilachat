@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, ScrollView, Text, ToastAndroid, useWindowDimensions, View } from 'react-native';
-import { VideoView } from 'expo-video';
+import { VideoView, type VideoPlayer } from 'expo-video';
+import { Image } from 'expo-image';
 import { ArrowLeft, Ban, Mic, Music, Pause, Play, Save, Send, Volume2 } from 'lucide-react-native';
 import type { LibrarySticker } from '@lilachat/shared';
 import { Modal } from '../../ui/Modal';
@@ -11,7 +12,8 @@ import { VideoTrimStrip } from './VideoTrimStrip';
 import { useClipPreview } from './useClipPreview';
 import { previewClip, previewPreset, stopSoundPreview } from './soundPreview';
 import { formatClipClock, initialTrim, trimSummary, type TrimWindow } from './videoStickerTrim';
-import { audioClipOf, savedVideoStickerNotice, soundSummary, stickerSoundOf, videoStickerBlocker, videoStickerFields, type PickedVideo, type SoundChoice } from './videoStickerSound';
+import { audioClipOf, savedVideoStickerNotice, soundSummary, videoStickerBlocker, videoStickerUploadOf, type PickedVideo, type SoundChoice } from './videoStickerSound';
+import { initialSoundOf, initialTrimOf, isGifClip } from './stickerSource';
 import type { ApiOutcome, VideoStickerUpload } from './stickersApi';
 
 type Phase = { kind: 'editing' } | { kind: 'uploading'; ratio: number } | { kind: 'converting' };
@@ -32,17 +34,20 @@ type Props = {
  * «Crear sticker» from a video (José 26/11, design ss-01), like WhatsApp's
  * stickers with sound: up to 6 seconds of a gallery video, a live preview of
  * that window, and the sound chosen in its sheet (ss-02). Saved in «Mis
- * stickers», or saved and sent to this chat.
+ * stickers», or saved and sent to this chat. A GIF (José 26/11) has no trim
+ * strip and no sound of its own: it goes whole, from its start, and expo-image
+ * plays it (expo-video cannot).
  */
 export function CreateVideoSticker(props: Props) {
   const margins = useMargenes();
   const { width, height } = useWindowDimensions();
-  const [trimState, setTrim] = useState<TrimWindow | null>(() => initialTrim(props.video.durationMs ?? 0));
-  const [choice, setChoice] = useState<SoundChoice>({ kind: 'original' });
+  const gif = isGifClip(props.video);
+  const [trimState, setTrim] = useState<TrimWindow | null>(() => initialTrimOf(props.video));
+  const [choice, setChoice] = useState<SoundChoice>(() => initialSoundOf(props.video.mime));
   const [soundOpen, setSoundOpen] = useState(false);
   const [phase, setPhase] = useState<Phase>({ kind: 'editing' });
   const [notice, setNotice] = useState('');
-  const preview = useClipPreview(props.video.uri, trimState);
+  const preview = useClipPreview(gif ? null : props.video.uri, trimState);
   const videoMs = props.video.durationMs || preview.loadedMs;
   const trim = trimState;
   // The picker may not say how long the video is: the player does once it loads.
@@ -72,13 +77,12 @@ export function CreateVideoSticker(props: Props) {
   const finish = async (send: boolean) => {
     if (!trim || busy) return;
     const blocker = videoStickerBlocker({ video: props.video, trim, choice });
-    const sound = stickerSoundOf(choice);
-    if (blocker || !sound) return setNotice(blocker ?? 'Elige el sonido del sticker.');
+    const upload = videoStickerUploadOf({ video: props.video, trim, choice });
+    if (blocker || !upload) return setNotice(blocker ?? 'Elige el sonido del sticker.');
     setNotice('');
     stopSoundPreview();
     preview.quiet();
     setPhase({ kind: 'uploading', ratio: 0 });
-    const upload: VideoStickerUpload = { video: props.video, audio: audioClipOf(choice), fields: videoStickerFields(trim, sound) };
     const made = await props.onSave(upload, (ratio) => setPhase(ratio >= 1 ? { kind: 'converting' } : { kind: 'uploading', ratio }));
     if (!made.ok) {
       setPhase({ kind: 'editing' });
@@ -96,17 +100,39 @@ export function CreateVideoSticker(props: Props) {
       <View testID="crear-sticker-video" className="flex-1 bg-background" style={{ paddingTop: margins.cabecera, paddingBottom: margins.pie }}>
         <Header onBack={askToLeave} onSound={() => setSoundOpen(true)} disabled={busy} />
         <ScrollView contentContainerStyle={{ padding: 16, gap: 14 }}>
-          <View className="items-center self-center overflow-hidden rounded-3xl border border-outline/15 bg-surface-variant/40" style={{ width: side, height: side }}>
-            <VideoView testID="vista-sticker-video" player={preview.player} style={{ width: side, height: side }} contentFit="contain" nativeControls={false} />
-          </View>
+          <ClipPreview side={side} gifUri={gif ? props.video.uri : null} player={preview.player} />
           <SoundRow choice={choice} clipLength={formatClipClock(trim ? trim.endMs - trim.startMs : 0)} listening={choice.kind === 'original' && preview.listening} onOpen={() => setSoundOpen(true)} onListen={listen} disabled={busy} />
-          <TrimCard videoMs={videoMs} trim={trim} frames={preview.frames} onChange={setTrim} onCommit={(next) => { setTrim(next); preview.restart(next); }} />
+          {gif ? <GifWindowNote /> : <TrimCard videoMs={videoMs} trim={trim} frames={preview.frames} onChange={setTrim} onCommit={(next) => { setTrim(next); preview.restart(next); }} />}
           {notice ? <Text testID="aviso-sticker-video" className="rounded-xl bg-error/10 px-3 py-2 text-[13px] text-error">{notice}</Text> : null}
         </ScrollView>
-        <Footer phase={phase} ready={Boolean(trim)} onSave={() => void finish(false)} onSend={() => void finish(true)} />
+        <Footer phase={phase} source={gif ? 'el GIF' : 'el video'} ready={Boolean(trim)} onSave={() => void finish(false)} onSend={() => void finish(true)} />
       </View>
-      <StickerSoundSheet visible={soundOpen} choice={choice} clipLength={formatClipClock(trim ? trim.endMs - trim.startMs : 0)} onChoose={(next) => { setNotice(''); setChoice(next); }} onPreviewOriginal={preview.listen} onClose={() => setSoundOpen(false)} />
+      <StickerSoundSheet visible={soundOpen} offerOriginal={!gif} choice={choice} clipLength={formatClipClock(trim ? trim.endMs - trim.startMs : 0)} onChoose={(next) => { setNotice(''); setChoice(next); }} onPreviewOriginal={preview.listen} onClose={() => setSoundOpen(false)} />
     </Modal>
+  );
+}
+
+/** The sticker moving in a loop: the video's window, or the whole GIF (animated by expo-image). */
+function ClipPreview(props: { side: number; gifUri: string | null; player: VideoPlayer }) {
+  const box = { width: props.side, height: props.side };
+  return (
+    <View className="items-center self-center overflow-hidden rounded-3xl border border-outline/15 bg-surface-variant/40" style={box}>
+      {props.gifUri ? (
+        <Image testID="vista-sticker-gif" source={{ uri: props.gifUri }} style={box} contentFit="contain" autoplay />
+      ) : (
+        <VideoView testID="vista-sticker-video" player={props.player} style={box} contentFit="contain" nativeControls={false} />
+      )}
+    </View>
+  );
+}
+
+/** A GIF has no trim strip: it goes whole from its start, up to 6 seconds. */
+function GifWindowNote() {
+  return (
+    <View testID="sticker-gif-entero" className="gap-1 rounded-2xl border border-outline/15 bg-surface px-3 py-3">
+      <Text className="text-[12px] font-bold uppercase tracking-wider text-primary">GIF completo</Text>
+      <Text className="text-[13px] text-on-surface-variant">Se usa desde el inicio, hasta 6 segundos. Un GIF no trae sonido: elige uno si quieres.</Text>
+    </View>
   );
 }
 
@@ -189,10 +215,10 @@ function TrimCard(props: { videoMs: number; trim: TrimWindow | null; frames: Par
 }
 
 /** Save, or save and send; while it uploads and converts, how far it is and nothing else to press. */
-function Footer(props: { phase: Phase; ready: boolean; onSave: () => void; onSend: () => void }) {
+function Footer(props: { phase: Phase; source: string; ready: boolean; onSave: () => void; onSend: () => void }) {
   const colors = useColores();
   const busy = props.phase.kind !== 'editing';
-  const progress = props.phase.kind === 'uploading' ? `Subiendo el video… ${Math.round(props.phase.ratio * PERCENT)} %` : props.phase.kind === 'converting' ? 'Convirtiendo en sticker…' : null;
+  const progress = props.phase.kind === 'uploading' ? `Subiendo ${props.source}… ${Math.round(props.phase.ratio * PERCENT)} %` : props.phase.kind === 'converting' ? 'Convirtiendo en sticker…' : null;
   return (
     <View className="gap-2 border-t border-outline/10 px-4 pt-3">
       {progress ? (

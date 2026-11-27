@@ -12,9 +12,10 @@ const FRAME_MAX_WIDTH = 96;
  * The live preview of the sticker (design ss-01): the video plays only the
  * chosen window, over and over, muted. `listen()` plays the window once with
  * the video's own sound. It also knows the video's length when the picker did
- * not, and the frames of the trim strip.
+ * not, and the frames of the trim strip. A null `uri` (a GIF, which expo-video
+ * cannot play) leaves the player empty.
  */
-export function useClipPreview(uri: string, trim: TrimWindow | null) {
+export function useClipPreview(uri: string | null, trim: TrimWindow | null) {
   const player = useVideoPlayer(uri, (created) => {
     created.loop = true;
     created.muted = true;

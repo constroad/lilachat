@@ -36,7 +36,31 @@ export function uploadGifSticker(jwt: string, gif: File): Promise<ApiResult<{ st
   return postStickerForm(jwt, '/api/stickers/animated', form);
 }
 
-/** «Crear sticker desde un video» (José 26/11): the whole video, the part to keep and its sound. */
+const GIF_MIME = 'image/gif';
+
+/** The last part of a URL's path, when it names a .gif file. */
+function gifNameOf(url: string): string {
+  const last = url.split(/[?#]/)[0]?.split('/').pop() ?? '';
+  return /\.gif$/i.test(last) ? last : 'sticker.gif';
+}
+
+/**
+ * A GIF of the chat as a file, for the clip editor (José 26/11, design sc-01a:
+ * «Convertir en sticker animado» lets the person add a sound first).
+ */
+export async function fetchGifFile(url: string): Promise<{ ok: true; file: File } | { ok: false; message: string }> {
+  try {
+    const response = await fetch(url);
+    if (!response.ok) return { ok: false, message: 'No se pudo abrir ese GIF. Inténtalo de nuevo.' };
+    const bytes = await response.arrayBuffer();
+    return { ok: true, file: new File([bytes], gifNameOf(url), { type: GIF_MIME }) };
+  } catch (error) {
+    console.warn('[stickers] chat GIF could not be fetched:', error instanceof Error ? error.message : error);
+    return { ok: false, message: 'No se pudo traer ese GIF. Revisa tu conexión.' };
+  }
+}
+
+/** «Crear sticker desde un video» (José 26/11): the whole video (or GIF), the part to keep and its sound. */
 export type VideoStickerRequest = { video: File; trim: TrimWindow; sound: StickerSound; audio?: Blob | null };
 
 const AUDIO_EXTENSIONS: Record<string, string> = { 'audio/webm': 'webm', 'audio/ogg': 'ogg', 'audio/mp4': 'm4a', 'audio/mpeg': 'mp3', 'audio/wav': 'wav' };

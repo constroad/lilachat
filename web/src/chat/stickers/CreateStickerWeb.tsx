@@ -28,6 +28,8 @@ type Props = {
   onSave: (file: Blob) => Promise<ApiResult<{ sticker: LibrarySticker }>>;
   onSend: (sticker: LibrarySticker) => Promise<boolean>;
   onRemove: (sticker: LibrarySticker) => Promise<void>;
+  /** The photo already chosen under «Crear» (design sc-01a): no second picker. */
+  initialPhoto?: File;
 };
 
 /** Where the handles of a layer are, on the 512 canvas. */
@@ -91,9 +93,14 @@ export function CreateStickerWeb(props: Props) {
   const textLayer = state.layers.find((layer) => layer.kind === 'text');
   const selected = state.layers.find((layer) => layer.id === state.selection);
 
-  // The gallery opens by itself: the click on «Crear» still counts as a gesture.
+  // The photo chosen under «Crear» goes straight to the cutout; without one, the gallery opens by itself.
+  // Once: StrictMode runs the effect twice and the cutout is heavy.
+  const started = useRef(false);
   useEffect(() => {
-    fileRef.current?.click();
+    if (started.current) return;
+    started.current = true;
+    if (props.initialPhoto) void pickPhoto(props.initialPhoto);
+    else fileRef.current?.click();
   }, []);
   useEffect(() => {
     const canvas = canvasRef.current;

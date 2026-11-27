@@ -1,5 +1,5 @@
 import { execFile } from 'node:child_process';
-import { mkdtemp, readFile, rm } from 'node:fs/promises';
+import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { promisify } from 'node:util';
@@ -98,6 +98,20 @@ describe('videoToSoundSticker (ffmpeg + sharp)', () => {
     expect(metadata).toMatchObject({ format: 'webp', width: 512 });
     expect((metadata.delay ?? []).reduce((total, delay) => total + delay, 0)).toBe(6_000);
     expect(made.audio?.length).toBeGreaterThan(1_000);
+  }, 60_000);
+
+  it('a short GIF cuts the chosen sound to its own length, so both loop together', async () => {
+    // Arrange: a 2-second GIF and an 8-second sound
+    const gifPath = join(folder, 'short.gif');
+    await run('ffmpeg', ['-y', '-loglevel', 'error', '-f', 'lavfi', '-i', 'testsrc=size=120x120:rate=10:duration=2', gifPath]);
+    // Act
+    const made = await videoToSoundSticker({ video: await readFile(gifPath), window: { startMs: 0, durationMs: 6_000 }, soundFrom: withSound });
+    // Assert
+    if (typeof made === 'string' || !made.audio) throw new Error('no sound');
+    const soundPath = join(folder, 'short.m4a');
+    await writeFile(soundPath, made.audio);
+    const { stdout } = await run('ffprobe', ['-v', 'error', '-show_entries', 'format=duration', '-of', 'csv=p=0', soundPath]);
+    expect(Number(stdout)).toBeCloseTo(2, 0);
   }, 60_000);
 
   it('bytes that are not a video are refused', async () => {

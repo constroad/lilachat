@@ -1,7 +1,7 @@
 import { ContactNoteBannerWeb } from '../routines/ContactNoteBannerWeb';
 import type { MessageTarget, NotificationLevel, WinkId } from '@lilachat/shared';
 import { alreadyGreeted, newAlbumId, peopleNamesOf } from '@lilachat/shared';
-import { useCallback, useEffect, useMemo, useState, type ComponentProps, type ReactNode } from 'react';
+import { Suspense, useCallback, useEffect, useMemo, useState, type ComponentProps, type ReactNode } from 'react';
 import { PanelDeInfo } from './info/PanelDeInfo';
 import type { ChatAction } from './menuDelChat';
 import { BLOCKED_BY_ME_COMPOSER, fijadosVigentes, memberMay, memberPermissionDenied, puedeFijarEnElChat } from '@lilachat/shared';
@@ -43,6 +43,8 @@ import type { BaseLocal } from '../local/baseLocal';
 import { useDestacadosWeb } from './destacados/useDestacadosWeb';
 import { TarjetaDeDestacados } from './destacados/TarjetaDeDestacados';
 import { useStickers } from './stickers/useStickers';
+import { fetchGifFile } from './stickers/stickersApi';
+import { lazyChunk } from '../ui/lazyChunk';
 import type { StickerAction } from './contextoDeLaConversacion';
 import { drawsAsList, memberBadge, opensInPhotoViewer, replyOpensThread, usesFlatLayout } from '@lilachat/shared';
 import { useGroupsAsList } from '../ui/groupsAsList';
@@ -58,6 +60,9 @@ import { BirthdayCardWeb } from './birthdays/BirthdayCardWeb';
 import { insertIntoComposer } from './composerInsert';
 
 type PropsDeConversacion = ComponentProps<typeof Conversation>;
+
+/** The clip editor for a chat's GIF, loaded when the message menu asks for it. */
+const GifStickerDialog = lazyChunk(() => import('./stickers/GifStickerDialog'));
 
 /**
  * La conversación con todo lo que se hace sobre sus mensajes (W2): el menú de
@@ -180,9 +185,15 @@ export function ConversacionConAcciones(
   );
   const { keepReceived, saveGif } = useStickers(props.jwt, yo);
   const calls = useCalls();
+  // A chat's GIF opens the clip editor with it, so a sound can go with it (José 26/11, design sc-01a).
+  const [gifSticker, setGifSticker] = useState<File | null>(null);
   const onStickerAction = useCallback(
-    (mensaje: MensajeEnPantalla, action: StickerAction) => void (action === 'gif' ? saveGif({ chatId: chat.id, seq: mensaje.seq }) : keepReceived(chat.id, mensaje.seq, action === 'favorite')).then(onAviso),
-    [keepReceived, saveGif, chat.id, onAviso]
+    (mensaje: MensajeEnPantalla, action: StickerAction) => {
+      if (action !== 'gif') return void keepReceived(chat.id, mensaje.seq, action === 'favorite').then(onAviso);
+      const gifUrl = mensaje.media?.url;
+      if (gifUrl) void fetchGifFile(gifUrl).then((fetched) => (fetched.ok ? setGifSticker(fetched.file) : onAviso(fetched.message)));
+    },
+    [keepReceived, chat.id, onAviso]
   );
   // Groups as flat rows, like Slack (design `s-01`): always in a company space, on request in a personal group.
   // A space's replies open threads (`flat`); the rows are bubbles unless the person asked for the list (José 25/11).
@@ -387,6 +398,11 @@ export function ConversacionConAcciones(
       {archivos ? <SendFilesDialog archivos={archivos.files} initialCaption={archivos.typed?.text} onCerrar={() => setArchivos(null)} onEnviar={subir} /> : null}
       {fotoAbierta !== null ? <PhotoViewer fotos={viewerPhotos} indice={fotoAbierta} onCambiar={setFotoAbierta} onCerrar={() => setFotoAbierta(null)} onMakeSticker={chat.encrypted ? undefined : (foto) => void saveGif({ chatId: chat.id, seq: foto.seq }).then(onAviso)} /> : null}
       {personCard.element}
+      {gifSticker ? (
+        <Suspense fallback={null}>
+          <GifStickerDialog jwt={props.jwt} me={yo} chatId={chat.id} chatName={chat.name ?? chat.phone ?? ''} gif={gifSticker} onClose={() => setGifSticker(null)} />
+        </Suspense>
+      ) : null}
       {pdfAbierto?.media?.url ? <PdfViewer jwt={props.jwt} chatId={chat.id} seq={pdfAbierto.seq} fileName={pdfAbierto.media.fileName ?? 'Documento PDF'} downloadUrl={pdfAbierto.media.url} subtitle={`${formatDayLabel(pdfAbierto.at)}, ${formatClock(pdfAbierto.at)}`} onClose={() => setPdfAbierto(null)} /> : null}
       {chat.encrypted ? null : <BirthdayCardWeb chatId={chat.id} chatName={chat.name ?? ''} isGroup={chat.kind === 'group'} me={yo} messages={mensajes ?? []} names={nombres} photos={photos} onReact={(emoji) => void sync.enviarTexto(chat.id, emoji)} onGreet={insertIntoComposer} />}
       {acciones.viendoInfo ? <DialogoInfo chatId={chat.id} mensaje={acciones.viendoInfo} jwt={props.jwt} onCerrar={acciones.cerrarInfo} /> : null}

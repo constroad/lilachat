@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { MAX_STICKER_AUDIO_BYTES, MAX_STICKER_VIDEO_BYTES, VIDEO_STICKER_MAX_MS, VIDEO_STICKER_MIN_MS } from '@lilachat/shared';
-import { audioFileProblem, clipSeconds, clipTime, HOLD_TO_RECORD_MS, initialTrim, lostItsSound, moveTrim, msAtStrip, releaseStopsRecording, resizeTrimEnd, resizeTrimStart, soundRequestOf, stripTicks, trimLengthMs, videoFileProblem, withMediaType } from './videoSticker';
+import { audioFileProblem, clipFileProblem, clipIsGif, clipSeconds, clipTime, GIF_TRIM, HOLD_TO_RECORD_MS, initialTrim, lostItsSound, moveTrim, msAtStrip, releaseStopsRecording, resizeTrimEnd, resizeTrimStart, soundPickForClip, soundRequestOf, stickerSourceOf, stripTicks, trimLengthMs, withMediaType } from './videoSticker';
 
 const fileOf = (name: string, type: string, bytes = 10) => new File([new Uint8Array(bytes)], name, { type });
 const heavy = (name: string, type: string, size: number) => {
@@ -78,11 +78,19 @@ describe('the times the modal shows', () => {
 });
 
 describe('the files the person picks', () => {
-  it('a video of up to 60 MB is fine; another file or a heavier one is not', () => {
-    expect(videoFileProblem(fileOf('obra.mp4', 'video/mp4'))).toBeNull();
-    expect(videoFileProblem(fileOf('obra.mov', ''))).toBeNull();
-    expect(videoFileProblem(fileOf('foto.jpg', 'image/jpeg'))).toBe('Elige un video.');
-    expect(videoFileProblem(heavy('largo.mp4', 'video/mp4', MAX_STICKER_VIDEO_BYTES + 1))).toBe('Ese video pesa demasiado (máximo 60 MB).');
+  it('a video or a GIF of up to 60 MB is fine; another file or a heavier one is not', () => {
+    expect(clipFileProblem(fileOf('obra.mp4', 'video/mp4'))).toBeNull();
+    expect(clipFileProblem(fileOf('obra.mov', ''))).toBeNull();
+    expect(clipFileProblem(fileOf('risa.gif', 'image/gif'))).toBeNull();
+    expect(clipFileProblem(fileOf('risa.gif', ''))).toBeNull();
+    expect(clipFileProblem(fileOf('foto.jpg', 'image/jpeg'))).toBe('Elige un video o un GIF.');
+    expect(clipFileProblem(heavy('largo.mp4', 'video/mp4', MAX_STICKER_VIDEO_BYTES + 1))).toBe('Ese archivo pesa demasiado (máximo 60 MB).');
+  });
+
+  it('a GIF is told apart from a video, also without a type', () => {
+    expect(clipIsGif(fileOf('risa.gif', 'image/gif'))).toBe(true);
+    expect(clipIsGif(fileOf('risa.gif', ''))).toBe(true);
+    expect(clipIsGif(fileOf('obra.mp4', 'video/mp4'))).toBe(false);
   });
 
   it('an MP3, M4A or WAV of up to 4 MB is fine', () => {
@@ -96,6 +104,7 @@ describe('the files the person picks', () => {
   it('a file the browser left without type gets one from its extension (the server reads the type)', () => {
     expect(withMediaType(fileOf('voz.m4a', '')).type).toBe('audio/mp4');
     expect(withMediaType(fileOf('obra.mov', '')).type).toBe('video/quicktime');
+    expect(withMediaType(fileOf('risa.gif', '')).type).toBe('image/gif');
     const typed = fileOf('obra.mp4', 'video/mp4');
     expect(withMediaType(typed)).toBe(typed);
   });
@@ -135,5 +144,46 @@ describe('«Grabar tu voz»: hold or tap', () => {
 
   it('a quick tap starts it, and it keeps recording until another tap', () => {
     expect(releaseStopsRecording(HOLD_TO_RECORD_MS - 100)).toBe(false);
+  });
+});
+
+/** José 26/11 (design sc-01a): ONE «Crear» tile; the chosen file decides the editor. */
+describe('where the chosen file goes', () => {
+  it('a video or a GIF goes to the clip editor (cut and sound)', () => {
+    expect(stickerSourceOf(fileOf('obra.mp4', 'video/mp4'))).toBe('clip');
+    expect(stickerSourceOf(fileOf('obra.mov', ''))).toBe('clip');
+    expect(stickerSourceOf(fileOf('risa.gif', 'image/gif'))).toBe('clip');
+    expect(stickerSourceOf(fileOf('risa.gif', ''))).toBe('clip');
+  });
+
+  it('any other image goes to the photo editor (cutout and text)', () => {
+    expect(stickerSourceOf(fileOf('casco.jpg', 'image/jpeg'))).toBe('photo');
+    expect(stickerSourceOf(fileOf('casco.png', 'image/png'))).toBe('photo');
+    expect(stickerSourceOf(fileOf('casco.webp', 'image/webp'))).toBe('photo');
+    expect(stickerSourceOf(fileOf('casco.heic', 'image/heic'))).toBe('photo');
+  });
+
+  it('anything else cannot make a sticker', () => {
+    expect(stickerSourceOf(fileOf('acta.pdf', 'application/pdf'))).toBeNull();
+    expect(stickerSourceOf(fileOf('risa.mp3', 'audio/mpeg'))).toBeNull();
+    expect(stickerSourceOf(fileOf('sin-nombre', ''))).toBeNull();
+  });
+});
+
+/** A GIF has no sound of its own and no trim: it goes whole from the start (the server cuts it at 6 s). */
+describe('a GIF in the clip editor', () => {
+  it('is taken from the start, for up to 6 seconds', () => {
+    expect(GIF_TRIM).toEqual({ startMs: 0, endMs: 6_000 });
+  });
+
+  it('«Sonido original» becomes «Sin sonido»; any other choice stays', () => {
+    expect(soundPickForClip({ kind: 'original' }, false)).toEqual({ kind: 'none' });
+    expect(soundPickForClip({ kind: 'preset', presetId: 'bocina' }, false)).toEqual({ kind: 'preset', presetId: 'bocina' });
+    expect(soundPickForClip({ kind: 'voice' }, false)).toEqual({ kind: 'voice' });
+  });
+
+  it('a video keeps whatever was chosen, the original sound included', () => {
+    expect(soundPickForClip({ kind: 'original' }, true)).toEqual({ kind: 'original' });
+    expect(soundPickForClip({ kind: 'none' }, true)).toEqual({ kind: 'none' });
   });
 });

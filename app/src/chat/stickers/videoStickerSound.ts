@@ -1,5 +1,7 @@
 import { clipWindowOf, MAX_STICKER_AUDIO_BYTES, MAX_STICKER_VIDEO_BYTES, VIDEO_STICKER_MIN_MS, STICKER_SOUND_PRESETS, stickerHasSound, stickerSoundField, type StickerSound } from '@lilachat/shared';
 import type { TrimWindow } from './videoStickerTrim';
+import type { VideoStickerUpload } from './stickersApi';
+import { clipMimeOf } from './stickerSource';
 
 /**
  * The sound of a sticker made from a video (José 26/11, design ss-02): the
@@ -81,10 +83,18 @@ export function savedVideoStickerNotice(choice: SoundChoice, sticker: { audioUrl
   return 'Sticker guardado en Mis stickers';
 }
 
-/** A video from the gallery as the form sends it: the picker may not know its type or name. */
+/** A video or a GIF from the gallery as the form sends it: the picker may not know its type or name. */
 export function pickedVideoOf(asset: { uri: string; fileName?: string | null; mimeType?: string | null; fileSize?: number | null }): PickedVideo {
-  const mime = asset.mimeType?.startsWith('video/') ? asset.mimeType : 'video/mp4';
-  return { uri: asset.uri, name: asset.fileName || 'sticker-video.mp4', mime, bytes: asset.fileSize ?? undefined };
+  const mime = clipMimeOf(asset) ?? 'video/mp4';
+  const fallbackName = mime === 'image/gif' ? 'sticker.gif' : 'sticker-video.mp4';
+  return { uri: asset.uri, name: asset.fileName || fallbackName, mime, bytes: asset.fileSize ?? undefined };
+}
+
+/** The whole form of `POST /api/stickers/from-video`, or null while the sound is still missing. */
+export function videoStickerUploadOf(input: { video: PickedVideo; trim: TrimWindow; choice: SoundChoice }): VideoStickerUpload | null {
+  const sound = stickerSoundOf(input.choice);
+  if (!sound) return null;
+  return { video: input.video, audio: audioClipOf(input.choice), fields: videoStickerFields(input.trim, sound) };
 }
 
 /**

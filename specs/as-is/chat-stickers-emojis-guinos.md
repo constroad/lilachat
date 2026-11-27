@@ -27,8 +27,10 @@ Tono adulto: nada chibi ni infantil (decisión de José, §74).
 - Sticker recibido sin burbuja, con la hora debajo y reacciones: `StickerMessage.tsx`.
 - Guardar el sticker de otro y marcarlo favorito. Responder con sticker (21/10).
 - Dos stickers seguidos de la misma persona van en una fila (01/11).
-- Un GIF del chat se puede convertir en sticker animado propio (22/10).
-- Sticker con sonido desde un video (26/11, diseños `ss-01`, `ss-02`, `ss-03`): mosaico «Desde un video» → `CreateVideoSticker.tsx` con tramo de hasta 6 s (`VideoTrimStrip.tsx`, `videoStickerTrim.ts`, vista en bucle `useClipPreview.ts`) y hoja de sonido `StickerSoundSheet.tsx` (original, grabar `VoiceClipRecorder.tsx`, elegir un audio del teléfono, sonidos de Lilachat, sin sonido; `videoStickerSound.ts`).
+- Un solo mosaico «Crear» con «Foto, video o GIF» (26/11, diseño `sc-01a`): abre la galería con fotos y videos (`pickStickerSource.ts`); `stickerSource.ts › stickerSourceKind` decide el editor. Una foto va al recorte (`CreateSticker.tsx`, recibe la foto por `StickerPhotoContext`, ya no abre la galería); un video o un GIF, al editor con sonido. Ya no hay «Desde un video» ni «Desde un GIF».
+- «Convertir en sticker animado» de un GIF del chat (barra del mensaje, toque en el GIF y visor) abre el mismo editor con ese GIF, para ponerle sonido (26/11): se baja a la cache (`chatGifEditor.ts`) y lo dibuja `GifStickerEditorHost.tsx`, montado en `App.tsx`. «Enviar» lo manda al chat del GIF. Un GIF de chat secreto no se convierte.
+- Sticker con sonido desde un video o un GIF (26/11, diseños `ss-01`, `ss-02`, `ss-03`): `CreateVideoSticker.tsx` con tramo de hasta 6 s (`VideoTrimStrip.tsx`, `videoStickerTrim.ts`, vista en bucle `useClipPreview.ts`) y hoja de sonido `StickerSoundSheet.tsx` (original, grabar `VoiceClipRecorder.tsx`, elegir un audio del teléfono, sonidos de Lilachat, sin sonido; `videoStickerSound.ts`).
+  - Un GIF se ve con expo-image (expo-video no lo reproduce), sin tira de tramo: va entero desde el inicio (`startMs=0`, `endMs=6000`; el server lo corta a su largo). Sin «Sonido original»; empieza en «Sin sonido».
   - Sin texto sobre el sticker: el «Aa Texto» del diseño no está.
   - Si las miniaturas del tramo fallan (expo-video no lee la cantidad de cuadros de algunos archivos), la tira queda lisa con un aviso en consola.
   - En el chat, hilo y canal llega silenciado con el parlante `stickerSound.tsx`; al tocarlo suena 3 veces (`stickerSoundController.ts`) y la animación sigue mientras suena.
@@ -66,8 +68,10 @@ Tono adulto: nada chibi ni infantil (decisión de José, §74).
 - Atajos «:hug»: `emojiShortcode/useEmojiShortcode.ts`, `EmojiSuggestions.tsx`.
 - Stickers: `stickers/StickerPanel.tsx`, `useStickers.ts`, `stickersApi.ts`, `StickerMessage.tsx`, `LottieSticker.tsx` + `lottiePlayer.ts` (diseño `s1-web-stickers`).
 - Crear sticker: `stickers/CreateStickerWeb.tsx`, recorte `cutoutWeb.ts` (MediaPipe, Apache 2.0), máscara `mask.ts`, composición `composeWeb.ts`.
-- Sticker con sonido desde un video (26/11, diseños `ss-03`, `ss-04`): mosaico «Desde un video» del panel → `stickers/CreateStickerFromVideo.tsx` (modal), tramo de hasta 6 s `VideoTrimStrip.tsx`, sonido `StickerSoundPicker.tsx` (original, grabar `VoiceRecorder.tsx`, subir, sonidos de Lilachat, sin sonido); decisiones puras en `videoSticker.ts`. «Guardar en Mis stickers» y «Enviar».
+- Un solo «Crear» en el panel («Foto, video o GIF», diseño `sc-01a`, José 26/11): un selector de archivos; `stickerSourceOf` (`videoSticker.ts`) manda la foto al recorte (`CreateStickerWeb.tsx`, `initialPhoto`) y el video o GIF al modal con sonido.
+- Sticker con sonido desde un video o GIF (26/11, diseños `ss-03`, `ss-04`): `stickers/CreateStickerFromVideo.tsx` (modal; un GIF se ve en `<img>`, va entero hasta 6 s y sin «Sonido original»), tramo de hasta 6 s `VideoTrimStrip.tsx`, sonido `StickerSoundPicker.tsx` (original, grabar `VoiceRecorder.tsx`, subir, sonidos de Lilachat, sin sonido); decisiones puras en `videoSticker.ts`. «Guardar en Mis stickers» y «Enviar».
   - En el chat llega silenciado con un botón de parlante (`StickerMessage.tsx`); al tocarlo suena 3 veces seguidas (`stickerSoundLoop.ts`), uno a la vez en la página.
+- «Convertir en sticker animado» sobre un GIF del chat abre ese mismo modal con el GIF (`GifStickerDialog.tsx`, `fetchGifFile`), para ponerle sonido.
 - Menú del mensaje: «Guardar en Mis stickers», «Agregar a favoritos», «Convertir en sticker animado» (`MenuDelMensaje.tsx`).
 - GIF: `gifs/GifPanel.tsx`, `GifInBubble.tsx` (se mueve y se detiene), `gifsApi.ts`, `gifsInFlight.ts`.
 - Guiños: `WinkPanel.tsx`, `WinkOverlay.tsx`, `WinkCharacter.tsx`, `WinkSketch.tsx`, `sketchFrames.ts`, `winkSounds.ts`.
@@ -83,6 +87,7 @@ Tono adulto: nada chibi ni infantil (decisión de José, §74).
 - Sticker animado propio desde un GIF (`animatedStickerRoutes.ts`, `animatedSticker.ts`): `POST /stickers/animated`, `POST /stickers/from-gif`. WebP animado 512×512, hasta 6 s y 500 KB, con sharp.
 - Sticker con sonido desde un video (26/11): `POST /stickers/from-video` (`videoStickerRoutes.ts`), multipart con `file` (video o GIF hasta 60 MB; `isStickerClipMime`), `audio` opcional, `startMs`, `endMs` y `sound` (`original`, `file`, `none`, `preset:<id>`).
   - `soundSticker.ts`: ffmpeg corta el tramo a GIF de 12,5 cuadros por segundo (80 ms, exacto en GIF: el dibujo va al ritmo del sonido) y sharp lo deja en WebP animado 512×512; el sonido sale aparte en AAC mono de 64 kbps. Uno a la vez en la mini.
+  - Un sonido grabado o elegido se corta al largo del sticker: un GIF de 2 s suena 2 s y repite junto con el dibujo.
   - Un video sin pista de sonido queda como sticker sin sonido, sin error. Los sonidos de Lilachat no se suben: apuntan a `/sonidos/wink-*.mp3` de la web (`webOrigin.ts`).
   - `Sticker.audioUrl` y `Message.media.audioUrl` viajan al enviar y al guardar el sticker de otro.
 - Modelo y vista: `stickerModel.ts`, `stickerView.ts`.
@@ -158,6 +163,7 @@ Lo demás (paquetes, Mis stickers, favoritos, GIF, guiños, temporadas, zumbido,
 | `ss-02-sonido-del-sticker` | Implementado (la captura se corta abajo) | APK y web: selector de sonido |
 | `ss-03-chat-sticker-sonido` | Implementado | `StickerMessage.tsx` (app y web) |
 | `ss-04-web-sticker-sonido` | Implementado | `web/src/chat/stickers/CreateStickerFromVideo.tsx` |
+| `sc-01a-crear-sticker-uno` | Implementado (APK), sin la nota con flecha | `app/src/chat/stickers/StickerPanel.tsx` (`btn-crear-sticker`) |
 | `multimedia-emojis` | Implementado (referencia) | §48.2 del spec |
 
 ## 6. Pendientes y deuda conocida
@@ -173,8 +179,8 @@ Lo demás (paquetes, Mis stickers, favoritos, GIF, guiños, temporadas, zumbido,
   `winkDances`, `winkTimeline`, `winkSeasons`, `winkSketches`, `winkSketchesAttack`, `funLedger`, `nudge`, `gifs`,
   `customEmojis`, `emojiShortcode`, `reacciones`, `lottie/svgToLottie`, `lottie/rigToLottie` (`shared/src/**/*.test.ts`).
 - **Server:** `stickers` (incluye `from-video`), `soundSticker` (ffmpeg real), `animatedSticker`, `zumbido` (`server/src/*.test.ts`).
-- **APK:** `stickers/videoStickerTrim`, `videoStickerSound`, `stickerSoundController`, `emojiPanel`, `emojiPanel/emojiLayout`, `winkPlay`, `funSeen`, `funAvailable`, `stickers/stickersApi`,
-  `stickers/stickerRenderers`, `stickers/gifSticker`, `gifs/gifsInFlight`, `gifs/gifOptions`.
+- **APK:** `stickers/stickerSource`, `stickers/chatGifEditor`, `stickers/videoStickerTrim`, `videoStickerSound`, `stickerSoundController`, `emojiPanel`, `emojiPanel/emojiLayout`, `winkPlay`, `funSeen`, `funAvailable`, `stickers/stickersApi`,
+  `stickers/stickerRenderers`, `gifs/gifsInFlight`, `gifs/gifOptions`.
 - **Web:** `stickers/videoSticker`, `stickerSoundLoop`, `CreateStickerFromVideo`, `stickers/StickerPanel`, `StickerMessage`, `LottieSticker`, `lottieFiles`, `stickersApi`, `mask`,
   `gifs/GifPanel`, `gifs/gifsInFlight`, `nudge`, `funPlayback`, `funSeen`, `sketchFrames`, `reacciones/customEmojis`.
 - **Maestro:** ninguno.

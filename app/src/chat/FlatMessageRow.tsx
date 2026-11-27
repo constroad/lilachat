@@ -155,7 +155,7 @@ function FlatRow(props: {
               <StickerSoundOverlay sound={stickerSound} hidden={props.selecting} />
             </Pressable>
           ) : (
-            <MessageMedia item={item} mine={false} flat selecting={props.selecting} onSelect={props.onSelect} onOpen={props.onOpenMedia} onGifTap={props.jwt && !isPending(item) ? (seq) => showGifOptions({ jwt: props.jwt!, chatId: item.chatId, seq, onOpen: () => props.onOpenMedia?.(seq) }) : undefined} />
+            <MessageMedia item={item} mine={false} flat selecting={props.selecting} onSelect={props.onSelect} onOpen={props.onOpenMedia} onGifTap={props.jwt && !isPending(item) ? (seq) => showGifOptions({ jwt: props.jwt!, chatId: item.chatId, seq, url: item.media?.url ?? '', onOpen: () => props.onOpenMedia?.(seq) }) : undefined} />
           )}
           {card || sticker ? null : deleted ? (
             <Text testID={`eliminado-${id}`} className="text-[15px] italic text-on-surface-variant">{TEXTO_ELIMINADO}</Text>

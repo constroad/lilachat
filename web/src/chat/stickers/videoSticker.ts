@@ -1,9 +1,10 @@
-import { MAX_STICKER_AUDIO_BYTES, MAX_STICKER_VIDEO_BYTES, stickerHasSound, VIDEO_STICKER_MAX_MS, VIDEO_STICKER_MIN_MS, type StickerSound } from '@lilachat/shared';
+import { clipHasOwnSound, isStickerClipMime, MAX_STICKER_AUDIO_BYTES, MAX_STICKER_VIDEO_BYTES, stickerHasSound, VIDEO_STICKER_MAX_MS, VIDEO_STICKER_MIN_MS, type StickerSound } from '@lilachat/shared';
 
 /**
  * The decisions of «Crear sticker desde un video» (José 26/11, design ss-04):
- * which part of the video the sticker keeps and which files are accepted. The
- * modal only draws them.
+ * which part of the video the sticker keeps and which files are accepted. A
+ * GIF goes through the same modal, whole and without its own sound (design
+ * sc-01a). The modal only draws them.
  */
 export type TrimWindow = { startMs: number; endMs: number };
 
@@ -63,7 +64,7 @@ export function stripTicks(videoMs: number, count: number): number[] {
   return Array.from({ length: count }, (_, index) => Math.round((videoMs * index) / (count - 1)));
 }
 
-const VIDEO_TYPES: Record<string, string> = { mp4: 'video/mp4', m4v: 'video/mp4', mov: 'video/quicktime', webm: 'video/webm', '3gp': 'video/3gpp', mkv: 'video/x-matroska' };
+const CLIP_TYPES: Record<string, string> = { mp4: 'video/mp4', m4v: 'video/mp4', mov: 'video/quicktime', webm: 'video/webm', '3gp': 'video/3gpp', mkv: 'video/x-matroska', gif: 'image/gif' };
 const AUDIO_TYPES: Record<string, string> = { mp3: 'audio/mpeg', m4a: 'audio/mp4', wav: 'audio/wav' };
 const ACCEPTED_AUDIO_MIMES = new Set(['audio/mpeg', 'audio/mp3', 'audio/mp4', 'audio/x-m4a', 'audio/m4a', 'audio/aac', 'audio/wav', 'audio/x-wav', 'audio/wave', 'audio/vnd.wave']);
 
@@ -73,7 +74,7 @@ const extensionOf = (name: string) => name.split('.').pop()?.toLowerCase() ?? ''
 function mediaTypeOf(file: File): string {
   if (file.type) return file.type;
   const extension = extensionOf(file.name);
-  return VIDEO_TYPES[extension] ?? AUDIO_TYPES[extension] ?? '';
+  return CLIP_TYPES[extension] ?? AUDIO_TYPES[extension] ?? '';
 }
 
 /** The same file with a media type (some browsers leave .m4a or .mov without one). */
@@ -82,10 +83,25 @@ export function withMediaType(file: File): File {
   return type === file.type ? file : new File([file], file.name, { type });
 }
 
-/** Why this video cannot be used, or null when it can. */
-export function videoFileProblem(file: File): string | null {
-  if (!mediaTypeOf(file).startsWith('video/')) return 'Elige un video.';
-  return file.size > MAX_STICKER_VIDEO_BYTES ? 'Ese video pesa demasiado (máximo 60 MB).' : null;
+/** Why this clip (a video or a GIF) cannot be used, or null when it can. */
+export function clipFileProblem(file: File): string | null {
+  if (!isStickerClipMime(mediaTypeOf(file))) return 'Elige un video o un GIF.';
+  return file.size > MAX_STICKER_VIDEO_BYTES ? 'Ese archivo pesa demasiado (máximo 60 MB).' : null;
+}
+
+/** A GIF has no sound of its own and no trim (a `<video>` cannot play it). */
+export const clipIsGif = (file: File) => !clipHasOwnSound(mediaTypeOf(file));
+
+/** A GIF goes whole from its start; the server clamps the end to the GIF's length. */
+export const GIF_TRIM: TrimWindow = { startMs: 0, endMs: VIDEO_STICKER_MAX_MS };
+
+/** Which editor a file chosen under «Crear» opens: the clip one (video or GIF), the photo one, or none. */
+export type StickerSource = 'clip' | 'photo';
+
+export function stickerSourceOf(file: File): StickerSource | null {
+  const type = mediaTypeOf(file);
+  if (isStickerClipMime(type)) return 'clip';
+  return type.startsWith('image/') ? 'photo' : null;
 }
 
 /** «Subir un audio»: MP3, M4A or WAV of up to 4 MB. */
@@ -97,6 +113,11 @@ export function audioFileProblem(file: File): string | null {
 /** What the person picked under «Sonido del sticker»: voice and upload both travel as a file. */
 export type SoundPick = { kind: 'original' } | { kind: 'none' } | { kind: 'preset'; presetId: string } | { kind: 'voice' } | { kind: 'upload' };
 export type SoundRequest = { sound: StickerSound; audio: Blob | null };
+
+/** What the sound choice means for this clip: without a sound of its own, «Sonido original» is «Sin sonido». */
+export function soundPickForClip(pick: SoundPick, hasOwnSound: boolean): SoundPick {
+  return !hasOwnSound && pick.kind === 'original' ? { kind: 'none' } : pick;
+}
 
 /** The sound part of the request, or what is still missing. */
 export function soundRequestOf(pick: SoundPick, voice: Blob | null, upload: File | null): SoundRequest | { problem: string } {

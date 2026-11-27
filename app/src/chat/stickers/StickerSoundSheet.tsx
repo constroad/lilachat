@@ -83,9 +83,10 @@ async function pickPhoneAudio(): Promise<{ clip: AudioClip } | { refusal: string
 /**
  * «Sonido del sticker» (José 26/11, design ss-02): the video's own sound (by
  * default), a voice recorded here, an audio of the phone, one of «Sonidos de
- * Lilachat», or none. A choice applies at once; «Listo» closes.
+ * Lilachat», or none. A choice applies at once; «Listo» closes. A GIF has no
+ * sound of its own: `offerOriginal` false hides that option (José 26/11).
  */
-export function StickerSoundSheet(props: { visible: boolean; choice: SoundChoice; clipLength: string; onChoose: (choice: SoundChoice) => void; onPreviewOriginal: () => void; onClose: () => void }) {
+export function StickerSoundSheet(props: { visible: boolean; offerOriginal?: boolean; choice: SoundChoice; clipLength: string; onChoose: (choice: SoundChoice) => void; onPreviewOriginal: () => void; onClose: () => void }) {
   const { choice, onChoose } = props;
   const [notice, setNotice] = useState('');
   /** A voice or an audio already made stays when another choice is tried and then this one again. */
@@ -122,14 +123,16 @@ export function StickerSoundSheet(props: { visible: boolean; choice: SoundChoice
           <Text className="text-[20px] font-bold text-on-surface">Sonido del sticker</Text>
           <Text className="text-[14px] text-on-surface-variant">Se escucha cuando lo tocan. Hasta 6 segundos.</Text>
         </View>
-        <SoundOption
-          testID="sonido-original"
-          Icon={Music}
-          title="Sonido original del video"
-          selected={choice.kind === 'original'}
-          onPress={() => choose({ kind: 'original' })}
-          detail={<ListenChip testID="escuchar-sonido-original" label={props.clipLength} onPress={() => { choose({ kind: 'original' }); props.onPreviewOriginal(); }} />}
-        />
+        {props.offerOriginal === false ? null : (
+          <SoundOption
+            testID="sonido-original"
+            Icon={Music}
+            title="Sonido original del video"
+            selected={choice.kind === 'original'}
+            onPress={() => choose({ kind: 'original' })}
+            detail={<ListenChip testID="escuchar-sonido-original" label={props.clipLength} onPress={() => { choose({ kind: 'original' }); props.onPreviewOriginal(); }} />}
+          />
+        )}
         <SoundOption testID="sonido-grabar" Icon={Mic} title="Grabar tu voz" selected={choice.kind === 'voice'} onPress={() => choose({ kind: 'voice', clip: voiceClip })}>
           <VoiceClipRecorder clip={voiceClip} onRecorded={recorded} />
         </SoundOption>

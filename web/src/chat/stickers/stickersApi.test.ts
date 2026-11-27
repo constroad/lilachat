@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { createStickerFromVideo, sendSticker, stickerFromGif, uploadGifSticker, videoStickerForm } from './stickersApi';
+import { createStickerFromVideo, fetchGifFile, sendSticker, stickerFromGif, uploadGifSticker, videoStickerForm } from './stickersApi';
 
 /** José, 20/10: «no puedo responder con sticker» — the reply and the thread travel with the sticker. */
 describe('sendSticker', () => {
@@ -107,5 +107,40 @@ describe('a sticker from a video', () => {
     vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ message: 'No se pudo dejar ese clip en 500 KB: prueba con uno más corto.' }), { status: 413 })));
     const saved = await createStickerFromVideo('jwt', { video, trim, sound: { kind: 'none' } });
     expect(saved).toMatchObject({ ok: false, status: 413, message: 'No se pudo dejar ese clip en 500 KB: prueba con uno más corto.' });
+  });
+});
+
+/** José 26/11 (design sc-01a): «Convertir en sticker animado» opens the clip editor with the chat's GIF. */
+describe('the GIF of a chat as a file', () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  it('comes as a GIF file the editor can take', async () => {
+    const request = vi.fn(async () => new Response('GIF89a', { status: 200, headers: { 'Content-Type': 'image/gif' } }));
+    vi.stubGlobal('fetch', request);
+
+    const fetched = await fetchGifFile('https://chat.test/media/a.gif');
+
+    expect(request).toHaveBeenCalledWith('https://chat.test/media/a.gif');
+    expect(fetched.ok).toBe(true);
+    if (!fetched.ok) return;
+    expect(fetched.file.type).toBe('image/gif');
+    expect(fetched.file.name).toBe('a.gif');
+    expect(fetched.file.size).toBe(6);
+  });
+
+  it('a GIF served without its type still goes as image/gif', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response('GIF89a', { status: 200 })));
+    const fetched = await fetchGifFile('/media/sin-nombre');
+    expect(fetched.ok && fetched.file).toMatchObject({ type: 'image/gif', name: 'sticker.gif' });
+  });
+
+  it('a refusal of the server says it could not be opened', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response('', { status: 404 })));
+    expect(await fetchGifFile('/media/a.gif')).toEqual({ ok: false, message: 'No se pudo abrir ese GIF. Inténtalo de nuevo.' });
+  });
+
+  it('a network failure says so, without breaking', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => Promise.reject(new TypeError('Failed to fetch'))));
+    expect(await fetchGifFile('/media/a.gif')).toEqual({ ok: false, message: 'No se pudo traer ese GIF. Revisa tu conexión.' });
   });
 });

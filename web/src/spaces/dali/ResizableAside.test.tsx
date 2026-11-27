@@ -36,4 +36,17 @@ describe('ResizableAside', () => {
     });
     expect(screen.getByTestId('columna-lista').style.width).toBe('560px');
   });
+
+  it('tells its parent when it folds and unfolds, and follows the parent (dp-01b: the ficha folded puts its parts in the header)', () => {
+    // Arrange
+    const folds: boolean[] = [];
+    const { rerender } = render(<ResizableAside {...props} folded={false} onFolded={(folded) => folds.push(folded)}>ficha</ResizableAside>);
+    // Act
+    fireEvent.click(screen.getByLabelText('Ocultar este panel'));
+    rerender(<ResizableAside {...props} folded onFolded={(folded) => folds.push(folded)}>ficha</ResizableAside>);
+    fireEvent.click(screen.getByLabelText('Mostrar la lista'));
+    // Assert
+    expect(folds).toEqual([true, false]);
+    expect(screen.getByTestId('columna-lista-plegada')).toBeTruthy();
+  });
 });

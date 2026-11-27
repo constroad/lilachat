@@ -12,10 +12,10 @@ import { DaliInbox } from './DaliInbox';
 import { DaliKnowledgeSheet } from './DaliKnowledgeSheet';
 import { DaliPanel } from './DaliPanel';
 import { DaliReview } from './DaliReview';
-import { SheetInColumn } from './daliParts';
+import { SheetInColumn, ShowSheetColumn } from './daliParts';
 import { FollowUpsSheet } from './FollowUpsSheet';
 import { ProspectSheet, type SheetProps } from './ProspectSheet';
-import { ResizableAside } from './ResizableAside';
+import { readStored, ResizableAside } from './ResizableAside';
 import { useProspects } from './useProspects';
 
 export type DaliTab = 'inbox' | 'chats' | 'funnel' | 'panel' | 'review';
@@ -29,6 +29,8 @@ const TABS: { key: DaliTab; label: string }[] = [
 const MINUTE_MS = 60_000;
 /** The ficha takes the inbox's third column from this width; below, it opens from the strip. */
 const SHEET_COLUMN_MIN_WIDTH = 1280;
+const SHEET_KEY = 'dali-ficha';
+const SHEET_WIDTH = { initial: 360, min: 300, max: 520 };
 /** The tab of each space survives going to a conversation and back on a phone (the column unmounts). */
 const lastTab = new Map<string, DaliTab>();
 
@@ -185,6 +187,7 @@ function DaliTabs({ value, unread, onChange, phone }: { value: DaliTab; unread: 
 }
 
 function InboxTab(props: Props & { tab: 'inbox' | 'chats'; directChats: ChatSummary[]; whatsappGroups: ChatSummary[]; prospects: ReturnType<typeof useProspects>; me: string; now: Date; service?: string; onService: (key: string | undefined) => void; selectedProspect: ProspectView | null; sheetProps: Omit<SheetProps, 'prospect'>; onFollowUps: () => void }) {
+  const [sheetFolded, setSheetFolded] = useState(() => readStored(SHEET_KEY, { width: SHEET_WIDTH.initial, folded: false }, SHEET_WIDTH.min, SHEET_WIDTH.max).folded);
   const aside =
     props.tab === 'chats' ? (
       <DaliChats directs={props.directChats} whatsappGroups={props.whatsappGroups} yo={props.yo} selectedChatId={props.selectedChatId} onOpenChat={(chat) => props.onOpenChat(chat.id)} onChatAction={props.onChatAction} />
@@ -208,14 +211,18 @@ function InboxTab(props: Props & { tab: 'inbox' | 'chats'; directChats: ChatSumm
     );
   if (props.phone) return <div className="min-h-0 flex-1 overflow-y-auto">{aside}</div>;
   const sheetInColumn = props.tab === 'inbox' && props.width >= SHEET_COLUMN_MIN_WIDTH && props.selectedProspect !== null;
+  // dp-01a with the ficha in view; folded, the header takes its parts (dp-01b) and «Ficha» unfolds it.
+  const unfoldSheet = sheetInColumn && sheetFolded ? () => setSheetFolded(false) : null;
   return (
     <>
       <ResizableAside storageKey={`dali-lista-${props.tab}`} side="left" defaultWidth={380} minWidth={280} maxWidth={560} label="Mostrar la lista" testId="columna-lista" className="bg-list">{aside}</ResizableAside>
       <div className="flex min-w-0 flex-1">
-        <SheetInColumn.Provider value={sheetInColumn}>{props.conversation ?? <PickOne />}</SheetInColumn.Provider>
+        <ShowSheetColumn.Provider value={unfoldSheet}>
+          <SheetInColumn.Provider value={sheetInColumn && !sheetFolded}>{props.conversation ?? <PickOne />}</SheetInColumn.Provider>
+        </ShowSheetColumn.Provider>
       </div>
       {sheetInColumn && props.selectedProspect ? (
-        <ResizableAside storageKey="dali-ficha" side="right" defaultWidth={360} minWidth={300} maxWidth={520} label="Mostrar la ficha" testId="columna-ficha">
+        <ResizableAside storageKey={SHEET_KEY} side="right" defaultWidth={SHEET_WIDTH.initial} minWidth={SHEET_WIDTH.min} maxWidth={SHEET_WIDTH.max} label="Mostrar la ficha" testId="columna-ficha" folded={sheetFolded} onFolded={setSheetFolded}>
           <ProspectSheet {...props.sheetProps} prospect={props.selectedProspect} resultInHeader />
         </ResizableAside>
       ) : null}

@@ -138,6 +138,7 @@ La cola de tarjetas y la línea de Pendientes están en `bots-asistente-rutinas-
 - **19/11:** cada fila de Pendientes del canal de cliente lleva casilla y cámara (diseño cc-06), con los permisos
   de `taskActionsFor`; la foto va por la puerta de evidencia de siempre (`evidenceWeb.ts`, `evidenceUpload.ts`
   con `source: 'camera'`). `toggleTaskWeb` / `toggleTask` son la única llamada a `/toggle` (fila y detalle).
+- **27/11:** «Servicios» ya no repite las tareas abiertas arriba (José: «no tiene sentido si tenemos un tab de checklist»): `ChannelWorkTabs.tsx` dejó de pasarle `pending` y el layout perdió `onPending`.
 - **19/11:** en el celular (< 768 px) «Checklist» lleva el segmentado «Pendientes · Plan» y Pendientes deja de ser pestaña para quien tiene Checklist (diseño cc-06; web `chat/workPlan/ChecklistSegmentsWeb.tsx`, APK `chat/workPlan/ChannelWorkTabs.tsx`; regla en `shared/src/serviceShell.ts`).
 
 ## 5. Diseños de Stitch relacionados

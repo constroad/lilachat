@@ -9,6 +9,8 @@ import { LEVEL_LABEL, STAGE_LABEL, levelOf, originOf, shownStageOf, type Prospec
 
 /** The wide inbox shows the ficha in its third column: the strip over the conversation then has no «Ficha» button. */
 export const SheetInColumn = createContext(false);
+/** Unfolds the ficha's column when it is folded (dp-01b); null where there is no column to unfold. */
+export const ShowSheetColumn = createContext<(() => void) | null>(null);
 
 export type PillTone = 'neutral' | 'primary' | 'ok' | 'warn' | 'error' | 'info';
 

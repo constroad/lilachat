@@ -132,6 +132,12 @@ remitentes posibles, así que cada mensaje trae el suyo.
   solo aparece cuando el espacio tiene al menos uno (`DaliChats.test.tsx`: sin grupos, ningún encabezado).
 - `ProspectChat.tsx`: cabecera (iniciales, teléfono, origen, Llamar con el marcador, Ficha, Marcar resultado)
   y franja (quién atiende, Dali en pausa, Tomar, Devolver a Dali, y la campana del recordatorio).
+  - En la computadora, UNA fila y sin franja (José 27/11 «haz las dos opciones», diseños `dp-01a`/`dp-01b`):
+    con la ficha en su columna (A) la fila es nombre, Llamar y «Marcar resultado», y quién atiende, Devolver/
+    Tomar y la próxima acción viven en la ficha; con la ficha cerrada o PLEGADA (B) se suman a la fila la
+    píldora «Atiende X · Dali en pausa | Devolver a Dali» (o «Tomar»), «Recordarme», Llamar como ícono y
+    «Ficha ›», que despliega la columna plegada (`ShowSheetColumn`) o abre la ficha encima. `DaliSpace`
+    sabe si la columna está plegada (`ResizableAside` con `folded`/`onFolded`). El celular conserva la franja.
 - Recordatorio desde el chat (José 27/11, «volver a insistir»): la campana de la franja abre la misma
   «Próxima acción» (`NextActionDialog` / `NextActionSheet`). Sin próxima acción dice «Recordarme»; con una,
   cuándo suena («Mañana 09:00»), en rojo si ya pasó. Cerrado el prospecto, no aparece. Un solo sistema:

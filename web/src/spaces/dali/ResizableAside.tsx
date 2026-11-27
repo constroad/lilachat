@@ -16,6 +16,9 @@ export interface ResizableAsideProps {
   label: string;
   testId?: string;
   className?: string;
+  /** Folded as the parent says (dp-01b: a folded ficha moves its parts to the header); otherwise as kept in the browser. */
+  folded?: boolean;
+  onFolded?: (folded: boolean) => void;
   children: ReactNode;
 }
 
@@ -45,10 +48,13 @@ export function ResizableAside(props: ResizableAsideProps) {
   const { storageKey, side, minWidth, maxWidth } = props;
   const [state, setState] = useState<Stored>(() => readStored(storageKey, { width: props.defaultWidth, folded: false }, minWidth, maxWidth));
   const drag = useRef<{ x: number; width: number } | null>(null);
+  const { onFolded } = props;
+  const folded = props.folded ?? state.folded;
   const save = useCallback((next: Stored) => {
     setState(next);
     writeStored(storageKey, next);
-  }, [storageKey]);
+    onFolded?.(next.folded);
+  }, [storageKey, onFolded]);
 
   const onPointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
     drag.current = { x: event.clientX, width: state.width };
@@ -71,7 +77,7 @@ export function ResizableAside(props: ResizableAsideProps) {
   };
 
   const border = side === 'left' ? 'border-r' : 'border-l';
-  if (state.folded) {
+  if (folded) {
     const Icon = side === 'left' ? ChevronRight : ChevronLeft;
     return (
       <aside data-testid={props.testId ? `${props.testId}-plegada` : undefined} className={`flex w-9 shrink-0 flex-col items-center ${border} border-outline/15 bg-list pt-3`}>

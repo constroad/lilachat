@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { Bell, BellRing, CheckCircle2, ChevronRight, MessageCircle, Phone, RotateCcw } from 'lucide-react';
 import { LOSS_REASON_LABEL, prospectNameOf, shownProspectPhone, stripReminderOf, type ProspectView } from '@lilachat/shared';
 import type { OwnHeader } from '../../chat/Conversation';
-import { OriginPill, OutlineButton, Pill, ProspectAvatar, SheetInColumn, SolidButton, TextButton } from './daliParts';
+import { OriginPill, OutlineButton, Pill, ProspectAvatar, SheetInColumn, ShowSheetColumn, SolidButton, TextButton } from './daliParts';
 import { NextActionDialog } from './NextActionDialog';
 import { ProspectSheet } from './ProspectSheet';
 import { ResultDialog } from './ResultDialog';
@@ -28,8 +28,9 @@ const NO_LINE = ' ';
 /**
  * A prospect's conversation (dl-01 v3, dl-02), read once by its chat (a phone has no inbox on screen). The header gets
  * the client's initials, phone and origin, «Llamar» (the phone's dialer, never a Lilachat call), the ficha and
- * «Marcar resultado»; the strip under it says who attends it and whether Dali is paused, with «Tomar» and «Devolver a
- * Dali».
+ * «Marcar resultado». On a computer it is ONE row (José 27/11, designs dp-01a/dp-01b): with the ficha in its column
+ * (A) who attends and the reminder live there; with it closed or folded (B) they join the row. A phone keeps the strip
+ * under the header: who attends, whether Dali is paused, «Tomar», «Devolver a Dali» and the reminder.
  */
 export function ProspectChat(props: Props & { children: (parts: ProspectChatParts) => ReactNode }) {
   const { prospect, setProspect, reload } = useProspectOfChat(props.jwt, props.spaceId, props.chatId);
@@ -37,6 +38,7 @@ export function ProspectChat(props: Props & { children: (parts: ProspectChatPart
   const [now] = useState(() => new Date());
   // A wide inbox shows the ficha in its third column; elsewhere it opens from the header.
   const inColumn = useContext(SheetInColumn);
+  const unfoldColumn = useContext(ShowSheetColumn);
   useEffect(() => {
     setOpen(null);
   }, [props.chatId]);
@@ -46,10 +48,13 @@ export function ProspectChat(props: Props & { children: (parts: ProspectChatPart
     props.onNotice(outcome.message);
     if (outcome.stale) reload();
   };
-  const parts: ProspectChatParts = prospect
+  const take = async () => prospect && settle(await sendChange(props.jwt, props.spaceId, prospect, { assignee: 'me' }));
+  const handBack = async () => prospect && settle(await sendHandBack(props.jwt, props.spaceId, prospect));
+  const attends = prospect ? { prospect, now, onRemind: () => setOpen('next'), onTake: () => void take(), onHandBack: () => void handBack() } : null;
+  const parts: ProspectChatParts = prospect && attends
     ? {
-        ownHeader: { avatar: <HeaderInitials name={prospectNameOf(prospect)} phone={props.phone} />, subtitle: <HeaderLine prospect={prospect} />, actions: <HeaderActions phone={props.phone} withSheet={inColumn} prospect={prospect} onSheet={() => setOpen('sheet')} onResult={() => setOpen('result')} /> },
-        strip: <Strip prospect={prospect} phone={props.phone} now={now} onRemind={() => setOpen('next')} onTake={async () => settle(await sendChange(props.jwt, props.spaceId, prospect, { assignee: 'me' }))} onHandBack={async () => settle(await sendHandBack(props.jwt, props.spaceId, prospect))} />,
+        ownHeader: { avatar: <HeaderInitials name={prospectNameOf(prospect)} phone={props.phone} />, subtitle: <HeaderLine prospect={prospect} />, actions: <HeaderActions phone={props.phone} withSheet={inColumn} attends={attends} onSheet={unfoldColumn ?? (() => setOpen('sheet'))} onResult={() => setOpen('result')} /> },
+        strip: props.phone ? <Strip {...attends} phone /> : null,
       }
     : { ownHeader: { avatar: <HeaderInitials name={props.chatName ?? ''} phone={props.phone} />, subtitle: NO_LINE, actions: null }, strip: null };
   return (
@@ -86,26 +91,46 @@ function HeaderLine({ prospect }: { prospect: ProspectView }) {
   );
 }
 
-function HeaderActions(props: { phone?: boolean; withSheet: boolean; prospect: ProspectView; onSheet: () => void; onResult: () => void }) {
-  const { prospect } = props;
+type Attends = { prospect: ProspectView; now: Date; onRemind: () => void; onTake: () => void; onHandBack: () => void };
+
+function HeaderActions(props: { phone?: boolean; withSheet: boolean; attends: Attends; onSheet: () => void; onResult: () => void }) {
+  const { prospect } = props.attends;
   const dial = `tel:+${prospect.phone}`;
+  // dp-01b: with the ficha closed, who attends and the reminder join the row; dp-01a leaves them to the ficha.
+  const inRow = !props.phone && !props.withSheet;
   return (
     <>
+      {inRow ? <AttendsPill {...props.attends} /> : null}
+      {inRow ? <RemindButton prospect={prospect} now={props.attends.now} onClick={props.attends.onRemind} /> : null}
       {/* dl-01 v4: «Llamar» lives here; the ficha beside it no longer repeats it (one call button on the screen). */}
-      {!prospect.phone ? null : props.phone ? (
-        <a href={dial} data-testid="cabecera-llamar" aria-label="Llamar" className="grid h-10 w-10 place-items-center rounded-full border border-outline/30 text-primary hover:bg-background"><Phone size={18} /></a>
+      {!prospect.phone ? null : props.phone || inRow ? (
+        <a href={dial} data-testid="cabecera-llamar" aria-label="Llamar" title="Llamar" className="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-outline/30 text-primary hover:bg-background"><Phone size={18} /></a>
       ) : (
         <a href={dial} data-testid="cabecera-llamar" className="inline-flex h-10 items-center gap-1.5 rounded-xl border border-outline/30 px-3 text-[13px] font-semibold hover:bg-background"><Phone size={16} /> Llamar</a>
       )}
+      {props.phone || prospect.result ? null : <SolidButton testId="cabecera-marcar-resultado" onClick={props.onResult}><CheckCircle2 size={16} /> Marcar resultado</SolidButton>}
       {props.withSheet ? null : props.phone ? (
         <button type="button" data-testid="cabecera-ficha" onClick={props.onSheet} className="inline-flex h-10 items-center gap-0.5 rounded-xl border border-outline/30 pl-3 pr-2 text-[13px] font-semibold hover:bg-background">Ficha <ChevronRight size={14} /></button>
       ) : <OutlineButton testId="cabecera-ficha" onClick={props.onSheet}>Ficha <ChevronRight size={16} /></OutlineButton>}
-      {props.phone || prospect.result ? null : <SolidButton testId="cabecera-marcar-resultado" onClick={props.onResult}><CheckCircle2 size={16} /> Marcar resultado</SolidButton>}
     </>
   );
 }
 
-function Strip(props: { prospect: ProspectView; phone?: boolean; now: Date; onRemind: () => void; onTake: () => void; onHandBack: () => void }) {
+/** dp-01b: «Atiende J. Zamora · Dali en pausa | Devolver a Dali» (or «Tomar») as one pill of the header row. */
+function AttendsPill(props: Attends) {
+  const { prospect } = props;
+  const open = !prospect.result;
+  return (
+    <span className="flex min-w-0 shrink items-center gap-1 rounded-full border border-outline/20 bg-surface py-0.5 pl-1 pr-1">
+      <span data-testid="cabecera-atiende" className="flex min-w-0 items-center"><Who prospect={prospect} compact /></span>
+      {open && prospect.attendedBy === 'human' ? <TextButton testId="franja-devolver-a-dali" onClick={props.onHandBack}><RotateCcw size={14} /> Devolver a Dali</TextButton> : null}
+      {open && !prospect.assignee ? <TextButton testId="franja-tomar" onClick={props.onTake}>Tomar</TextButton> : null}
+    </span>
+  );
+}
+
+/** The strip under a phone's header (dl-02). */
+function Strip(props: Attends & { phone: boolean }) {
   const { prospect } = props;
   const open = !prospect.result;
   return (
@@ -133,13 +158,16 @@ function RemindButton(props: { prospect: ProspectView; phone?: boolean; now: Dat
   );
 }
 
-function Who({ prospect, phone }: { prospect: ProspectView; phone?: boolean }) {
+/** `compact` (phone strip, header pill): «Atiende X · Dali en pausa» in one short line. */
+function Who({ prospect, phone, compact }: { prospect: ProspectView; phone?: boolean; compact?: boolean }) {
   if (prospect.result) {
     const won = prospect.result.outcome === 'won';
     return <Pill tone={won ? 'ok' : 'error'}>{won ? 'Ganado' : `Perdido${prospect.result.reason ? ` · ${LOSS_REASON_LABEL[prospect.result.reason]}` : ''}`}</Pill>;
   }
   const paused = prospect.attendedBy === 'human';
-  const state = paused ? (phone ? 'Dali en pausa' : 'Dali está en pausa: le contesta una persona') : phone ? 'Dali conversa' : 'Dali sigue conversando';
+  const short = phone || compact;
+  const state = paused ? (short ? 'Dali en pausa' : 'Dali está en pausa: le contesta una persona') : short ? 'Dali conversa' : 'Dali sigue conversando';
+  if (compact) return <span className={`min-w-0 truncate px-2 text-[13px] font-semibold ${paused || !prospect.assignee ? 'text-warning' : 'text-on-surface-variant'}`}>{`${prospect.assignee ? `Atiende ${prospect.assignee.name}` : 'Sin asignar'} · ${state}`}</span>;
   return (
     <span className="flex min-w-0 items-center gap-2">
       <Pill tone={prospect.assignee ? 'primary' : 'warn'}>{prospect.assignee ? `Atiende ${prospect.assignee.name}` : 'Sin asignar'}</Pill>

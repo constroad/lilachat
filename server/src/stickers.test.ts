@@ -43,7 +43,7 @@ const makeVideo: StickerVideoMaker = async ({ picture, sound }) => {
   exports.push({ picture: picture.toString('hex').slice(0, 8), sound: sound?.toString() ?? null });
   return Buffer.from('mp4-bytes');
 };
-const readBytes = async (url: string) => (url.endsWith('.m4a') || url.includes('/sonidos/') ? Buffer.from(`sound:${url.split('/').pop()}`) : WEBP);
+const readBytes = async (url: string) => (url.includes('/unreachable/') ? null : url.endsWith('.m4a') || url.includes('/sonidos/') ? Buffer.from(`sound:${url.split('/').pop()}`) : WEBP);
 const app = buildApp({
   animatedStickers: { fromVideo, cutSound, makeVideo, readBytes },
   mediaUploader: {
@@ -345,6 +345,17 @@ describe('exporting a saved sticker', () => {
     expect(res.headers['content-disposition']).toContain('sticker-lilachat.mp4');
     expect((res.body as Buffer).toString()).toBe('mp4-bytes');
     expect(exports).toEqual([{ picture: '52494646', sound: 'sound:wink-laugh.mp3' }]);
+  });
+
+  it('a sound that cannot be read is an error, never a silent video (E2E 27/11)', async () => {
+    // Arrange: an animated sticker whose sound address does not answer
+    const id = (await create(me)).body.sticker.id as string;
+    await StickerModel.updateOne({ _id: id }, { $set: { audioUrl: 'http://10.0.2.2:4003/unreachable/wink-laugh.mp3' } });
+    // Act
+    const res = await exportRequest(id);
+    // Assert
+    expect(res.status).toBe(503);
+    expect(exports).toHaveLength(0);
   });
 
   it('a still one without sound is only a picture: no video', async () => {

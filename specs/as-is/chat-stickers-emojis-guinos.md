@@ -106,7 +106,7 @@ Tono adulto: nada chibi ni infantil (decisión de José, §74).
 - Mensajes: `kind` `sticker`, `zumbido` y `guino` (`Message.wink` con el id del catálogo).
 
 - Sonido de un sticker guardado (27/11): `POST /stickers/:id/sound` (`stickerSoundRoutes.ts`), multipart `sound` (`file`, `none`, `preset:<id>`; `original` no aplica) y `audio`. Solo el dueño (404 si no). El audio se corta a una vuelta del sticker (`cutStickerSound`; quieto, 6 s). Lo ya enviado conserva su sonido.
-- Exportar (27/11): `GET /stickers/:id/export.mp4` (`stickerExportRoutes.ts`, `stickerVideo.ts`): sharp saca cada cuadro sobre blanco y ffmpeg arma el MP4 con su sonido (libx264, si no h264_videotoolbox, si no mpeg4). Solo si se mueve o suena (`stickerExportOf`).
+- Exportar (27/11): `GET /stickers/:id/export.mp4` (`stickerExportRoutes.ts`, `stickerVideo.ts`): sharp saca cada cuadro sobre blanco y ffmpeg arma el MP4 con su sonido (libx264, si no h264_videotoolbox, si no mpeg4). Solo si se mueve o suena (`stickerExportOf`). Si el sticker tiene sonido y no se puede leer, responde 503: nunca un video mudo (E2E 27/11). Verificado en producción: H.264 + AAC, 512 × 512.
 - `GET /api/gifs/:gifId/file` (`gifRoutes.ts`): el GIF de 200 px de GIPHY para el editor, sin mandarlo.
 
 ### Shared (`shared/src/`)

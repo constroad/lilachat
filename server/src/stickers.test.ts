@@ -31,10 +31,10 @@ const fromVideo: VideoStickerConverter = async ({ video, window, soundFrom }) =>
   if (video.toString() === 'broken') return 'not-a-video';
   return { webp: WEBP, audio: soundFrom === null ? null : Buffer.alloc(2_000, 1) };
 };
-/** What the sound cutter got (ffmpeg runs for real in `soundSticker.test.ts`): whether it had the sticker's picture. */
-const soundCuts: { hadPicture: boolean }[] = [];
-const cutSound: StickerSoundCutter = async ({ picture }) => {
-  soundCuts.push({ hadPicture: picture !== null });
+/** What the sound cutter got (ffmpeg runs for real in `soundSticker.test.ts`): the size of each sound. */
+const soundCuts: { bytes: number }[] = [];
+const cutSound: StickerSoundCutter = async ({ sound }) => {
+  soundCuts.push({ bytes: sound.length });
   return Buffer.alloc(2_000, 2);
 };
 /** What the export got: the picture, and the sound when there is one. */

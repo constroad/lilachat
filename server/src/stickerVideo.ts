@@ -12,7 +12,10 @@ import { createSerialRunner, VIDEO_STICKER_MAX_MS } from '@lilachat/shared';
  */
 const run = promisify(execFile);
 const ffmpeg = () => process.env.FFMPEG_BIN || 'ffmpeg';
+const ffprobe = () => process.env.FFPROBE_BIN || 'ffprobe';
 const EXPORT_TIMEOUT_MS = 60_000;
+const PROBE_TIMEOUT_MS = 10_000;
+const MS_PER_SECOND = 1_000;
 const SIDE = 512;
 const WHITE = { r: 255, g: 255, b: 255, alpha: 1 };
 /** The mini is a Mac: when libx264 is missing, its own encoder; mpeg4 as the last resort. */
@@ -31,11 +34,28 @@ export function frameListOf(frames: readonly Frame[]): string {
   return [...lines, ...(last ? [`file '${last.file}'`] : [])].join('\n');
 }
 
-/** The frames + the sound → an MP4 of the given length; a still with sound ends with the sound. */
+/**
+ * The frames + the sound → an MP4 of the given length; a still with sound ends with the sound. An animated one with
+ * sound loops its picture, so a voice longer than one loop is not cut (José 27/11).
+ */
 export function stickerVideoArgs(input: { list: string; sound: string | null; lengthMs: number; still: boolean; encoder: string; target: string }): string[] {
   const sound = input.sound ? ['-i', input.sound] : [];
+  const loop = input.sound && !input.still ? ['-stream_loop', '-1'] : [];
   const audio = input.sound ? ['-c:a', 'aac', '-b:a', '96k', ...(input.still ? ['-shortest'] : [])] : ['-an'];
-  return ['-y', '-loglevel', 'error', '-f', 'concat', '-safe', '0', '-i', input.list, ...sound, '-t', seconds(input.lengthMs), '-vf', 'fps=25,format=yuv420p', '-c:v', input.encoder, ...audio, '-movflags', '+faststart', input.target];
+  return ['-y', '-loglevel', 'error', ...loop, '-f', 'concat', '-safe', '0', '-i', input.list, ...sound, '-t', seconds(input.lengthMs), '-vf', 'fps=25,format=yuv420p', '-c:v', input.encoder, ...audio, '-movflags', '+faststart', input.target];
+}
+
+/** How long a sound lasts (ms); null when ffprobe cannot tell. */
+async function soundLengthMs(file: string): Promise<number | null> {
+  const probed = await run(ffprobe(), ['-v', 'error', '-show_entries', 'format=duration', '-of', 'csv=p=0', file], { timeout: PROBE_TIMEOUT_MS }).then(({ stdout }) => Number(stdout), () => Number.NaN);
+  return Number.isFinite(probed) && probed > 0 ? Math.round(probed * MS_PER_SECOND) : null;
+}
+
+/** The video's length: one loop of the picture, or the whole sound when it is longer; never past 6 s. */
+async function videoLengthMs(frames: readonly Frame[], soundPath: string | null): Promise<number> {
+  const loopMs = frames.reduce((sum, frame) => sum + frame.ms, 0);
+  const soundMs = soundPath && frames.length > 1 ? ((await soundLengthMs(soundPath)) ?? VIDEO_STICKER_MAX_MS) : 0;
+  return Math.min(VIDEO_STICKER_MAX_MS, Math.max(loopMs, soundMs));
 }
 
 /** Each frame of the sticker on white (a video has no transparency), with how long it shows. */
@@ -71,7 +91,7 @@ export const stickerToVideo: StickerVideoMaker = ({ picture, sound }) =>
       await writeFile(list, frameListOf(frames));
       if (sound) await writeFile(soundPath, sound);
       const still = frames.length === 1;
-      const lengthMs = Math.min(VIDEO_STICKER_MAX_MS, frames.reduce((sum, frame) => sum + frame.ms, 0));
+      const lengthMs = await videoLengthMs(frames, sound ? soundPath : null);
       const made = await encode((encoder) => stickerVideoArgs({ list, sound: sound ? soundPath : null, lengthMs, still, encoder, target }));
       return made ? await readFile(target) : null;
     } finally {

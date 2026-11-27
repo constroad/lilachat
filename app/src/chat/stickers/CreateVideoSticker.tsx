@@ -11,7 +11,7 @@ import { StickerSoundSheet } from './StickerSoundSheet';
 import type { StickerVoiceDoor } from './stickerVoiceDoor';
 import { VideoTrimStrip } from './VideoTrimStrip';
 import { useClipPreview } from './useClipPreview';
-import { previewClip, previewPreset, stopSoundPreview } from './soundPreview';
+import { previewPreset, stopSoundPreview, toggleClipPreview, useClipPreviewPlaying } from './soundPreview';
 import { formatClipClock, initialTrim, trimSummary, type TrimWindow } from './videoStickerTrim';
 import { audioClipOf, savedVideoStickerNotice, soundSummary, videoStickerBlocker, videoStickerUploadOf, type PickedVideo, type SoundChoice } from './videoStickerSound';
 import { initialSoundOf, initialTrimOf, isGifClip } from './stickerSource';
@@ -96,6 +96,7 @@ export function CreateVideoSticker(props: Props) {
     leave();
   };
 
+  const clipPlaying = useClipPreviewPlaying(audioClipOf(choice)?.uri ?? null);
   const listen = () => (choice.kind === 'original' ? (preview.listening ? preview.quiet() : preview.listen()) : listenToChoice(choice));
 
   return (
@@ -104,7 +105,7 @@ export function CreateVideoSticker(props: Props) {
         <Header onBack={askToLeave} onSound={() => setSoundOpen(true)} disabled={busy} />
         <ScrollView contentContainerStyle={{ padding: 16, gap: 14 }}>
           <ClipPreview side={side} gifUri={gif ? props.video.uri : null} player={preview.player} />
-          <SoundRow choice={choice} clipLength={formatClipClock(trim ? trim.endMs - trim.startMs : 0)} listening={choice.kind === 'original' && preview.listening} onOpen={() => setSoundOpen(true)} onListen={listen} disabled={busy} />
+          <SoundRow choice={choice} clipLength={formatClipClock(trim ? trim.endMs - trim.startMs : 0)} listening={choice.kind === 'original' ? preview.listening : clipPlaying} onOpen={() => setSoundOpen(true)} onListen={listen} disabled={busy} />
           {gif ? <GifWindowNote /> : <TrimCard videoMs={videoMs} trim={trim} frames={preview.frames} onChange={setTrim} onCommit={(next) => { setTrim(next); preview.restart(next); }} />}
           {notice ? <Text testID="aviso-sticker-video" className="rounded-xl bg-error/10 px-3 py-2 text-[13px] text-error">{notice}</Text> : null}
         </ScrollView>
@@ -139,10 +140,10 @@ function GifWindowNote() {
   );
 }
 
-/** The sound row's play for a voice, an audio or one of ours (the video's own plays in the preview). */
+/** The sound row's play (or stop) for a voice, an audio or one of ours (the video's own plays in the preview). */
 function listenToChoice(choice: SoundChoice): void {
   const clip = audioClipOf(choice);
-  if (clip) previewClip(clip.uri);
+  if (clip) toggleClipPreview(clip.uri);
   if (choice.kind === 'preset') previewPreset(choice.presetId);
 }
 

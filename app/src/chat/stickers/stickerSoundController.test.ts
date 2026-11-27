@@ -4,7 +4,7 @@ import { createStickerSoundController, type LoopPlayer } from './stickerSoundCon
 
 type FakePlayer = LoopPlayer & { url: string; finish: () => void; plays: number; rewinds: number; released: boolean };
 
-function setup(options: { failOn?: 'create' | 'rewind' } = {}) {
+function setup(options: { failOn?: 'create' | 'rewind'; replay?: (playsDone: number) => boolean } = {}) {
   const players: FakePlayer[] = [];
   const report = vi.fn();
   const controller = createStickerSoundController((url, onFinished) => {
@@ -24,7 +24,7 @@ function setup(options: { failOn?: 'create' | 'rewind' } = {}) {
     };
     players.push(player);
     return player;
-  }, report);
+  }, report, options.replay ? { replay: options.replay } : undefined);
   return { controller, players, report };
 }
 
@@ -94,6 +94,31 @@ describe('createStickerSoundController', () => {
     broken.players[0]!.finish();
     expect(broken.controller.playingId()).toBeNull();
     expect(broken.players[0]!.released).toBe(true);
+  });
+});
+
+/** José 27/11: «el botón de play es recontra inestable… no tiene ningún feedback». A sheet's listen plays once and says when it ends. */
+describe('createStickerSoundController as a preview', () => {
+  it('plays a preview once and tells its listeners when it ends, so the button goes back to «Escuchar»', () => {
+    const { controller, players } = setup({ replay: () => false });
+    const listener = vi.fn();
+    controller.subscribe(listener);
+    controller.toggle('file:///voz.m4a', 'file:///voz.m4a');
+    expect(controller.playingId()).toBe('file:///voz.m4a');
+    players[0]!.finish();
+    expect(players[0]!.plays).toBe(1);
+    expect(players[0]!.released).toBe(true);
+    expect(controller.playingId()).toBeNull();
+    expect(listener).toHaveBeenCalledTimes(2);
+  });
+
+  it('play() starts the same sound again from the beginning instead of stopping it', () => {
+    const { controller, players } = setup({ replay: () => false });
+    controller.play('a', 'file:///a.m4a');
+    controller.play('a', 'file:///a.m4a');
+    expect(players).toHaveLength(2);
+    expect(players[0]!.released).toBe(true);
+    expect(controller.playingId()).toBe('a');
   });
 });
 

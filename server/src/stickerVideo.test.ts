@@ -16,11 +16,16 @@ describe('frameListOf', () => {
 
 describe('stickerVideoArgs', () => {
   const base = { list: 'l.txt', lengthMs: 2_000, encoder: 'libx264', target: 'o.mp4' };
-  it('an animated one lasts its loop, with the sound beside it', () => {
+  it('an animated one with sound loops its picture for the given length, with the sound beside it', () => {
     const args = stickerVideoArgs({ ...base, sound: 's.m4a', still: false });
     expect(args.slice(args.indexOf('-t'), args.indexOf('-t') + 2)).toEqual(['-t', '2.000']);
+    expect(args.slice(0, args.indexOf('-f'))).toEqual(expect.arrayContaining(['-stream_loop', '-1']));
     expect(args).toEqual(expect.arrayContaining(['-i', 's.m4a', '-c:a', 'aac']));
     expect(args).not.toContain('-shortest');
+  });
+
+  it('an animated one without sound plays its loop once', () => {
+    expect(stickerVideoArgs({ ...base, sound: null, still: false })).not.toContain('-stream_loop');
   });
 
   it('a still one ends with its sound; one without sound has no audio track', () => {
@@ -49,7 +54,7 @@ describe('stickerToVideo (sharp + ffmpeg)', () => {
   }, 60_000);
   afterAll(() => rm(folder, { recursive: true, force: true }));
 
-  it('an animated sticker of 2 s becomes a 2 s video with its sound', async () => {
+  it('an animated sticker of 2 s with an 8 s sound becomes a 6 s video: the sound is not cut to the loop', async () => {
     // Arrange
     const gifPath = join(folder, 'two.gif');
     await run('ffmpeg', ['-y', '-loglevel', 'error', '-f', 'lavfi', '-i', 'testsrc=size=120x120:rate=10:duration=2', gifPath]);
@@ -60,7 +65,21 @@ describe('stickerToVideo (sharp + ffmpeg)', () => {
     // Assert
     const info = await probe(video!, 'two.mp4');
     expect(info.kinds).toEqual(['audio', 'video']);
-    expect(info.seconds).toBeCloseTo(2, 0);
+    expect(info.seconds).toBeCloseTo(6, 0);
+  }, 60_000);
+
+  it('a short sound under a longer animated sticker keeps the whole loop', async () => {
+    // Arrange: a 3 s sticker and a 1 s sound
+    const gifPath = join(folder, 'three.gif');
+    await run('ffmpeg', ['-y', '-loglevel', 'error', '-f', 'lavfi', '-i', 'testsrc=size=120x120:rate=10:duration=3', gifPath]);
+    const picture = await gifToAnimatedSticker(await readFile(gifPath));
+    if (typeof picture === 'string') throw new Error(picture);
+    const shortPath = join(folder, 'short.m4a');
+    await run('ffmpeg', ['-y', '-loglevel', 'error', '-f', 'lavfi', '-i', 'sine=frequency=440:duration=1', '-c:a', 'aac', shortPath]);
+    // Act
+    const video = await stickerToVideo({ picture, sound: await readFile(shortPath) });
+    // Assert
+    expect((await probe(video!, 'three.mp4')).seconds).toBeCloseTo(3, 0);
   }, 60_000);
 
   it('a still sticker with sound lasts at most 6 s; without sound it is only picture', async () => {

@@ -1,4 +1,4 @@
-import { Music } from 'lucide-react-native';
+import { Mic } from 'lucide-react-native';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, FlatList, Pressable, ScrollView, Text, View } from 'react-native';
 import { Image } from 'expo-image';
@@ -78,7 +78,16 @@ export function GifChips(props: { query: string; onPick: (q: string) => void }) 
 }
 
 /** The grid of moving previews, with its loading, failure and empty states. */
-export function GifGrid(props: { search: ReturnType<typeof useGifSearch>; columns: number; onPick: (gif: GifResult) => void; /** José 27/11 (design sa-04): its «Sticker con sonido», and a long press for the choice. */ onSoundSticker?: (gif: GifResult) => void; onLongPress?: (gif: GifResult) => void }) {
+export function GifGrid(props: {
+  search: ReturnType<typeof useGifSearch>;
+  columns: number;
+  onPick: (gif: GifResult) => void;
+  /** José 27/11 (design sa-04): its «+ Sonido», and a long press for the choice. */
+  onSoundSticker?: (gif: GifResult) => void;
+  onLongPress?: (gif: GifResult) => void;
+  /** The GIF whose editor is opening: its tile says so and does not send. */
+  opening?: string | null;
+}) {
   const colors = useColores();
   const { gifs, failed, more } = props.search;
   if (gifs === null) return failed ? <Text className="p-4 text-center text-[13px] text-on-surface-variant">GIPHY no respondió. Inténtalo de nuevo.</Text> : <ActivityIndicator className="mt-6" color={colors.primary} />;
@@ -95,19 +104,39 @@ export function GifGrid(props: { search: ReturnType<typeof useGifSearch>; column
       contentContainerStyle={{ paddingHorizontal: 8 }}
       ListEmptyComponent={<Text className="p-4 text-center text-[13px] text-on-surface-variant">No encontramos GIF con eso.</Text>}
       renderItem={({ item }) => (
-        <Pressable testID={`gif-${item.id}`} accessibilityLabel={item.title || 'GIF'} onPress={() => props.onPick(item)} onLongPress={props.onLongPress ? () => props.onLongPress?.(item) : undefined} className="flex-1 p-1" style={{ maxWidth: `${100 / props.columns}%` }}>
-          {/* The tile keeps its place (and a tint) while the preview loads. */}
-          <View className="overflow-hidden rounded-lg bg-surface-variant" style={{ height: TILE_HEIGHT }}>
-            <Image source={{ uri: item.sharpUrl ?? item.previewUrl }} style={{ width: '100%', height: TILE_HEIGHT }} contentFit="cover" recyclingKey={item.id} />
-          </View>
-          {props.onSoundSticker ? (
-            <Pressable testID={`sticker-sonido-${item.id}`} accessibilityRole="button" accessibilityLabel="Sticker con sonido" hitSlop={6} onPress={() => props.onSoundSticker?.(item)} className="absolute bottom-2 right-2 h-8 w-8 items-center justify-center rounded-full bg-surface/90">
-              <Music size={16} color={colors.primary} />
-            </Pressable>
-          ) : null}
-        </Pressable>
+        <View className="flex-1 p-1" style={{ maxWidth: `${100 / props.columns}%` }}>
+          <Pressable testID={`gif-${item.id}`} accessibilityLabel={item.title || 'GIF'} disabled={props.opening === item.id} onPress={() => props.onPick(item)} onLongPress={props.onLongPress ? () => props.onLongPress?.(item) : undefined}>
+            {/* The tile keeps its place (and a tint) while the preview loads. */}
+            <View className="overflow-hidden rounded-lg bg-surface-variant" style={{ height: TILE_HEIGHT }}>
+              <Image source={{ uri: item.sharpUrl ?? item.previewUrl }} style={{ width: '100%', height: TILE_HEIGHT }} contentFit="cover" recyclingKey={item.id} />
+            </View>
+          </Pressable>
+          {props.onSoundSticker ? <SoundStickerPill gifId={item.id} opening={props.opening === item.id} onPress={() => props.onSoundSticker?.(item)} /> : null}
+        </View>
       )}
     />
   );
 }
 
+/**
+ * «+ Sonido» over a GIF (José 27/11: a lone note read as «this GIF has sound», and the tap sent it). A sibling of the
+ * tile, not inside it, so its tap never reaches the tile's «send»; it says when the editor is opening.
+ */
+function SoundStickerPill(props: { gifId: string; opening: boolean; onPress: () => void }) {
+  const colors = useColores();
+  return (
+    <Pressable
+      testID={`sticker-sonido-${props.gifId}`}
+      accessibilityRole="button"
+      accessibilityLabel="Hacer sticker con sonido"
+      accessibilityState={{ busy: props.opening }}
+      disabled={props.opening}
+      hitSlop={6}
+      onPress={props.onPress}
+      className="absolute bottom-2 right-2 h-8 flex-row items-center gap-1 rounded-full bg-surface/95 px-2.5"
+    >
+      {props.opening ? <ActivityIndicator size="small" color={colors.primary} /> : <Mic size={14} color={colors.primary} />}
+      <Text className="text-[12px] font-semibold text-primary">{props.opening ? 'Abriendo…' : '+ Sonido'}</Text>
+    </Pressable>
+  );
+}

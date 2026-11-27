@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Linking, Pressable, Text, View } from 'react-native';
-import { Check, Mic, Play } from 'lucide-react-native';
+import { Mic, Play, Square } from 'lucide-react-native';
 import { VIDEO_STICKER_MAX_MS } from '@lilachat/shared';
 import { useGrabadorDeVoz } from '../useGrabadorDeVoz';
 import { useColores } from '../../ui/tema';
 import { formatClipClock } from './videoStickerTrim';
-import { previewClip, stopSoundPreview } from './soundPreview';
+import { stopSoundPreview, toggleClipPreview, useClipPreviewPlaying } from './soundPreview';
 import type { AudioClip } from './videoStickerSound';
 
 const RECORD_BUTTON = 56;
@@ -34,7 +34,7 @@ export function VoiceClipRecorder(props: { clip: AudioClip | null; onRecorded: (
     const note = await terminar();
     if (!note) return setNotice('Muy corto: mantén presionado mientras hablas.');
     setNotice('');
-    onRecorded({ uri: note.uri, name: VOICE_FILE_NAME, mime: note.mime, bytes: note.bytes });
+    onRecorded({ uri: note.uri, name: VOICE_FILE_NAME, mime: note.mime, bytes: note.bytes, ms: note.ms });
   }, [terminar, onRecorded]);
 
   // 6 seconds at most, like the clip: it stops by itself.
@@ -59,6 +59,7 @@ export function VoiceClipRecorder(props: { clip: AudioClip | null; onRecorded: (
   if (recorder.estado.fase === 'sin-permiso') return <MicPermissionNotice />;
 
   const status = recording ? 'Grabando… suelta para terminar' : props.clip ? 'Tu voz está lista' : 'Mantén para grabar';
+  const shownMs = recording ? elapsedMs : (props.clip?.ms ?? 0);
   return (
     <View className="flex-row items-center gap-3 rounded-2xl bg-background px-3 py-3">
       <Pressable
@@ -73,21 +74,43 @@ export function VoiceClipRecorder(props: { clip: AudioClip | null; onRecorded: (
       </Pressable>
       <View className="min-w-0 flex-1">
         <Text className="text-[14px] font-semibold text-on-surface">{status}</Text>
-        <Text className="text-[13px] text-on-surface-variant" style={{ fontVariant: ['tabular-nums'] }}>{`${formatClipClock(elapsedMs)} / ${formatClipClock(VIDEO_STICKER_MAX_MS)}`}</Text>
+        <Text className="text-[13px] text-on-surface-variant" style={{ fontVariant: ['tabular-nums'] }}>{`${formatClipClock(shownMs)} / ${formatClipClock(VIDEO_STICKER_MAX_MS)}`}</Text>
         {recorder.estado.fase === 'error' ? <Text className="text-[12px] text-error">{recorder.estado.motivo}</Text> : null}
         {notice ? <Text testID="aviso-voz-sticker" className="text-[12px] text-error">{notice}</Text> : null}
       </View>
       {props.clip && !recording ? (
-        <Pressable testID="escuchar-voz-sticker" accessibilityLabel="Escuchar tu voz" onPress={() => previewClip(props.clip!.uri)} className="h-11 flex-row items-center gap-1 rounded-full bg-primary/10 px-3">
-          <Check size={14} color={colors.primary} />
-          <Play size={14} color={colors.primary} />
-        </Pressable>
+        <ListenVoiceButton uri={props.clip.uri} />
       ) : (
         <View className="rounded-full bg-primary/10 px-3 py-1.5">
           <Text className="text-[12px] font-semibold text-primary">Listo al soltar</Text>
         </View>
       )}
     </View>
+  );
+}
+
+/**
+ * «Escuchar» / «Detener» (José 27/11: «ni siquiera puedo saber si está haciendo play»): it says what a tap does, and
+ * is filled with the accent while the voice sounds.
+ */
+function ListenVoiceButton(props: { uri: string }) {
+  const colors = useColores();
+  const playing = useClipPreviewPlaying(props.uri);
+  const Icon = playing ? Square : Play;
+  const tint = playing ? colors['on-primary'] : colors.primary;
+  return (
+    <Pressable
+      testID="escuchar-voz-sticker"
+      accessibilityRole="button"
+      accessibilityLabel={playing ? 'Detener tu voz' : 'Escuchar tu voz'}
+      accessibilityState={{ selected: playing }}
+      onPress={() => toggleClipPreview(props.uri)}
+      hitSlop={6}
+      className={`h-11 flex-row items-center gap-1.5 rounded-full px-4 ${playing ? 'bg-primary' : 'bg-primary/10'}`}
+    >
+      <Icon size={16} color={tint} fill={playing ? tint : 'none'} />
+      <Text className={`text-[14px] font-semibold ${playing ? 'text-on-primary' : 'text-primary'}`}>{playing ? 'Detener' : 'Escuchar'}</Text>
+    </Pressable>
   );
 }
 

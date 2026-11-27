@@ -1,11 +1,11 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import type { GifResult, MessageTarget } from '@lilachat/shared';
-import { Pressable, Text, ToastAndroid, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 import { Music, Search, Send } from 'lucide-react-native';
 import { Sheet } from '../../ui/Sheet';
-import { openGiphyGifInEditor } from '../stickers/chatGifEditor';
 import { useColores } from '../../ui/tema';
 import { GifChips, GifGrid, useGifSearch, useGifSend } from './GifGrid';
+import { createGiphySoundStickerOpener } from './gifOptions';
 import { GifSearchScreen } from './GifSearchScreen';
 
 /**
@@ -13,7 +13,8 @@ import { GifSearchScreen } from './GifSearchScreen';
  * `g-01-panel-gif-giphy`): suggestion chips, a grid of moving previews, and
  * «Powered by GIPHY», as its license asks. A tap sends it. The search opens
  * full screen, like WhatsApp (pending 59): typing in the panel brought up the
- * keyboard, and the keyboard closed the panel.
+ * keyboard, and the keyboard closed the panel. «+ Sonido» on a GIF opens the
+ * sticker editor with it instead (José 27/11), here and in the search.
  */
 export function GifPanel(props: { jwt: string; chatId: string; target?: () => MessageTarget; onSent?: () => void }) {
   const colors = useColores();
@@ -22,10 +23,12 @@ export function GifPanel(props: { jwt: string; chatId: string; target?: () => Me
   const search = useGifSearch(props.jwt, chip);
   const { send, error } = useGifSend(props.jwt, props.chatId, props.target, props.onSent);
   const [held, setHeld] = useState<GifResult | null>(null);
-  const soundSticker = async (gif: GifResult) => {
+  const [opening, setOpening] = useState<string | null>(null);
+  const openSoundSticker = useMemo(() => createGiphySoundStickerOpener(setOpening), []);
+  const soundSticker = (gif: GifResult) => {
     setHeld(null);
-    const problem = await openGiphyGifInEditor({ jwt: props.jwt, chatId: props.chatId, gifId: gif.id });
-    if (problem) ToastAndroid.show(problem, ToastAndroid.SHORT);
+    setSearching(false);
+    void openSoundSticker({ jwt: props.jwt, chatId: props.chatId, gifId: gif.id });
   };
   return (
     <View testID="panel-gif" style={{ flex: 1 }}>
@@ -35,10 +38,10 @@ export function GifPanel(props: { jwt: string; chatId: string; target?: () => Me
       </Pressable>
       <GifChips query={chip} onPick={setChip} />
       {error ? <Text className="px-4 pb-1 text-[13px] text-error">{error}</Text> : null}
-      <GifGrid search={search} columns={2} onPick={(gif) => void send(gif)} onSoundSticker={(gif) => void soundSticker(gif)} onLongPress={setHeld} />
-      <GifChoiceSheet gif={held} onClose={() => setHeld(null)} onSend={(gif) => { setHeld(null); void send(gif); }} onSoundSticker={(gif) => void soundSticker(gif)} />
+      <GifGrid search={search} columns={2} opening={opening} onPick={(gif) => void send(gif)} onSoundSticker={soundSticker} onLongPress={setHeld} />
+      <GifChoiceSheet gif={held} onClose={() => setHeld(null)} onSend={(gif) => { setHeld(null); void send(gif); }} onSoundSticker={soundSticker} />
       <Text className="py-1.5 text-center text-[11px] font-bold uppercase tracking-widest text-on-surface-variant">Powered by GIPHY</Text>
-      <GifSearchScreen visible={searching} jwt={props.jwt} chatId={props.chatId} onClose={() => setSearching(false)} target={props.target} onSent={props.onSent} />
+      <GifSearchScreen visible={searching} jwt={props.jwt} chatId={props.chatId} onClose={() => setSearching(false)} target={props.target} onSent={props.onSent} onSoundSticker={soundSticker} />
     </View>
   );
 }

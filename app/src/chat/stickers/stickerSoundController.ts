@@ -16,9 +16,13 @@ export type LoopPlayer = {
 
 export type CreateLoopPlayer = (url: string, onFinished: () => void) => LoopPlayer;
 
+/** `replay` says whether another play follows the ones done; a sheet's listen plays once (José 27/11). */
+export type SoundControllerOptions = { replay?: (playsDone: number) => boolean };
+
 type Current = { id: string; player: LoopPlayer; playsDone: number };
 
-export function createStickerSoundController(createPlayer: CreateLoopPlayer, report: (where: string, error: unknown) => void) {
+export function createStickerSoundController(createPlayer: CreateLoopPlayer, report: (where: string, error: unknown) => void, options: SoundControllerOptions = {}) {
+  const replay = options.replay ?? shouldReplaySound;
   let current: Current | null = null;
   const listeners = new Set<() => void>();
   const announce = () => listeners.forEach((listener) => listener());
@@ -43,7 +47,7 @@ export function createStickerSoundController(createPlayer: CreateLoopPlayer, rep
   const finished = (id: string) => {
     if (current?.id !== id) return;
     current.playsDone += 1;
-    if (!shouldReplaySound(current.playsDone)) return stop(id);
+    if (!replay(current.playsDone)) return stop(id);
     try {
       current.player.rewind();
       current.player.play();
@@ -72,6 +76,8 @@ export function createStickerSoundController(createPlayer: CreateLoopPlayer, rep
 
   return {
     toggle,
+    /** Plays from the beginning, even when it is already sounding. */
+    play: start,
     stop,
     playingId: (): string | null => current?.id ?? null,
     subscribe: (listener: () => void) => {

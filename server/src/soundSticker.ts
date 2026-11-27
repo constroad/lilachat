@@ -52,14 +52,6 @@ async function audioOf(folder: string, source: string, window: ClipWindow | null
   return size >= MIN_AUDIO_BYTES ? readFile(target) : null;
 }
 
-/** How long one loop of the animated WebP lasts, never more than the asked window. */
-async function stickerLengthMs(webp: Buffer, windowMs: number): Promise<number> {
-  const { default: sharp } = await import('sharp');
-  const delays = (await sharp(webp, { animated: true }).metadata()).delay ?? [];
-  const total = delays.reduce((sum, delay) => sum + delay, 0);
-  return total > 0 ? Math.min(total, windowMs) : windowMs;
-}
-
 /** The real converter, one at a time: the mini serves every app. */
 export const videoToSoundSticker: VideoStickerConverter = ({ video, window, soundFrom }) =>
   oneAtATime(async () => {
@@ -75,25 +67,27 @@ export const videoToSoundSticker: VideoStickerConverter = ({ video, window, soun
       if (soundFrom === null) return { webp, audio: null };
       if (soundFrom === 'video') return { webp, audio: await audioOf(folder, source, window) };
       await writeFile(soundSource, soundFrom);
-      // A GIF shorter than 6 s: the chosen sound is cut to the sticker's own length, so both loop together.
-      return { webp, audio: await audioOf(folder, soundSource, { startMs: 0, durationMs: await stickerLengthMs(webp, window.durationMs) }) };
+      // The chosen sound keeps its whole length up to 6 s; a shorter GIF loops under it (José 27/11: «mi voz está cortada»).
+      return { webp, audio: await audioOf(folder, soundSource, null) };
     } finally {
       await rm(folder, { recursive: true, force: true });
     }
   });
 
-/** A sound for a sticker already saved (José 27/11): cut to one loop of its picture, or 6 s when it is still. */
-export type StickerSoundCutter = (input: { picture: Buffer | null; sound: Buffer }) => Promise<Buffer | null>;
+/**
+ * A sound for a sticker already saved (José 27/11): its first 6 seconds, whole. It is not cut to the picture's loop:
+ * a recorded voice lost its end that way («mi voz está cortada»), and the picture keeps moving while it sounds.
+ */
+export type StickerSoundCutter = (input: { sound: Buffer }) => Promise<Buffer | null>;
 
-/** The real cutter, one at a time like the converter. A picture that cannot be read gets the longest sound. */
-export const cutStickerSound: StickerSoundCutter = ({ picture, sound }) =>
+/** The real cutter, one at a time like the converter. */
+export const cutStickerSound: StickerSoundCutter = ({ sound }) =>
   oneAtATime(async () => {
     const folder = await mkdtemp(join(tmpdir(), 'sticker-sound-'));
     try {
       const source = join(folder, 'sound.in');
       await writeFile(source, sound);
-      const lengthMs = picture ? await stickerLengthMs(picture, VIDEO_STICKER_MAX_MS).catch(() => VIDEO_STICKER_MAX_MS) : VIDEO_STICKER_MAX_MS;
-      return await audioOf(folder, source, { startMs: 0, durationMs: lengthMs });
+      return await audioOf(folder, source, null);
     } finally {
       await rm(folder, { recursive: true, force: true });
     }

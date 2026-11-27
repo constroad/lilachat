@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import type { MessageTarget } from '@lilachat/shared';
+import type { GifResult, MessageTarget } from '@lilachat/shared';
 import { Pressable, Text, TextInput, View } from 'react-native';
 import { ArrowLeft, X } from 'lucide-react-native';
 import { Modal } from '../../ui/Modal';
@@ -15,7 +15,7 @@ const SEARCH_COLUMNS = 3;
  * GIF» with the keyboard up and the results under it. Picking one sends it and
  * comes back to the chat; «←» comes back to the panel.
  */
-export function GifSearchScreen(props: { visible: boolean; jwt: string; chatId: string; onClose: () => void; target?: () => MessageTarget; onSent?: () => void }) {
+export function GifSearchScreen(props: { visible: boolean; jwt: string; chatId: string; onClose: () => void; target?: () => MessageTarget; onSent?: () => void; /** «+ Sonido» (José 27/11): the panel closes this screen and opens the editor. */ onSoundSticker?: (gif: GifResult) => void }) {
   const colors = useColores();
   const margins = useMargenes();
   const [text, setText] = useState('');
@@ -49,6 +49,7 @@ export function GifSearchScreen(props: { visible: boolean; jwt: string; chatId: 
               if (sent) props.onClose();
             })
           }
+          onSoundSticker={props.onSoundSticker}
         />
         <Text className="py-1.5 text-center text-[11px] font-bold uppercase tracking-widest text-on-surface-variant">Powered by GIPHY</Text>
       </View>

@@ -1,28 +1,11 @@
 import { useEffect, useSyncExternalStore } from 'react';
 import { Pressable, View } from 'react-native';
-import { createAudioPlayer } from 'expo-audio';
 import { Volume2, VolumeX } from 'lucide-react-native';
 import { stickerHasSound } from '@lilachat/shared';
 import { reportarError } from '../../ui/reportarError';
 import { useColores } from '../../ui/tema';
-import { createStickerSoundController, stickerSoundKey, type LoopPlayer } from './stickerSoundController';
-
-/** One expo-audio player per tap, released when the three plays end or the sound is stopped. */
-function createExpoLoopPlayer(url: string, onFinished: () => void): LoopPlayer {
-  const player = createAudioPlayer({ uri: url });
-  const finishing = player.addListener('playbackStatusUpdate', (status) => {
-    if (status.didJustFinish) onFinished();
-  });
-  return {
-    play: () => player.play(),
-    rewind: () => void player.seekTo(0),
-    release: () => {
-      finishing.remove();
-      player.pause();
-      player.release();
-    },
-  };
-}
+import { createExpoLoopPlayer } from './expoLoopPlayer';
+import { createStickerSoundController, stickerSoundKey } from './stickerSoundController';
 
 /** The session's only sticker sound: a second sticker stops the first (José 26/11). */
 const stickerSound = createStickerSoundController(createExpoLoopPlayer, reportarError);

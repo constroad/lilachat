@@ -1,10 +1,10 @@
 import { useState } from 'react';
 import { Pressable, Text, TextInput, View } from 'react-native';
-import { AudioLines, Play } from 'lucide-react-native';
+import { AudioLines, Play, Square } from 'lucide-react-native';
 import { MAX_VOICE_TEXT, STICKER_VOICES, voiceTextOf, type StickerVoiceId } from '@lilachat/shared';
 import { useColores } from '../../ui/tema';
 import { SoundOption } from './SoundOptionCard';
-import { previewClip } from './soundPreview';
+import { previewClip, stopSoundPreview, useClipPreviewPlaying } from './soundPreview';
 import type { SpokenChoice } from './spokenVoice';
 import type { StickerVoiceDoor } from './stickerVoiceDoor';
 import type { SoundChoice } from './videoStickerSound';
@@ -20,17 +20,22 @@ type Props = { choice: SoundChoice | null; door: StickerVoiceDoor; onChoose: (ch
 export function SpokenVoiceOption({ choice, door, onChoose, onNotice }: Props) {
   const colors = useColores();
   const [listening, setListening] = useState(false);
+  /** The last voice heard: its button says «Detener» while it sounds (José 27/11). */
+  const [heardUri, setHeardUri] = useState<string | null>(null);
+  const playing = useClipPreviewPlaying(heardUri);
   const spoken: SpokenChoice | null = choice?.kind === 'spoken' ? choice : null;
   const choose = (change: Partial<Pick<SpokenChoice, 'voiceId' | 'text'>>) =>
     onChoose({ kind: 'spoken', voiceId: change.voiceId ?? spoken?.voiceId ?? 'valeria', text: change.text ?? spoken?.text ?? '', spaceId: door.spaceId });
   const ready = spoken ? voiceTextOf(spoken.text) : null;
   const listen = async () => {
+    if (playing) return stopSoundPreview();
     if (!spoken || !ready || listening) return;
     setListening(true);
     const heard = await door.listen(spoken.voiceId, ready);
     setListening(false);
-    if (heard.ok) previewClip(heard.uri);
-    else onNotice(heard.reason);
+    if (!heard.ok) return onNotice(heard.reason);
+    setHeardUri(heard.uri);
+    previewClip(heard.uri);
   };
   return (
     <SoundOption testID="sonido-voz" Icon={AudioLines} title="Voz" badge="Solo admins" selected={Boolean(spoken)} onPress={() => choose({})} detail={<Text className="text-[13px] text-on-surface-variant">Una frase dicha por Valeria o Daniel</Text>}>
@@ -46,9 +51,9 @@ export function SpokenVoiceOption({ choice, door, onChoose, onNotice }: Props) {
               <VoiceCard key={voice.id} id={voice.id} label={voice.label} detail={voice.detail} selected={spoken.voiceId === voice.id} onPress={() => choose({ voiceId: voice.id })} />
             ))}
           </View>
-          <Pressable testID="voz-escuchar" accessibilityRole="button" disabled={!ready || listening} onPress={() => void listen()} className={`min-h-[48px] flex-row items-center justify-center gap-2 rounded-full border border-primary/50 ${!ready || listening ? 'opacity-50' : ''}`}>
-            <Play size={14} color={colors.primary} />
-            <Text className="text-[14px] font-semibold text-primary">{listening ? 'Preparando la voz…' : 'Escuchar'}</Text>
+          <Pressable testID="voz-escuchar" accessibilityRole="button" accessibilityState={{ selected: playing }} disabled={!playing && (!ready || listening)} onPress={() => void listen()} className={`min-h-[48px] flex-row items-center justify-center gap-2 rounded-full border border-primary/50 ${playing ? 'bg-primary' : ''} ${!playing && (!ready || listening) ? 'opacity-50' : ''}`}>
+            {playing ? <Square size={14} color={colors['on-primary']} fill={colors['on-primary']} /> : <Play size={14} color={colors.primary} />}
+            <Text className={`text-[14px] font-semibold ${playing ? 'text-on-primary' : 'text-primary'}`}>{playing ? 'Detener' : listening ? 'Preparando la voz…' : 'Escuchar'}</Text>
           </Pressable>
         </View>
       ) : null}

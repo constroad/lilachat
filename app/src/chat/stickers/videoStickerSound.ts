@@ -9,7 +9,8 @@ import { spokenBlocker, spokenFieldsOf, spokenSummary, type SpokenChoice } from 
  * video's own, a voice recorded here, an audio of the phone, one of ours, or
  * none. Pure: the sheet draws the choice, the screen sends what these build.
  */
-export type AudioClip = { uri: string; name: string; mime: string; bytes: number };
+/** `ms`: how long it lasts, when it is known (a voice just recorded). */
+export type AudioClip = { uri: string; name: string; mime: string; bytes: number; ms?: number };
 
 export type SoundChoice =
   | { kind: 'original' }

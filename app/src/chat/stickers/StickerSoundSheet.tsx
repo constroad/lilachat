@@ -9,7 +9,7 @@ import { VoiceClipRecorder } from './VoiceClipRecorder';
 import { ListenChip, SoundOption } from './SoundOptionCard';
 import { SpokenVoiceOption } from './SpokenVoiceOption';
 import type { StickerVoiceDoor } from './stickerVoiceDoor';
-import { previewClip, previewPreset, stopSoundPreview } from './soundPreview';
+import { previewPreset, stopSoundPreview, toggleClipPreview, useClipPreviewPlaying } from './soundPreview';
 import { pickedAudioRefusal, type AudioClip, type SoundChoice } from './videoStickerSound';
 
 /** «Sonidos de Lilachat»: our wink sounds; a tap chooses one and plays it. */
@@ -59,6 +59,7 @@ export function StickerSoundSheet(props: { visible: boolean; offerOriginal?: boo
   const [kept, setKept] = useState<{ voice: AudioClip | null; upload: AudioClip | null }>({ voice: null, upload: null });
   const voiceClip = choice?.kind === 'voice' ? choice.clip : kept.voice;
   const uploadClip = choice?.kind === 'upload' ? choice.clip : kept.upload;
+  const uploadPlaying = useClipPreviewPlaying(uploadClip?.uri ?? null);
 
   const choose = (next: SoundChoice) => {
     stopSoundPreview();
@@ -109,7 +110,7 @@ export function StickerSoundSheet(props: { visible: boolean; offerOriginal?: boo
           title="Elegir un audio del teléfono"
           selected={choice?.kind === 'upload'}
           onPress={() => void chooseUpload()}
-          detail={uploadClip ? <ListenChip testID="escuchar-audio-sticker" label={uploadClip.name} onPress={() => previewClip(uploadClip.uri)} /> : <Text className="text-[13px] text-on-surface-variant">MP3, M4A u otro, hasta 4 MB</Text>}
+          detail={uploadClip ? <ListenChip testID="escuchar-audio-sticker" label={uploadClip.name} playing={uploadPlaying} onPress={() => toggleClipPreview(uploadClip.uri)} /> : <Text className="text-[13px] text-on-surface-variant">MP3, M4A u otro, hasta 4 MB</Text>}
         />
         <PresetGrid choice={choice} onChoose={choose} />
         {props.voiceDoor ? <SpokenVoiceOption choice={choice} door={props.voiceDoor} onChoose={(next) => { setNotice(''); onChoose(next); }} onNotice={setNotice} /> : null}

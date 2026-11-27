@@ -2,7 +2,7 @@ import type { NextFunction, Request, Response, Router } from 'express';
 import multer from 'multer';
 import { Types } from 'mongoose';
 import { MAX_STICKER_AUDIO_BYTES, parseStickerSound, soundPresetPath, stickerVoiceFileName, type StickerSound } from '@lilachat/shared';
-import { readMediaBytes, type MediaUploader } from './mediaClient.js';
+import type { MediaUploader } from './mediaClient.js';
 import { asyncRoute, requireSession } from './requireSession.js';
 import type { StickerSoundCutter } from './soundSticker.js';
 import { StickerModel } from './stickerModel.js';
@@ -37,12 +37,12 @@ async function rawSoundOf(req: Request, sound: StickerSound, deps: Deps): Promis
 }
 
 /** The new sound's address, or null for «Sin sonido»; a refusal says what to answer. */
-async function soundUrlOf(req: Request, sticker: { url: string }, sound: StickerSound, deps: Deps): Promise<{ url: string | null } | SoundRefusal> {
+async function soundUrlOf(req: Request, sound: StickerSound, deps: Deps): Promise<{ url: string | null } | SoundRefusal> {
   if (sound.kind === 'none') return { url: null };
   if (sound.kind === 'preset') return { url: webFileUrl(req, soundPresetPath(sound.presetId)!) };
   const raw = await rawSoundOf(req, sound, deps);
   if ('refusal' in raw) return raw;
-  const track = await deps.cutSound({ picture: await readMediaBytes(sticker.url), sound: raw.bytes });
+  const track = await deps.cutSound({ sound: raw.bytes });
   if (!track) return { refusal: 'No se pudo leer ese audio.', status: 400 };
   const saved = await deps.uploader.upload({ chatId: `stickers-${req.session!.userId}`, fileName: raw.fileName, mimeType: 'audio/mp4', kind: 'audio', bytes: track });
   return saved.ok ? { url: saved.media.url } : { refusal: 'No se pudo guardar el sonido. Inténtalo de nuevo.', status: 400 };
@@ -60,7 +60,7 @@ export function stickerSoundRoutes(router: Router, deps: Deps): void {
     const sound = parseStickerSound(req.body?.sound);
     const refusal = refusalOf(sound, req.file);
     if (refusal) return void res.status(400).json({ message: refusal });
-    const next = await soundUrlOf(req, sticker, sound!, deps);
+    const next = await soundUrlOf(req, sound!, deps);
     if ('refusal' in next) return void res.status(next.status).json({ message: next.refusal });
     const voice = sound!.kind === 'voice' ? sound!.voiceId : null;
     const change = next.url

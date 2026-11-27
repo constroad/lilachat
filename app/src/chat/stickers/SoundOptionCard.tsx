@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { Pressable, Text, View } from 'react-native';
-import { Play, type LucideIcon } from 'lucide-react-native';
+import { Play, Square, type LucideIcon } from 'lucide-react-native';
 import { useColores } from '../../ui/tema';
 
 const ICON_BOX = 44;
@@ -31,13 +31,14 @@ export function SoundOption(props: { testID: string; Icon: LucideIcon; title: st
   );
 }
 
-/** «▶ 0:06»: listen to a sound without leaving the sheet. */
-export function ListenChip(props: { testID: string; label: string; onPress: () => void }) {
+/** «▶ 0:06»: listen to a sound without leaving the sheet; «■ Sonando…» while it plays, and a tap stops it. */
+export function ListenChip(props: { testID: string; label: string; onPress: () => void; playing?: boolean }) {
   const colors = useColores();
+  const Icon = props.playing ? Square : Play;
   return (
-    <Pressable testID={props.testID} accessibilityLabel={`Escuchar ${props.label}`} onPress={props.onPress} hitSlop={12} className="mt-0.5 flex-row items-center gap-1.5 self-start">
-      <View className="h-5 w-5 items-center justify-center rounded-full bg-primary"><Play size={10} color={colors['on-primary']} /></View>
-      <Text numberOfLines={1} className="text-[13px] font-semibold text-primary">{props.label}</Text>
+    <Pressable testID={props.testID} accessibilityRole="button" accessibilityLabel={props.playing ? 'Detener' : `Escuchar ${props.label}`} accessibilityState={{ selected: Boolean(props.playing) }} onPress={props.onPress} hitSlop={12} className="mt-0.5 flex-row items-center gap-1.5 self-start">
+      <View className="h-5 w-5 items-center justify-center rounded-full bg-primary"><Icon size={10} color={colors['on-primary']} fill={props.playing ? colors['on-primary'] : 'none'} /></View>
+      <Text numberOfLines={1} className="text-[13px] font-semibold text-primary">{props.playing ? 'Sonando… toca para detener' : props.label}</Text>
     </Pressable>
   );
 }

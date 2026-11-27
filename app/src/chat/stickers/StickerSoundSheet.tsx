@@ -83,7 +83,7 @@ export function StickerSoundSheet(props: { visible: boolean; offerOriginal?: boo
   };
 
   return (
-    <Sheet visible={props.visible} onClose={close} testID="hoja-sonido-sticker" dragArea="handle" maxHeight="88%" className="px-4">
+    <Sheet visible={props.visible} onClose={close} testID="hoja-sonido-sticker" dragArea="handle" maxHeight="88%" keyboard="avoid" className="px-4">
       <ScrollView contentContainerStyle={{ gap: 10, paddingBottom: 8 }} keyboardShouldPersistTaps="handled">
         <View className="pb-1">
           <Text className="text-[20px] font-bold text-on-surface">Sonido del sticker</Text>

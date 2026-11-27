@@ -37,9 +37,3 @@ export function voiceTextOf(raw: unknown): string | null {
 export function stickerVoiceFileName(voiceId: StickerVoiceId): string {
   return `sticker-voz-${voiceId}.m4a`;
 }
-
-/** The voice behind a sound's address, or null for any other sound. */
-export function stickerVoiceOfUrl(audioUrl: string | null | undefined): StickerVoice | null {
-  if (!audioUrl) return null;
-  return STICKER_VOICES.find((voice) => audioUrl.endsWith(`/${stickerVoiceFileName(voice.id)}`)) ?? null;
-}

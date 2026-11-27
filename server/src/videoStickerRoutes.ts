@@ -68,7 +68,7 @@ export function videoStickerRoutes(router: Router, deps: { uploader: MediaUpload
     const track = made.audio ? await deps.uploader.upload({ chatId, fileName: sound!.kind === 'voice' ? stickerVoiceFileName(sound!.voiceId) : 'sticker-sonido.m4a', mimeType: 'audio/mp4', kind: 'audio', bytes: made.audio }) : null;
     if (!picture.ok || (track && !track.ok)) return void res.status(503).json({ message: 'No se pudo guardar el sticker. Inténtalo de nuevo.' });
     const audioUrl = track?.ok ? track.media.url : presetUrl;
-    const sticker = await StickerModel.create({ userId: me, mediaId: picture.media.storageName, url: picture.media.url, mime: 'image/webp', width: STICKER_SIZE, height: STICKER_SIZE, animated: true, ...(audioUrl ? { audioUrl } : {}) });
+    const sticker = await StickerModel.create({ userId: me, mediaId: picture.media.storageName, url: picture.media.url, mime: 'image/webp', width: STICKER_SIZE, height: STICKER_SIZE, animated: true, ...(audioUrl ? { audioUrl } : {}), ...(track?.ok && sound!.kind === 'voice' ? { soundVoiceId: sound!.voiceId } : {}) });
     res.status(201).json({ sticker: toClientSticker(sticker) });
   }));
 }

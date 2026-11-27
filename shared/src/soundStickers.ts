@@ -5,7 +5,7 @@
  * chat it arrives muted with a speaker button; a tap plays it three times.
  */
 import type { WinkSound } from './winks.js';
-import { stickerVoiceOf, stickerVoiceOfUrl, type StickerVoiceId } from './stickerVoice.js';
+import { stickerVoiceOf, type StickerVoiceId } from './stickerVoice.js';
 
 /** The longest clip a sticker keeps, like the animated stickers made from a GIF. */
 export const VIDEO_STICKER_MAX_MS = 6_000;
@@ -115,10 +115,10 @@ export function soundPresetIdOf(audioUrl: string | null | undefined): string | n
   return presetOfUrl(audioUrl)?.id ?? null;
 }
 
-/** «Risa» for one of ours, «Sonido propio» for a recorded or uploaded one, or null without sound. */
-export function stickerSoundLabelOf(sticker: { audioUrl?: string | null }): string | null {
+/** «Risa» for one of ours, «Voz de Valeria» for a voice, «Sonido propio» for a recorded or uploaded one, or null. */
+export function stickerSoundLabelOf(sticker: { audioUrl?: string | null; soundVoiceId?: string | null }): string | null {
   if (!stickerHasSound(sticker)) return null;
-  const voice = stickerVoiceOfUrl(sticker.audioUrl);
+  const voice = sticker.soundVoiceId ? stickerVoiceOf(sticker.soundVoiceId) : null;
   return presetOfUrl(sticker.audioUrl)?.label ?? (voice ? `Voz de ${voice.label}` : 'Sonido propio');
 }
 
@@ -128,7 +128,7 @@ export type StickerOptions = { sound: 'Agregar sonido' | 'Cambiar sonido'; canRe
  * The options of a saved sticker (José 27/11, designs sa-01…sa-03): its sound first («ya tengo un sticker en mis
  * favoritos, quiero agregarle audio»), export, favorites, and removing one of mine.
  */
-export function stickerOptionsOf(sticker: { id: string; mime: string; animated?: boolean; audioUrl?: string | null; favorite: boolean }): StickerOptions {
+export function stickerOptionsOf(sticker: { id: string; mime: string; animated?: boolean; audioUrl?: string | null; soundVoiceId?: string | null; favorite: boolean }): StickerOptions {
   const sound = stickerSoundLabelOf(sticker);
   const kind = sticker.animated ? 'Animado' : '';
   const soundLine = sound ? [kind, `con sonido · ${sound}`].filter(Boolean).join(' · ') : kind ? `${kind} · sin sonido` : 'Sin sonido';

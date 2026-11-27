@@ -1,3 +1,4 @@
+import type { StickerVoiceId } from './stickerVoice.js';
 import { ANIMATED_PACK_ID, ANIMATED_STICKERS } from './animatedStickers.js';
 
 /**
@@ -18,6 +19,8 @@ export type LibrarySticker = {
   animated?: boolean;
   /** Made from a video with sound (José 26/11): the sound plays next to it, muted until tapped. */
   audioUrl?: string;
+  /** Its sound is a phrase said by this voice (José 27/11): the media server renames files, so it is kept here. */
+  soundVoiceId?: StickerVoiceId;
 };
 
 export type StickerSectionKey = 'recent' | 'favorites' | 'mine' | `pack:${string}`;

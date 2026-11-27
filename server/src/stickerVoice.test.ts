@@ -78,6 +78,15 @@ describe('a voice as the sound of a saved sticker', () => {
     expect(asked).toEqual([{ text: '¡Vaciado listo!', voiceId: 'valeria', spaceId: String(space), userId: String(admin) }]);
     expect(uploads).toEqual(['sticker-voz-valeria.m4a']);
     expect(res.body.sticker.audioUrl).toBe('https://lila.test/files/a/sticker-voz-valeria.m4a');
+    expect(res.body.sticker.soundVoiceId).toBe('valeria');
+  });
+
+  it('another sound afterwards forgets the voice', async () => {
+    const id = await savedSticker(admin);
+    await giveVoice(id, admin, {}).expect(200);
+    const res = await request(app).post(`/api/stickers/${id}/sound`).set(withJwt(admin)).field('sound', 'none').expect(200);
+    expect(res.body.sticker.soundVoiceId).toBeUndefined();
+    expect((await StickerModel.findById(id).lean())?.soundVoiceId).toBeUndefined();
   });
 
   it('a member, or someone outside the space, is refused before asking for the voice', async () => {
@@ -125,6 +134,7 @@ describe('a voice for a sticker made from a video', () => {
     expect(res.status).toBe(201);
     expect(asked.map((speech) => speech.voiceId)).toEqual(['daniel']);
     expect(uploads).toEqual(['sticker-video.webp', 'sticker-voz-daniel.m4a']);
+    expect(res.body.sticker.soundVoiceId).toBe('daniel');
   });
 
   it('a member cannot', async () => {

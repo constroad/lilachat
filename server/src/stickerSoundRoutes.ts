@@ -62,7 +62,10 @@ export function stickerSoundRoutes(router: Router, deps: Deps): void {
     if (refusal) return void res.status(400).json({ message: refusal });
     const next = await soundUrlOf(req, sticker, sound!, deps);
     if ('refusal' in next) return void res.status(next.status).json({ message: next.refusal });
-    const change = next.url ? { $set: { audioUrl: next.url } } : { $unset: { audioUrl: 1 } };
+    const voice = sound!.kind === 'voice' ? sound!.voiceId : null;
+    const change = next.url
+      ? { $set: { audioUrl: next.url, ...(voice ? { soundVoiceId: voice } : {}) }, ...(voice ? {} : { $unset: { soundVoiceId: 1 } }) }
+      : { $unset: { audioUrl: 1, soundVoiceId: 1 } };
     const updated = await StickerModel.findOneAndUpdate({ _id: sticker._id }, change, { new: true }).lean();
     res.json({ sticker: toClientSticker(updated!) });
   }));

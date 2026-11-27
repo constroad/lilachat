@@ -20,6 +20,8 @@ export interface Sticker {
   animated?: boolean;
   /** Made from a video with sound (José 26/11): our own AAC file, or a preset served by the web. */
   audioUrl?: string;
+  /** Its sound is a phrase said by this voice (José 27/11). */
+  soundVoiceId?: string;
   createdAt: Date;
 }
 
@@ -34,6 +36,7 @@ const stickerSchema = new Schema<Sticker>(
     favorite: { type: Boolean, default: false },
     animated: { type: Boolean },
     audioUrl: { type: String },
+    soundVoiceId: { type: String },
   },
   { versionKey: false, timestamps: { createdAt: true, updatedAt: false } }
 );

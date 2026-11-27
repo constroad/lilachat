@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { parseStickerSound, stickerSoundField, stickerSoundLabelOf } from './soundStickers.js';
-import { canUseStickerVoice, STICKER_VOICES, stickerVoiceFileName, stickerVoiceOfUrl, voiceTextOf, MAX_VOICE_TEXT } from './stickerVoice.js';
+import { canUseStickerVoice, STICKER_VOICES, stickerVoiceFileName, voiceTextOf, MAX_VOICE_TEXT } from './stickerVoice.js';
 
 /** José 27/11: «voces… las de latino español»; «solo admins, y deja solo Valeria y Daniel». */
 describe('the sticker voices', () => {
@@ -48,17 +48,16 @@ describe('voiceTextOf', () => {
 });
 
 describe('a saved voice sound', () => {
-  it('its file says which voice, and the sticker names it', () => {
+  it('the sticker keeps which voice it is, and is named by it (the media server renames files: E2E 27/11)', () => {
     // Arrange
-    const audioUrl = `https://lilachat.constroad.com/files/a/${stickerVoiceFileName('valeria')}`;
+    const sticker = { audioUrl: 'https://lilachat.constroad.com/files/a/audio-2026-11-27T14-50-00_ab12.m4a', soundVoiceId: 'valeria' as const };
     // Act / Assert
+    expect(stickerSoundLabelOf(sticker)).toBe('Voz de Valeria');
     expect(stickerVoiceFileName('daniel')).toBe('sticker-voz-daniel.m4a');
-    expect(stickerVoiceOfUrl(audioUrl)?.id).toBe('valeria');
-    expect(stickerSoundLabelOf({ audioUrl })).toBe('Voz de Valeria');
   });
 
-  it('a recorded sound is not a voice', () => {
-    expect(stickerVoiceOfUrl('https://x/files/a/sticker-sonido.m4a')).toBeNull();
-    expect(stickerVoiceOfUrl(null)).toBeNull();
+  it('a recorded sound, or a voice field without sound, is not a voice', () => {
+    expect(stickerSoundLabelOf({ audioUrl: 'https://x/files/a/sticker-sonido.m4a' })).toBe('Sonido propio');
+    expect(stickerSoundLabelOf({ soundVoiceId: 'daniel' })).toBeNull();
   });
 });

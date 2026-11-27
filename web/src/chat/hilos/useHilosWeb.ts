@@ -55,7 +55,7 @@ export function useHilosWeb(params: { chatId: string; jwt: string; base: BaseLoc
     if (!base || !jwt) return;
     void api<{ hilos: { raiz: number; hilo: NonNullable<ChatMessage['hilo']>; visto?: number }[] }>(`/chats/${chatId}/hilos`, { jwt }).then((r) => {
       if (!r.ok) return;
-      for (const { raiz, hilo, visto } of r.data.hilos) {
+      for (const { raiz, hilo, visto } of r.data?.hilos ?? []) {
         void aplicarResumenDeHilo(base, { chatId, raiz, hilo });
         // Read on another device (the phone) is read here too.
         if (visto) markSeen(raiz, visto);
@@ -70,7 +70,8 @@ export function useHilosWeb(params: { chatId: string; jwt: string; base: BaseLoc
     void api<{ respuestas: ChatMessage[] }>(`/chats/${chatId}/hilos/${abierto}`, { jwt }).then((r) => {
       // Opening the thread read it on the server: the space's «Hilos» chip asks again.
       if (r.ok) announceActivityRead();
-      if (vivo && r.ok) setRemotas(r.data.respuestas);
+      // A 200 without the list (a cut body) is an empty thread, not a crash (lilachat 0.1.190, José 27/11).
+      if (vivo && r.ok) setRemotas(Array.isArray(r.data?.respuestas) ? r.data.respuestas : []);
     });
     return () => void (vivo = false);
   }, [abierto, chatId, jwt]);

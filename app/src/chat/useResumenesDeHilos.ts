@@ -33,7 +33,7 @@ export function useResumenesDeHilos(params: { chatId: string; token: string; set
     const alConectar = () =>
       void hilosDelChat(token, chatId).then((respuesta) => {
         if (!respuesta.ok || !vivo) return;
-        respuesta.data.hilos.forEach(({ raiz, hilo, visto }) => {
+        (respuesta.data?.hilos ?? []).forEach(({ raiz, hilo, visto }) => {
           // Read on another device: the dot goes off here too.
           if (visto) void marcarHiloVisto(chatId, raiz, visto);
           applySummary(raiz, hilo);

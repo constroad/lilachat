@@ -53,6 +53,7 @@ la búsqueda y las tarjetas de enlace. Hilos, medios, agenda y stickers tienen s
 - Selección y barra de acciones: `SeleccionDeMensaje.tsx`, `useSeleccionDeMensajes.ts`, `useAccionesDeSeleccion.ts`.
 - Qué acción aparece lo decide `shared/src/accionesDeMensaje.ts` (también en la web).
 - Acciones: Responder, Responder en hilo, Copiar, Reenviar, Destacar, Fijar/Desfijar, Editar, Info, Eliminar.
+- Abrir un hilo en el APK no confía en la forma de la respuesta del server: un 200 sin la lista es un hilo vacío (`remoteThreadOf`, `useHilosEnElChat`, `useResumenesDeHilos`); en lilachat 0.1.190 tumbaba la pantalla del chat (27/11). Detalle en `chat-hilos.md`.
 - «Denunciar» (19/11, Google Play): un solo mensaje ajeno, vivo, que no sea aviso ni tarjeta de una app (`canReportMessage` de `shared/src/reports.ts`). Va último en la barra (`barraDeSeleccion.ts`, suele quedar en «⋮») y abre `app/src/reports/ReportSheet.tsx`. Detalle en `plataforma-perfil-contactos-privacidad.md`.
 - Deslizar para responder: `DeslizarParaResponder.tsx`, `gestoDeRespuesta.ts`; cita `CitaDeRespuesta.tsx`.
 - «Responder» abre el teclado con el cursor en la barra (21/10): `useRespuestaYEdicion.ts`.

@@ -59,7 +59,7 @@ No hay hilos de hilos, de avisos, de lo borrado ni en chats secretos.
 - Fotos, GIF y guiños en un hilo: las rutas de medios y de GIF leen `MessageTarget` (10/11).
 - Rutas (`hilosRoutes.ts`, en `/api/chats`):
   - `GET /:chatId/hilos`: resúmenes por raíz, con `visto`.
-  - `GET /:chatId/hilos/:raiz`: el hilo entero; abrirlo mueve la marca de lectura.
+  - `GET /:chatId/hilos/:raiz`: el hilo entero; abrirlo mueve la marca de lectura. Los clientes no confían en la forma: un 200 sin la lista es un hilo vacío (APK `remoteThreadOf`, web `useHilosWeb`; también `hilos` de la lista de resúmenes), porque en lilachat 0.1.190 eso tumbó la pantalla del chat con «Cannot convert undefined value to object» (27/11).
   - `POST /:chatId/hilos/:raiz/visto`: marca lo visto en vivo.
 - Marca de lectura por hilo: `threadReads.ts`, en `Receipt.threadSeq` (raíz → seq), sin colección ni índice nuevo.
   - Hilos con respuestas antes de `THREAD_READ_SINCE` (16/11 12:00 UTC) siguen con la marca del chat.

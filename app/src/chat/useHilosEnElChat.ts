@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { remoteThreadOf } from './remoteThread';
 import { hayRespuestasNuevas, respuestasDelHilo, visibleEnElChat, type ResumenDeHiloEnCliente } from '@lilachat/shared';
 import { threadsWithNewReplies } from '@lilachat/shared';
 import { hiloCompleto, markThreadSeen } from '../api/client';
@@ -48,8 +49,9 @@ export function useHilosEnElChat(params: {
     let vivo = true;
     void hiloCompleto(jwt, chatId, abierto).then((respuesta) => {
       if (!vivo || !respuesta.ok) return;
-      setRemotas(respuesta.data.respuestas as ChatMessage[]);
-      setRaizRemota((respuesta.data.raiz ?? null) as ChatMessage | null);
+      const remoto = remoteThreadOf<ChatMessage>(respuesta.data);
+      setRemotas(remoto.respuestas);
+      setRaizRemota(remoto.raiz);
     });
     return () => void (vivo = false);
   }, [abierto, chatId, jwt]);

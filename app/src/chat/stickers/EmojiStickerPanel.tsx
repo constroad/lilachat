@@ -14,6 +14,8 @@ import { reportarError } from '../../ui/reportarError';
 import { subjectCutout } from '../../../modules/subject-cutout/src';
 import { StickerPanel } from './StickerPanel';
 import { CreateSticker } from './CreateSticker';
+import { CreateVideoSticker } from './CreateVideoSticker';
+import { pickGalleryVideo, type GalleryVideo } from './pickGalleryVideo';
 import { saveGifSticker, useStickers } from './useStickers';
 import type { StickerThread } from './stickersApi';
 
@@ -95,6 +97,13 @@ export const EmojiStickerPanel = memo(function EmojiStickerPanel(props: {
     ToastAndroid.show('Convirtiendo en sticker…', ToastAndroid.SHORT);
     ToastAndroid.show(await saveGifSticker(props.jwt, { uri: gif.uri }), ToastAndroid.SHORT);
   }, [props.jwt]);
+  /** «Desde un video» (José 26/11): the video is picked first; the editor opens with it. */
+  const [videoForSticker, setVideoForSticker] = useState<GalleryVideo | null>(null);
+  const fromVideo = useCallback(async () => {
+    const picked = await pickGalleryVideo();
+    if (picked && 'refusal' in picked) return ToastAndroid.show(picked.refusal, ToastAndroid.SHORT);
+    if (picked) setVideoForSticker(picked.video);
+  }, []);
   const tabs: PanelTabItem[] = [
     { key: 'emoji', label: 'Emoji', Icon: Smile },
     ...(props.withStickers ? [{ key: 'stickers' as const, label: 'Stickers', Icon: Sticker }] : []),
@@ -127,9 +136,12 @@ export const EmojiStickerPanel = memo(function EmojiStickerPanel(props: {
         <WinkPanel recipient={props.chatName} onSend={(wink) => { onWink(wink, props.replyTo?.()); props.onStickerSent?.(); }} onNudge={props.onNudge} />
       ) : (
         <View style={{ flex: 1 }}>
-          <StickerPanel stickers={stickers} onSend={(sticker) => void stickers.send(props.chatId, sticker, { ...props.thread, replyToSeq: props.replyTo?.() }).then((sent) => sent && props.onStickerSent?.())} onCreate={() => { setEditorSession((before) => before + 1); setCreating(true); }} onFromGif={() => void fromGif()} />
+          <StickerPanel stickers={stickers} onSend={(sticker) => void stickers.send(props.chatId, sticker, { ...props.thread, replyToSeq: props.replyTo?.() }).then((sent) => sent && props.onStickerSent?.())} onCreate={() => { setEditorSession((before) => before + 1); setCreating(true); }} onFromGif={() => void fromGif()} onFromVideo={() => void fromVideo()} />
         </View>
       )}
+      {videoForSticker ? (
+        <CreateVideoSticker key={videoForSticker.uri} visible video={videoForSticker} onClose={() => setVideoForSticker(null)} onSave={stickers.saveFromVideo} onSend={(sticker) => stickers.send(props.chatId, sticker, { ...props.thread, replyToSeq: props.replyTo?.() })} />
+      ) : null}
       <CreateSticker key={editorSession} visible={creating} chatName={props.chatName} onClose={closeEditor} onSave={stickers.save} onSend={(sticker) => stickers.send(props.chatId, sticker, { ...props.thread, replyToSeq: props.replyTo?.() })} />
     </View>
   );

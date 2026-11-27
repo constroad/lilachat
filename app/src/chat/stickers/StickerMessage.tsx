@@ -10,6 +10,7 @@ import { AVATAR_DE_AUTOR } from '../burbuja';
 import { DeslizarParaResponder } from '../DeslizarParaResponder';
 import { MetaDeMensaje } from '../MetaDeMensaje';
 import { keepReceivedSticker } from './useStickers';
+import { StickerSoundOverlay, useStickerSound } from './stickerSound';
 
 /** Side of a sticker in the chat (dp), like WhatsApp. */
 const SIDE = 160;
@@ -91,20 +92,25 @@ export function StickerPair(props: Omit<StickerProps, 'item' | 'quote' | 'select
  */
 const StickerCell = memo(function StickerCell(props: { item: ChatMessage; mine: boolean; jwt: string; delivery: DeliveryState; starred: boolean; side: number; selecting: boolean; onSelect?: (seq: number) => void }) {
   const { item, mine } = props;
-  const playback = useStickerPlayback(item.media);
+  // A sticker with sound (José 26/11, design ss-03): muted until its speaker is tapped; it moves while it sounds.
+  const sound = useStickerSound(item, item.media);
+  const playback = useStickerPlayback(item.media, sound.playing);
   const showOptions = () => showStickerOptions(props.jwt, item, mine);
   return (
     <>
-      <Pressable
-        onPress={() => (props.selecting ? props.onSelect?.(item.seq) : playback.stopped ? playback.replay() : showOptions())}
-        onLongPress={() => {
-          void Haptics.selectionAsync();
-          props.onSelect?.(item.seq);
-        }}
-        delayLongPress={350}
-      >
-        <StickerArt playback={playback} url={item.media!.url!} side={props.side} recyclingKey={item.clientKey} transition={STICKER_FADE_MS} />
-      </Pressable>
+      <View>
+        <Pressable
+          onPress={() => (props.selecting ? props.onSelect?.(item.seq) : playback.stopped ? playback.replay() : showOptions())}
+          onLongPress={() => {
+            void Haptics.selectionAsync();
+            props.onSelect?.(item.seq);
+          }}
+          delayLongPress={350}
+        >
+          <StickerArt playback={playback} url={item.media!.url!} side={props.side} recyclingKey={item.clientKey} transition={STICKER_FADE_MS} />
+        </Pressable>
+        <StickerSoundOverlay sound={sound} hidden={props.selecting} />
+      </View>
       <View className={`mt-0.5 rounded-full bg-black/35 px-1.5 py-0.5 ${mine ? 'self-end' : 'self-start'}`}>
         <MetaDeMensaje hora={formatClock(item.at)} mia={mine} entrega={props.delivery} id={String(item.seq)} sobreFoto destacado={props.starred} />
       </View>
@@ -131,9 +137,9 @@ const STICKER_FADE_MS = 120;
  * images. Shared by the bubble, the channel row and the thread: on 11/11 only
  * the bubble had Lottie and channels kept playing the old WebP.
  */
-export function useStickerPlayback(media: ChatMessage['media'] | null | undefined) {
+export function useStickerPlayback(media: ChatMessage['media'] | null | undefined, keepPlaying = false) {
   const lottieUrl = lottieUrlOf(media?.url) ?? undefined;
-  const image = useAnimatedStop(lottieUrl ? undefined : (media?.url ?? undefined), false, !lottieUrl && media?.animated === true);
+  const image = useAnimatedStop(lottieUrl ? undefined : (media?.url ?? undefined), false, !lottieUrl && media?.animated === true, keepPlaying);
   const lottie = useLottieStop(Boolean(lottieUrl));
   const replay = () => (lottie.stopped ? lottie.replay() : image.replay());
   return { lottieUrl, lottie, image, stopped: lottie.stopped || image.stopped, replay };
@@ -153,7 +159,7 @@ export function StickerArt(props: { playback: StickerPlayback; url: string; side
  * a chat full of loops that never end is noise and costs battery. A tap on a
  * stopped one plays it again.
  */
-export function useAnimatedStop(url: string | undefined, isGif = false, ownAnimated = false) {
+export function useAnimatedStop(url: string | undefined, isGif = false, ownAnimated = false, keepPlaying = false) {
   const ref = useRef<Image>(null);
   const [stopped, setStopped] = useState(false);
   const [round, setRound] = useState(0);
@@ -161,12 +167,18 @@ export function useAnimatedStop(url: string | undefined, isGif = false, ownAnima
   const animated = isGif || stickerIsAnimated({ url, animated: ownAnimated });
   useEffect(() => {
     if (!animated) return;
+    // While its sound plays (José 26/11) the sticker keeps moving; the stop counts again from the end of the sound.
+    if (keepPlaying) {
+      void ref.current?.startAnimating();
+      setStopped(false);
+      return;
+    }
     const timer = setTimeout(() => {
       void ref.current?.stopAnimating();
       setStopped(true);
     }, ANIMATED_STICKER_PLAY_MS);
     return () => clearTimeout(timer);
-  }, [animated, round]);
+  }, [animated, round, keepPlaying]);
   const replay = () => {
     void ref.current?.startAnimating();
     setStopped(false);

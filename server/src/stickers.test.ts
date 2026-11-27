@@ -9,6 +9,7 @@ import { ChatModel, MessageModel } from './chatModels.js';
 import { StickerModel } from './stickerModel.js';
 import { buildPushText } from './pushSender.js';
 import { signSession } from './sessions.js';
+import type { VideoStickerConverter } from './soundSticker.js';
 
 /**
  * Stickers (José, 20/10: «in WhatsApp I upload a photo, the background goes
@@ -22,7 +23,15 @@ let ana: Types.ObjectId;
 let chatId: Types.ObjectId;
 const uploads: { fileName: string; mimeType: string }[] = [];
 const withJwt = (userId: Types.ObjectId) => ({ Authorization: `Bearer ${signSession({ userId: String(userId), deviceId: `d-${userId}`, email: 'x' })}` });
+/** What the video converter was asked (ffmpeg runs for real in `soundSticker.test.ts`). */
+const conversions: { durationMs: number; soundFrom: string }[] = [];
+const fromVideo: VideoStickerConverter = async ({ video, window, soundFrom }) => {
+  conversions.push({ durationMs: window.durationMs, soundFrom: soundFrom === null ? 'none' : soundFrom === 'video' ? 'video' : 'file' });
+  if (video.toString() === 'broken') return 'not-a-video';
+  return { webp: WEBP, audio: soundFrom === null ? null : Buffer.alloc(2_000, 1) };
+};
 const app = buildApp({
+  animatedStickers: { fromVideo },
   mediaUploader: {
     async upload(p) {
       uploads.push({ fileName: p.fileName, mimeType: p.mimeType });
@@ -42,6 +51,7 @@ afterAll(async () => {
 });
 beforeEach(async () => {
   uploads.length = 0;
+  conversions.length = 0;
   await Promise.all([UserModel.deleteMany({}), ChatModel.deleteMany({}), MessageModel.deleteMany({}), StickerModel.deleteMany({})]);
   const users = await UserModel.create([{ phone: '900000001', name: 'José' }, { phone: '900000002', name: 'Ana' }]);
   me = users[0]!._id;
@@ -164,5 +174,68 @@ describe('saving a received or a pack sticker', () => {
 describe('the push of a sticker', () => {
   it('says «Sticker»', () => {
     expect(buildPushText({ senderName: 'Ana', kind: 'sticker' }).body).toBe('Sticker');
+  });
+});
+
+/** José 26/11: an animated sticker with sound from a video (designs ss-01…ss-04). */
+describe('a sticker with sound from a video', () => {
+  const VIDEO = Buffer.from('a video');
+  const fromVideoRequest = (fields: Record<string, string>, video = VIDEO, audio?: Buffer) => {
+    let pending = request(app).post('/api/stickers/from-video').set(withJwt(me)).set('Host', 'lilachat.example').set('X-Forwarded-Proto', 'https');
+    for (const [name, value] of Object.entries(fields)) pending = pending.field(name, value);
+    pending = pending.attach('file', video, { filename: 'clip.mp4', contentType: 'video/mp4' });
+    return audio ? pending.attach('audio', audio, { filename: 'voz.webm', contentType: 'audio/webm' }) : pending;
+  };
+
+  it('keeps the video sound next to an animated sticker in «Mis stickers»', async () => {
+    // Act
+    const res = await fromVideoRequest({ startMs: '12000', endMs: '20000', sound: 'original' });
+    // Assert
+    expect(res.status).toBe(201);
+    expect(res.body.sticker).toMatchObject({ animated: true, width: 512, height: 512 });
+    expect(res.body.sticker.audioUrl).toMatch(/sticker-sonido\.m4a$/);
+    expect(conversions).toEqual([{ durationMs: 6_000, soundFrom: 'video' }]);
+    expect(uploads.map((upload) => upload.mimeType)).toEqual(['image/webp', 'audio/mp4']);
+  });
+
+  it('a recorded or uploaded sound goes to the converter', async () => {
+    const res = await fromVideoRequest({ startMs: '0', endMs: '3000', sound: 'file' }, VIDEO, Buffer.from('voice'));
+    expect(res.status).toBe(201);
+    expect(conversions).toEqual([{ durationMs: 3_000, soundFrom: 'file' }]);
+  });
+
+  it('a Lilachat sound is our own file served by the web: nothing is uploaded for it', async () => {
+    const res = await fromVideoRequest({ startMs: '0', endMs: '3000', sound: 'preset:bocina' });
+    expect(res.status).toBe(201);
+    expect(res.body.sticker.audioUrl).toBe('https://lilachat.example/sonidos/wink-horn.mp3');
+    expect(uploads).toHaveLength(1);
+  });
+
+  it('with no sound it is a plain animated sticker', async () => {
+    const res = await fromVideoRequest({ startMs: '0', endMs: '3000', sound: 'none' });
+    expect(res.status).toBe(201);
+    expect(res.body.sticker.audioUrl).toBeUndefined();
+  });
+
+  it('the sound travels with the sticker into the chat and when someone saves it', async () => {
+    // Arrange
+    const id = (await fromVideoRequest({ startMs: '0', endMs: '3000', sound: 'original' })).body.sticker.id;
+    // Act
+    const sent = await request(app).post(`/api/chats/${chatId}/stickers`).set(withJwt(me)).send({ stickerId: id, clientKey: 'k-sound' });
+    const saved = await request(app).post('/api/stickers/from-message').set(withJwt(ana)).send({ chatId: String(chatId), seq: sent.body.message.seq });
+    // Assert
+    expect(sent.body.message.media).toMatchObject({ animated: true });
+    expect(sent.body.message.media.audioUrl).toMatch(/sticker-sonido\.m4a$/);
+    expect(saved.body.sticker.audioUrl).toBe(sent.body.message.media.audioUrl);
+  });
+
+  it('refuses what cannot make a sticker', async () => {
+    expect((await fromVideoRequest({ startMs: '0', endMs: '3000', sound: 'loud' })).status).toBe(400);
+    expect((await fromVideoRequest({ startMs: '0', endMs: '3000', sound: 'file' })).status).toBe(400);
+    expect((await fromVideoRequest({ startMs: '3000', endMs: '3000', sound: 'none' })).status).toBe(400);
+    expect((await fromVideoRequest({ startMs: '0', endMs: '3000', sound: 'none' }, Buffer.from('broken'))).status).toBe(400);
+    const photo = await request(app).post('/api/stickers/from-video').set(withJwt(me)).field('startMs', '0').field('endMs', '3000').field('sound', 'none').attach('file', WEBP, { filename: 'a.webp', contentType: 'image/webp' });
+    expect(photo.status).toBe(400);
+    expect(await StickerModel.countDocuments({})).toBe(0);
   });
 });

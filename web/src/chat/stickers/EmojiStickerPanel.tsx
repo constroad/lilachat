@@ -7,6 +7,7 @@ import { useGifsAvailable } from '../gifs/gifsApi';
 import PanelDeEmojis from '../PanelDeEmojis';
 import { StickerPanel } from './StickerPanel';
 import { CreateStickerWeb } from './CreateStickerWeb';
+import { CreateStickerFromVideo } from './CreateStickerFromVideo';
 import { useStickers } from './useStickers';
 import type { StickerThread } from './stickersApi';
 import { lastPanelTab, type PanelTab } from '@lilachat/shared';
@@ -54,6 +55,8 @@ export default function EmojiStickerPanel({ onPickEmoji, chat, winks }: { onPick
 function Stickers({ chat }: { chat: StickerChat }) {
   const stickers = useStickers(chat.jwt, chat.me);
   const [creating, setCreating] = useState(false);
+  const [fromVideo, setFromVideo] = useState(false);
+  const target = { ...chat.thread, replyToSeq: chat.replyToSeq };
   return (
     <>
       <StickerPanel
@@ -63,10 +66,12 @@ function Stickers({ chat }: { chat: StickerChat }) {
         error={stickers.error}
         onSend={(sticker) => void stickers.send(chat.chatId, sticker, { ...chat.thread, replyToSeq: chat.replyToSeq }).then((sent) => sent && chat.onSent?.())}
         onCreate={() => setCreating(true)}
+        onCreateFromVideo={() => setFromVideo(true)}
         onGifPicked={(gif) => void stickers.saveGif(gif)}
         onToggleFavorite={(sticker) => void stickers.toggleFavorite(sticker)}
         onRemove={(sticker) => void stickers.remove(sticker)}
       />
+      {fromVideo ? <CreateStickerFromVideo chatName={chat.chatName} onClose={() => setFromVideo(false)} onSave={stickers.saveVideo} onSend={(sticker) => stickers.send(chat.chatId, sticker, target)} /> : null}
       {creating ? <CreateStickerWeb chatName={chat.chatName} onClose={() => setCreating(false)} onSave={stickers.save} onSend={(sticker) => stickers.send(chat.chatId, sticker, { ...chat.thread, replyToSeq: chat.replyToSeq })} onRemove={stickers.remove} /> : null}
     </>
   );

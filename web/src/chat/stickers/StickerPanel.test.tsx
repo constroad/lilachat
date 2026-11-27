@@ -77,4 +77,15 @@ describe('StickerPanel (web)', () => {
     fireEvent.change(screen.getByTestId('input-sticker-gif'), { target: { files: [gif] } });
     expect(onGifPicked).toHaveBeenCalledWith(gif);
   });
+
+  /** José 26/11 (design ss-04): «Desde un video» opens the video sticker with sound. */
+  it('«Desde un video» opens its modal, and is not there when the chat cannot offer it', () => {
+    const onCreateFromVideo = vi.fn();
+    const { unmount } = render(<StickerPanel library={[]} recents={[]} packs={[pack]} error="" onSend={vi.fn()} onCreate={vi.fn()} onToggleFavorite={vi.fn()} onRemove={vi.fn()} onCreateFromVideo={onCreateFromVideo} />);
+    fireEvent.click(screen.getByTestId('crear-desde-video'));
+    expect(onCreateFromVideo).toHaveBeenCalled();
+    unmount();
+    draw({ library: [] });
+    expect(screen.queryByTestId('crear-desde-video')).toBeNull();
+  });
 });

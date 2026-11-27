@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Clock3, FolderHeart, ImagePlay, Star, WandSparkles, X } from 'lucide-react';
+import { Clapperboard, Clock3, FolderHeart, ImagePlay, Star, WandSparkles, X } from 'lucide-react';
 import { stickerSections, type LibrarySticker, type StickerSection, type StickerSectionKey } from '@lilachat/shared';
 
 type Filter = 'all' | 'recent' | 'favorites' | 'mine';
@@ -20,6 +20,8 @@ type Props = {
   onCreate: () => void;
   /** A GIF of the computer becomes an animated sticker (pending 37). */
   onGifPicked?: (gif: File) => void;
+  /** A video becomes an animated sticker with sound (José 26/11, design ss-04). */
+  onCreateFromVideo?: () => void;
   onToggleFavorite: (sticker: LibrarySticker) => void;
   onRemove: (sticker: LibrarySticker) => void;
 };
@@ -63,6 +65,7 @@ export function StickerPanel(props: Props) {
               </div>
               <div className="grid grid-cols-[repeat(auto-fill,minmax(88px,1fr))] gap-2">
                 {index === 0 ? <CreateTile onCreate={props.onCreate} /> : null}
+                {index === 0 && props.onCreateFromVideo ? <VideoTile onOpen={props.onCreateFromVideo} /> : null}
                 {index === 0 && props.onGifPicked ? <GifTile onPicked={props.onGifPicked} /> : null}
                 {shown(section).map((sticker) => <Cell key={`${section.key}-${sticker.id}`} sectionKey={section.key} sticker={sticker} {...props} />)}
               </div>
@@ -83,6 +86,16 @@ function CreateTile({ onCreate }: { onCreate: () => void }) {
     <button type="button" data-testid="btn-crear-sticker" onClick={onCreate} className="flex aspect-square flex-col items-center justify-center rounded-2xl border-2 border-dashed border-primary/50 bg-primary/5 text-primary">
       <span className="grid h-9 w-9 place-items-center rounded-full bg-primary text-on-primary"><WandSparkles size={18} /></span>
       <span className="mt-1 text-[12px] font-semibold">Crear</span>
+    </button>
+  );
+}
+
+/** «Desde un video»: a clip of up to 6 s with its sound (the modal picks the video). */
+function VideoTile({ onOpen }: { onOpen: () => void }) {
+  return (
+    <button type="button" data-testid="crear-desde-video" onClick={onOpen} className="flex aspect-square flex-col items-center justify-center rounded-2xl border-2 border-dashed border-primary/50 bg-primary/5 text-primary">
+      <span className="grid h-9 w-9 place-items-center rounded-full bg-primary text-on-primary"><Clapperboard size={18} /></span>
+      <span className="mt-1 text-[12px] font-semibold">Desde un video</span>
     </button>
   );
 }

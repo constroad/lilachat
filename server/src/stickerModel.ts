@@ -18,6 +18,8 @@ export interface Sticker {
   favorite: boolean;
   /** Made from a GIF (pending 37): an animated WebP. */
   animated?: boolean;
+  /** Made from a video with sound (José 26/11): our own AAC file, or a preset served by the web. */
+  audioUrl?: string;
   createdAt: Date;
 }
 
@@ -31,6 +33,7 @@ const stickerSchema = new Schema<Sticker>(
     height: { type: Number, required: true },
     favorite: { type: Boolean, default: false },
     animated: { type: Boolean },
+    audioUrl: { type: String },
   },
   { versionKey: false, timestamps: { createdAt: true, updatedAt: false } }
 );

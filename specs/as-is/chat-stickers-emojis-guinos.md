@@ -6,7 +6,7 @@ Lo expresivo del chat. Un panel con cuatro pestañas (`shared/src/panelTab.ts`):
 Además, el zumbido de Messenger, los emojis propios del espacio y los atajos «:hug».
 Tono adulto: nada chibi ni infantil (decisión de José, §74).
 
-**Fecha de corte:** 17/11/2026.
+**Fecha de corte:** 26/11/2026.
 
 ## 2. Qué hace hoy
 
@@ -28,6 +28,9 @@ Tono adulto: nada chibi ni infantil (decisión de José, §74).
 - Guardar el sticker de otro y marcarlo favorito. Responder con sticker (21/10).
 - Dos stickers seguidos de la misma persona van en una fila (01/11).
 - Un GIF del chat se puede convertir en sticker animado propio (22/10).
+- Sticker con sonido desde un video (26/11, diseños `ss-01`, `ss-02`, `ss-03`): mosaico «Desde un video» → `CreateVideoSticker.tsx` con tramo de hasta 6 s (`VideoTrimStrip.tsx`, `videoStickerTrim.ts`, vista en bucle `useClipPreview.ts`) y hoja de sonido `StickerSoundSheet.tsx` (original, grabar `VoiceClipRecorder.tsx`, elegir un audio del teléfono, sonidos de Lilachat, sin sonido; `videoStickerSound.ts`).
+  - Sin texto sobre el sticker: el «Aa Texto» del diseño no está.
+  - En el chat, hilo y canal llega silenciado con el parlante `stickerSound.tsx`; al tocarlo suena 3 veces (`stickerSoundController.ts`) y la animación sigue mientras suena.
 
 **GIF** (`gifs/`)
 - Pestaña GIF con GIPHY: `GifPanel.tsx`, `GifGrid.tsx`, búsqueda a pantalla completa `GifSearchScreen.tsx`, `gifsApi.ts`, `gifOptions.ts`.
@@ -62,6 +65,8 @@ Tono adulto: nada chibi ni infantil (decisión de José, §74).
 - Atajos «:hug»: `emojiShortcode/useEmojiShortcode.ts`, `EmojiSuggestions.tsx`.
 - Stickers: `stickers/StickerPanel.tsx`, `useStickers.ts`, `stickersApi.ts`, `StickerMessage.tsx`, `LottieSticker.tsx` + `lottiePlayer.ts` (diseño `s1-web-stickers`).
 - Crear sticker: `stickers/CreateStickerWeb.tsx`, recorte `cutoutWeb.ts` (MediaPipe, Apache 2.0), máscara `mask.ts`, composición `composeWeb.ts`.
+- Sticker con sonido desde un video (26/11, diseños `ss-03`, `ss-04`): mosaico «Desde un video» del panel → `stickers/CreateStickerFromVideo.tsx` (modal), tramo de hasta 6 s `VideoTrimStrip.tsx`, sonido `StickerSoundPicker.tsx` (original, grabar `VoiceRecorder.tsx`, subir, sonidos de Lilachat, sin sonido); decisiones puras en `videoSticker.ts`. «Guardar en Mis stickers» y «Enviar».
+  - En el chat llega silenciado con un botón de parlante (`StickerMessage.tsx`); al tocarlo suena 3 veces seguidas (`stickerSoundLoop.ts`), uno a la vez en la página.
 - Menú del mensaje: «Guardar en Mis stickers», «Agregar a favoritos», «Convertir en sticker animado» (`MenuDelMensaje.tsx`).
 - GIF: `gifs/GifPanel.tsx`, `GifInBubble.tsx` (se mueve y se detiene), `gifsApi.ts`, `gifsInFlight.ts`.
 - Guiños: `WinkPanel.tsx`, `WinkOverlay.tsx`, `WinkCharacter.tsx`, `WinkSketch.tsx`, `sketchFrames.ts`, `winkSounds.ts`.
@@ -75,6 +80,10 @@ Tono adulto: nada chibi ni infantil (decisión de José, §74).
 
 - Stickers (`stickersRoutes.ts`, en `/api`): `GET/POST /stickers`, `PATCH/DELETE /stickers/:id`, `POST /stickers/from-message`, `POST /stickers/from-pack`, `POST /chats/:chatId/stickers` (enviar).
 - Sticker animado propio desde un GIF (`animatedStickerRoutes.ts`, `animatedSticker.ts`): `POST /stickers/animated`, `POST /stickers/from-gif`. WebP animado 512×512, hasta 6 s y 500 KB, con sharp.
+- Sticker con sonido desde un video (26/11): `POST /stickers/from-video` (`videoStickerRoutes.ts`), multipart con `file` (video hasta 60 MB), `audio` opcional, `startMs`, `endMs` y `sound` (`original`, `file`, `none`, `preset:<id>`).
+  - `soundSticker.ts`: ffmpeg corta el tramo a GIF de 12,5 cuadros por segundo (80 ms, exacto en GIF: el dibujo va al ritmo del sonido) y sharp lo deja en WebP animado 512×512; el sonido sale aparte en AAC mono de 64 kbps. Uno a la vez en la mini.
+  - Un video sin pista de sonido queda como sticker sin sonido, sin error. Los sonidos de Lilachat no se suben: apuntan a `/sonidos/wink-*.mp3` de la web (`webOrigin.ts`).
+  - `Sticker.audioUrl` y `Message.media.audioUrl` viajan al enviar y al guardar el sticker de otro.
 - Modelo y vista: `stickerModel.ts`, `stickerView.ts`.
 - GIF (`gifRoutes.ts`, en `/api/gifs`): `GET /` (disponible), `GET /search`, `POST /send`. La llave de GIPHY no sale del server; el GIF se guarda en nuestro disco.
 - Guiños y zumbido (`zumbido.ts`): en 1:1 siempre; en grupo solo si un admin lo permitió; uno de cada tipo cada 10 s por persona y chat.
@@ -86,6 +95,7 @@ Tono adulto: nada chibi ni infantil (decisión de José, §74).
 
 - Panel: `panelTab.ts`. Atajos: `emojiShortcode.ts` + `emojiNamesData.ts` (carga diferida).
 - Stickers: `stickers.ts` (paquete «Lila» y «En movimiento»), `stickerEditor.ts`, `stickerMask.ts`, `stickerRows.ts`, `animatedStickers.ts`.
+- Stickers con sonido: `soundStickers.ts` (tramo `clipWindowOf` de 0,5 a 6 s, `parseStickerSound`, 8 sonidos de Lilachat `STICKER_SOUND_PRESETS`, 3 reproducciones `STICKER_SOUND_PLAYS`).
 - Lottie: `lottie/` (`svgToLottie`, `rigToLottie`: una parte del guiño en SVG pasa a formas Lottie, revisado píxel a píxel).
 - Guiños: `winks.ts` (catálogo `WINKS`, `winkPanelGroups`, `canReturnWink`, `shouldPlayFun`, `NUDGE_SHAKE`), `winkArt.ts`, `winkDances.ts`, `winkTimeline.ts`, `winkSeasons.ts`, `winkSketches*.ts` (Halloween, Navidad, Año Nuevo, San Valentín, Día de la Madre, Fiestas Patrias, rockero, ataque), `winkEmojis.ts`.
 - Lo ya reproducido: `funLedger.ts`. Zumbido: `nudge.ts`.
@@ -122,6 +132,7 @@ Lo demás (paquetes, Mis stickers, favoritos, GIF, guiños, temporadas, zumbido,
 - **10/11:** responder con GIF o guiño; GIF nítidos.
 - **11/11 (0.1.182):** el paquete animado se reproduce como Lottie, también en canales e hilos. URL versionada para los Lottie.
 - **17/11:** «:hug» en el hilo.
+- **26/11:** stickers animados con sonido desde un video, como los de WhatsApp del 25/11 (José aprobó `ss-01…ss-04`).
 
 ## 5. Diseños de Stitch relacionados
 
@@ -142,6 +153,10 @@ Lo demás (paquetes, Mis stickers, favoritos, GIF, guiños, temporadas, zumbido,
 | Guiños «Te ataco» | Implementado | `shared/src/winkSketchesAttack.ts` |
 | `c-06-emojis-propios-panel` | Implementado | `reacciones/SpaceEmojiGrid.tsx`, `SpaceEmojiSection.tsx` |
 | `c-07-agregar-emoji` | Implementado | `reacciones/AddCustomEmojiSheet.tsx`, `AddCustomEmojiDialog.tsx` |
+| `ss-01-crear-sticker-video` | Implementado, sin «Aa Texto» | `app/src/chat/stickers/CreateVideoSticker.tsx` |
+| `ss-02-sonido-del-sticker` | Implementado (la captura se corta abajo) | APK y web: selector de sonido |
+| `ss-03-chat-sticker-sonido` | Implementado | `StickerMessage.tsx` (app y web) |
+| `ss-04-web-sticker-sonido` | Implementado | `web/src/chat/stickers/CreateStickerFromVideo.tsx` |
 | `multimedia-emojis` | Implementado (referencia) | §48.2 del spec |
 
 ## 6. Pendientes y deuda conocida
@@ -153,12 +168,12 @@ Lo demás (paquetes, Mis stickers, favoritos, GIF, guiños, temporadas, zumbido,
 
 ## 7. Pruebas
 
-- **Shared:** `stickers`, `stickerEditor`, `stickerMask`, `stickerRows`, `animatedStickers`, `winks`, `winkArt`,
+- **Shared:** `soundStickers`, `stickers`, `stickerEditor`, `stickerMask`, `stickerRows`, `animatedStickers`, `winks`, `winkArt`,
   `winkDances`, `winkTimeline`, `winkSeasons`, `winkSketches`, `winkSketchesAttack`, `funLedger`, `nudge`, `gifs`,
   `customEmojis`, `emojiShortcode`, `reacciones`, `lottie/svgToLottie`, `lottie/rigToLottie` (`shared/src/**/*.test.ts`).
-- **Server:** `stickers`, `animatedSticker`, `zumbido` (`server/src/*.test.ts`).
-- **APK:** `emojiPanel`, `emojiPanel/emojiLayout`, `winkPlay`, `funSeen`, `funAvailable`, `stickers/stickersApi`,
+- **Server:** `stickers` (incluye `from-video`), `soundSticker` (ffmpeg real), `animatedSticker`, `zumbido` (`server/src/*.test.ts`).
+- **APK:** `stickers/videoStickerTrim`, `videoStickerSound`, `stickerSoundController`, `emojiPanel`, `emojiPanel/emojiLayout`, `winkPlay`, `funSeen`, `funAvailable`, `stickers/stickersApi`,
   `stickers/stickerRenderers`, `stickers/gifSticker`, `gifs/gifsInFlight`, `gifs/gifOptions`.
-- **Web:** `stickers/StickerPanel`, `StickerMessage`, `LottieSticker`, `lottieFiles`, `stickersApi`, `mask`,
+- **Web:** `stickers/videoSticker`, `stickerSoundLoop`, `CreateStickerFromVideo`, `stickers/StickerPanel`, `StickerMessage`, `LottieSticker`, `lottieFiles`, `stickersApi`, `mask`,
   `gifs/GifPanel`, `gifs/gifsInFlight`, `nudge`, `funPlayback`, `funSeen`, `sketchFrames`, `reacciones/customEmojis`.
 - **Maestro:** ninguno.

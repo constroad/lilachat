@@ -1,6 +1,7 @@
-import { render, screen } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { STICKER_SOUND_PLAYS } from '@lilachat/shared';
 import { BurbujaDeMensaje } from '../BurbujaDeMensaje';
 import { MenuDelMensaje } from '../MenuDelMensaje';
 import { ConversacionContext, type ContextoDeLaConversacion } from '../contextoDeLaConversacion';
@@ -16,12 +17,12 @@ const sticker = (extra: Partial<MensajeEnPantalla> = {}): MensajeEnPantalla => (
 function mount(message: MensajeEnPantalla, options: { menu?: boolean; secret?: boolean } = {}) {
   const onStickerAction = vi.fn();
   const context: ContextoDeLaConversacion = { yo: 'me', jwt: 'j', chat, detalle: null, nombres: new Map([['ana', 'Ana']]), citado: () => undefined, onAccion: vi.fn(), onVerFoto: vi.fn(), puedeFijar: false, fijados: new Set(), onStickerAction: options.secret ? undefined : onStickerAction };
-  render(
+  const view = render(
     <ConversacionContext.Provider value={context}>
       {options.menu ? <MenuDelMensaje mensaje={message} mio={false} /> : <BurbujaDeMensaje mensaje={message} mio={false} agrupado={false} ultimoDelGrupo conAutor chat={chat} onReintentar={vi.fn()} onDescartar={vi.fn()} />}
     </ConversacionContext.Provider>
   );
-  return { onStickerAction };
+  return { onStickerAction, unmount: view.unmount };
 }
 
 const openMenu = async () => {
@@ -102,3 +103,76 @@ describe('an animated sticker on the web', () => {
   });
 });
 
+
+/** José 26/11 (design ss-03): a sticker with sound arrives muted; the speaker plays it three times. */
+describe('a sticker with sound on the web', () => {
+  const created: FakeAudio[] = [];
+  class FakeAudio {
+    currentTime = 0;
+    onended: ((event: Event) => void) | null = null;
+    paused = true;
+    plays = 0;
+    constructor(public src: string) {
+      created.push(this);
+    }
+    play = vi.fn(async () => {
+      this.plays += 1;
+      this.paused = false;
+    });
+    pause = vi.fn(() => {
+      this.paused = true;
+    });
+  }
+  const firstAudio = () => {
+    const [audio] = created;
+    if (!audio) throw new Error('no audio was created');
+    return audio;
+  };
+  afterEach(() => {
+    created.length = 0;
+    vi.unstubAllGlobals();
+  });
+  const withSound = (audioUrl = 'https://storage.test/s.m4a') => sticker({ media: { url: 'https://storage.test/v.webp', mime: 'image/webp', width: 512, height: 512, animated: true, audioUrl } as MensajeEnPantalla['media'] });
+
+  it('arrives muted and never sounds by itself', () => {
+    vi.stubGlobal('Audio', FakeAudio);
+    mount(withSound());
+    const speaker = screen.getByTestId('sticker-sonido');
+    expect(speaker).toHaveAttribute('aria-pressed', 'false');
+    expect(speaker).toHaveAccessibleName('Escuchar el sticker');
+    expect(created).toHaveLength(0);
+  });
+
+  it('a click plays it three times while it shows as playing, then goes back to muted', async () => {
+    vi.stubGlobal('Audio', FakeAudio);
+    mount(withSound());
+    await userEvent.click(screen.getByTestId('sticker-sonido'));
+    expect(screen.getByTestId('sticker-sonido')).toHaveAttribute('aria-pressed', 'true');
+    expect(firstAudio().src).toBe('https://storage.test/s.m4a');
+    for (let play = 0; play < STICKER_SOUND_PLAYS; play += 1) await act(async () => firstAudio().onended?.(new Event('ended')));
+    expect(firstAudio().plays).toBe(STICKER_SOUND_PLAYS);
+    expect(screen.getByTestId('sticker-sonido')).toHaveAttribute('aria-pressed', 'false');
+  });
+
+  it('a second click stops it', async () => {
+    vi.stubGlobal('Audio', FakeAudio);
+    mount(withSound());
+    await userEvent.click(screen.getByTestId('sticker-sonido'));
+    await userEvent.click(screen.getByTestId('sticker-sonido'));
+    expect(firstAudio().paused).toBe(true);
+    expect(screen.getByTestId('sticker-sonido')).toHaveAccessibleName('Escuchar el sticker');
+  });
+
+  it('leaving the message stops its sound', async () => {
+    vi.stubGlobal('Audio', FakeAudio);
+    const { unmount } = mount(withSound());
+    await userEvent.click(screen.getByTestId('sticker-sonido'));
+    unmount();
+    expect(firstAudio().paused).toBe(true);
+  });
+
+  it('a sticker without sound has no speaker', () => {
+    mount(sticker());
+    expect(screen.queryByTestId('sticker-sonido')).toBeNull();
+  });
+});

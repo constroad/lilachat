@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { AccionesDeTarjetaContext, type AccionesDeTarjeta } from './accionesDeTarjeta';
 import { Alert, FlatList, Keyboard, Pressable, Text, TextInput, View } from 'react-native';
 import { StickerArt, useStickerPlayback } from './stickers/StickerMessage';
+import { StickerSoundOverlay, useStickerSound } from './stickers/stickerSound';
 import { Modal } from '../ui/Modal';
 import { KeyboardStickyView } from 'react-native-keyboard-controller';
 import { useScrollConTeclado } from './useScrollConTeclado';
@@ -514,7 +515,10 @@ function BurbujaDelHilo(props: { mensaje: Respuesta; mia: boolean; autor: string
   const enlace = !pendiente && !eliminado && mensaje.body ? primerEnlace(mensaje.body) : null;
   const meta = { hora, mia, entrega: pendiente ? ('pending' as const) : props.entrega, id: mensaje.clientKey, fallido: pendiente && Boolean(mensaje.fallo), editado: !pendiente && Boolean(mensaje.editedAt) && !eliminado };
   // Same player as the chat: the animated pack as Lottie, and it stops after a while (11/11).
-  const stickerPlayback = useStickerPlayback(!pendiente && !eliminado && mensaje.kind === 'sticker' ? mensaje.media : null);
+  const stickerMedia = !pendiente && !eliminado && mensaje.kind === 'sticker' ? mensaje.media : null;
+  // A sticker with sound (José 26/11): muted until its speaker is tapped, as in the chat.
+  const stickerSound = useStickerSound(pendiente ? null : mensaje, stickerMedia);
+  const stickerPlayback = useStickerPlayback(stickerMedia, stickerSound.playing);
   // A checklist made in the thread: its live card, as in the chat.
   if (!pendiente && !eliminado && mensaje.ref?.tipo === 'checklist') {
     return (
@@ -530,7 +534,10 @@ function BurbujaDelHilo(props: { mensaje: Respuesta; mia: boolean; autor: string
     return (
       <Pressable testID={`respuesta-${mensaje.clientKey}`} onPress={stickerPlayback.stopped ? stickerPlayback.replay : undefined} onLongPress={props.onLongPress} delayLongPress={350} className={mia ? 'items-end self-end' : 'items-start self-start'}>
         {!mia && props.conAutor ? <Text className="pb-0.5 text-[13px] font-semibold" style={{ color: colorAutor }}>{props.autor}</Text> : null}
-        <StickerArt playback={stickerPlayback} url={mensaje.media.url} side={STICKER_IN_THREAD} recyclingKey={mensaje.clientKey} />
+        <View>
+          <StickerArt playback={stickerPlayback} url={mensaje.media.url} side={STICKER_IN_THREAD} recyclingKey={mensaje.clientKey} />
+          <StickerSoundOverlay sound={stickerSound} />
+        </View>
         <Text className="text-[11px] text-on-surface-variant">{hora}</Text>
       </Pressable>
     );

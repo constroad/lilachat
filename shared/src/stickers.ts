@@ -16,6 +16,8 @@ export type LibrarySticker = {
   at: string;
   /** Made from a GIF (pending 37): an animated WebP that plays a while and stops, like the pack's. */
   animated?: boolean;
+  /** Made from a video with sound (José 26/11): the sound plays next to it, muted until tapped. */
+  audioUrl?: string;
 };
 
 export type StickerSectionKey = 'recent' | 'favorites' | 'mine' | `pack:${string}`;

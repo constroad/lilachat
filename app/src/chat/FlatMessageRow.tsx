@@ -24,6 +24,7 @@ import { ContactCard } from './contactCard/ContactCard';
 import { pendingStickerItem, type Citado } from './filasDelChat';
 import { CardBody } from './TarjetaDelChat';
 import { showStickerOptions, StickerArt, useStickerPlayback } from './stickers/StickerMessage';
+import { StickerSoundOverlay, useStickerSound } from './stickers/stickerSound';
 import { showGifOptions } from './gifs/gifOptions';
 
 /** The avatar of a flat row and the gap to its text (design `s-01`): the reactions and the thread chip line up after them. */
@@ -90,7 +91,9 @@ function FlatRow(props: {
   const card = drawsAsCard(item) && !isPending(item) && props.jwt ? item : null;
   // A sticker on its way is already a sticker (02/11): the real one takes its place without a jump.
   const sticker = deleted || !props.jwt ? null : isPending(item) ? pendingStickerItem(item, props.myUserId, '') : item.kind === 'sticker' && item.media?.url ? item : null;
-  const playback = useStickerPlayback(sticker?.media);
+  // A sticker with sound (José 26/11): muted until its speaker is tapped, as in the chat; one on its way has none yet.
+  const stickerSound = useStickerSound(sticker && !isPending(item) ? sticker : null, sticker?.media);
+  const playback = useStickerPlayback(sticker?.media, stickerSound.playing);
   const press = isPending(item) ? (failed ? () => props.onFailed?.(item.clientKey, failed) : undefined) : props.selecting ? () => props.onSelect?.(item.seq) : undefined;
   const select = () => {
     if (isPending(item)) return;
@@ -149,6 +152,7 @@ function FlatRow(props: {
           ) : sticker ? (
             <Pressable testID={`sticker-${sticker.seq}`} onPress={isPending(item) ? undefined : () => (props.selecting ? props.onSelect?.(sticker.seq) : playback.stopped ? playback.replay() : showStickerOptions(props.jwt!, sticker, mine))} className="self-start">
               <StickerArt playback={playback} url={sticker.media!.url!} side={FLAT_STICKER} recyclingKey={sticker.clientKey} />
+              <StickerSoundOverlay sound={stickerSound} hidden={props.selecting} />
             </Pressable>
           ) : (
             <MessageMedia item={item} mine={false} flat selecting={props.selecting} onSelect={props.onSelect} onOpen={props.onOpenMedia} onGifTap={props.jwt && !isPending(item) ? (seq) => showGifOptions({ jwt: props.jwt!, chatId: item.chatId, seq, onOpen: () => props.onOpenMedia?.(seq) }) : undefined} />

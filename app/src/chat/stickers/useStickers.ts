@@ -5,7 +5,7 @@ import { BASE_URL } from '../../api/client';
 import { addMediaInFlight, HANDOVER_MS, removeMediaInFlight, stickerAsQueuedFile } from '../gifs/gifsInFlight';
 import { isEmojiPanelOpen, subscribeEmojiPanel } from '../emojiPanel';
 import { beginInteraction, SEND_FRAME_WINDOW_MS } from '../../diagnostico/frameMonitor';
-import { keepFromMessage, keepFromPack, listStickers, removeSticker, sendSticker, setFavorite, stickerFromGif, uploadGifSticker, uploadSticker, type StickerTarget } from './stickersApi';
+import { createStickerFromVideo, keepFromMessage, keepFromPack, listStickers, removeSticker, sendSticker, setFavorite, stickerFromGif, uploadGifSticker, uploadSticker, type StickerTarget, type VideoStickerUpload } from './stickersApi';
 
 const RECENTS_KEY = 'lilachat.stickers.recientes';
 /**
@@ -139,6 +139,13 @@ export function useStickers(jwt: string) {
     return uploaded;
   };
 
+  /** A clip of a video with its sound (José 26/11): kept in «Mis stickers» like the editor's. */
+  const saveFromVideo = async (upload: VideoStickerUpload, onProgress?: (ratio: number) => void) => {
+    const made = await createStickerFromVideo(jwt, upload, onProgress);
+    if (made.ok) replace(withSticker(made.data));
+    return made;
+  };
+
   /** A pack sticker becomes a favorite through a library entry; a library one just toggles. */
   const toggleFavorite = async (sticker: LibrarySticker) => {
     const response = sticker.id.startsWith('pack:') ? await keepFromPack(jwt, sticker.id, true) : await setFavorite(jwt, sticker.id, !sticker.favorite);
@@ -152,7 +159,7 @@ export function useStickers(jwt: string) {
     replace((cachedLibrary ?? []).filter((one) => one.id !== sticker.id));
   };
 
-  return { library, recents, packs: STICKER_PACK_SECTIONS, error, reload, send, save, toggleFavorite, remove };
+  return { library, recents, packs: STICKER_PACK_SECTIONS, error, reload, send, save, saveFromVideo, toggleFavorite, remove };
 }
 
 export type StickersState = ReturnType<typeof useStickers>;

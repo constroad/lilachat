@@ -25,6 +25,7 @@ export type ClientMessage = Omit<Message, 'media'> & {
     height?: number;
     onda?: number[];
     animated?: boolean;
+    audioUrl?: string;
     stamped?: boolean;
     pages?: number;
   };
@@ -38,6 +39,7 @@ export function toClientMessage(message: Message): ClientMessage {
       ...message.media,
       thumbUrl: message.media.thumbUrl ? toAbsoluteMediaUrl(message.media.thumbUrl) : undefined,
       url: message.media.url ? toAbsoluteMediaUrl(message.media.url) : undefined,
+      ...(message.media.audioUrl ? { audioUrl: toAbsoluteMediaUrl(message.media.audioUrl) } : {}),
     },
   } as ClientMessage;
 }

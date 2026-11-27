@@ -74,6 +74,8 @@ export type ServerMessage = {
     onda?: number[];
     /** An animated sticker of my own (pending 37). */
     animated?: boolean;
+    /** A sticker's sound (José 26/11): absolute URL; it plays only when its speaker is tapped. */
+    audioUrl?: string;
     /** Burned with the camera's stamp at the bottom: the bubble crops from there (José 13/11). */
     stamped?: boolean;
     /** Sent together with other photos (pending 12): drawn as one card. */

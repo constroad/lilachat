@@ -4,6 +4,8 @@ import { subirPorXhr } from '../subidaXhr';
 
 const TIMEOUT_MS = 15_000;
 const UPLOAD_TIMEOUT_MS = 60_000;
+/** A video of up to 60 MB goes up whole and the server converts it: more room than a photo. */
+const VIDEO_UPLOAD_TIMEOUT_MS = 180_000;
 
 export type ApiOutcome<T> = { ok: true; data: T } | { ok: false; reason: string };
 
@@ -60,8 +62,27 @@ export function uploadGifSticker(jwt: string, gif: { uri: string }): Promise<Api
   return postStickerForm(jwt, '/api/stickers/animated', form);
 }
 
-async function postStickerForm(jwt: string, path: string, form: FormData): Promise<ApiOutcome<LibrarySticker>> {
-  const response = await subirPorXhr({ url: `${BASE_URL}${path}`, token: jwt, form, timeoutMs: UPLOAD_TIMEOUT_MS });
+/** A file as React Native's form sends it: read from disk by the native side, never loaded into JS. */
+type FormFile = { uri: string; name: string; mime: string };
+const asFormPart = (file: FormFile) => ({ uri: file.uri, name: file.name, type: file.mime }) as unknown as Blob;
+
+export type VideoStickerUpload = { video: FormFile; audio: FormFile | null; fields: [string, string][] };
+
+/**
+ * A clip of a gallery video becomes my animated sticker with sound (José 26/11,
+ * designs ss-01/ss-02): the server cuts the window, makes the WebP and keeps the
+ * sound. `onProgress` follows the bytes; converting comes after them.
+ */
+export function createStickerFromVideo(jwt: string, upload: VideoStickerUpload, onProgress?: (ratio: number) => void): Promise<ApiOutcome<LibrarySticker>> {
+  const form = new FormData();
+  upload.fields.forEach(([name, value]) => form.append(name, value));
+  form.append('file', asFormPart(upload.video));
+  if (upload.audio) form.append('audio', asFormPart(upload.audio));
+  return postStickerForm(jwt, '/api/stickers/from-video', form, { timeoutMs: VIDEO_UPLOAD_TIMEOUT_MS, onProgress });
+}
+
+async function postStickerForm(jwt: string, path: string, form: FormData, options: { timeoutMs?: number; onProgress?: (ratio: number) => void } = {}): Promise<ApiOutcome<LibrarySticker>> {
+  const response = await subirPorXhr({ url: `${BASE_URL}${path}`, token: jwt, form, timeoutMs: options.timeoutMs ?? UPLOAD_TIMEOUT_MS, onProgress: options.onProgress });
   if (response.tipo === 'fallo') return { ok: false, reason: response.motivo };
   if (response.status < 200 || response.status >= 300) {
     const message = response.payload.message;

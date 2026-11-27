@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { sendSticker, stickerFromGif, uploadGifSticker } from './stickersApi';
+import { createStickerFromVideo, sendSticker, stickerFromGif, uploadGifSticker, videoStickerForm } from './stickersApi';
 
 /** José, 20/10: «no puedo responder con sticker» — the reply and the thread travel with the sticker. */
 describe('sendSticker', () => {
@@ -48,5 +48,64 @@ describe('animated stickers from a GIF', () => {
     vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ message: 'No se pudo dejar ese GIF en 500 KB: prueba con uno más corto.' }), { status: 413 })));
     const saved = await uploadGifSticker('jwt', new File(['GIF89a'], 'largo.gif', { type: 'image/gif' }));
     expect(saved).toMatchObject({ ok: false, status: 413, message: 'No se pudo dejar ese GIF en 500 KB: prueba con uno más corto.' });
+  });
+});
+
+/** José 26/11 (designs ss-01…ss-04): a sticker with sound from a video. */
+describe('a sticker from a video', () => {
+  afterEach(() => vi.unstubAllGlobals());
+  const video = new File(['mp4'], 'obra.mp4', { type: 'video/mp4' });
+  const trim = { startMs: 12_000, endMs: 18_000 };
+  const sticker = { id: 'v1', url: 'https://storage.test/v1.webp', mime: 'image/webp', width: 512, height: 512, favorite: false, at: '2026-11-26T12:00:00.000Z', animated: true, audioUrl: 'https://storage.test/v1.m4a' };
+
+  it('the form carries the video, the window and the sound as the server reads them', () => {
+    const form = videoStickerForm({ video, trim, sound: { kind: 'original' } });
+    expect(form.get('file')).toBeInstanceOf(File);
+    expect(form.get('startMs')).toBe('12000');
+    expect(form.get('endMs')).toBe('18000');
+    expect(form.get('sound')).toBe('original');
+    expect(form.get('audio')).toBeNull();
+  });
+
+  it('a preset goes by its id, and «Sin sonido» as none', () => {
+    expect(videoStickerForm({ video, trim, sound: { kind: 'preset', presetId: 'bocina' } }).get('sound')).toBe('preset:bocina');
+    expect(videoStickerForm({ video, trim, sound: { kind: 'none' } }).get('sound')).toBe('none');
+  });
+
+  it('a recorded voice travels as the audio part with an audio type', () => {
+    const voice = new Blob(['webm'], { type: 'audio/webm' });
+    const audio = videoStickerForm({ video, trim, sound: { kind: 'file' }, audio: voice }).get('audio') as File;
+    expect(audio).toBeInstanceOf(File);
+    expect(audio.type).toBe('audio/webm');
+    expect(audio.name).toBe('sticker-sonido.webm');
+  });
+
+  it('an audio is only sent when the sound is a file', () => {
+    const voice = new Blob(['webm'], { type: 'audio/webm' });
+    expect(videoStickerForm({ video, trim, sound: { kind: 'none' }, audio: voice }).get('audio')).toBeNull();
+  });
+
+  it('the window goes in whole milliseconds', () => {
+    const form = videoStickerForm({ video, trim: { startMs: 1_000.4, endMs: 3_200.6 }, sound: { kind: 'none' } });
+    expect(form.get('startMs')).toBe('1000');
+    expect(form.get('endMs')).toBe('3201');
+  });
+
+  it('goes to /api/stickers/from-video and returns the sticker with its sound', async () => {
+    const request = vi.fn(async () => new Response(JSON.stringify({ sticker }), { status: 201 }));
+    vi.stubGlobal('fetch', request);
+
+    const saved = await createStickerFromVideo('jwt', { video, trim, sound: { kind: 'original' } });
+
+    const [url, init] = request.mock.calls[0] as unknown as [string, RequestInit];
+    expect(url).toBe('/api/stickers/from-video');
+    expect((init.headers as Record<string, string>).Authorization).toBe('Bearer jwt');
+    expect(saved).toEqual({ ok: true, data: { sticker } });
+  });
+
+  it('the server’s refusal reaches the person as it is', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ message: 'No se pudo dejar ese clip en 500 KB: prueba con uno más corto.' }), { status: 413 })));
+    const saved = await createStickerFromVideo('jwt', { video, trim, sound: { kind: 'none' } });
+    expect(saved).toMatchObject({ ok: false, status: 413, message: 'No se pudo dejar ese clip en 500 KB: prueba con uno más corto.' });
   });
 });

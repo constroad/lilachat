@@ -1,5 +1,6 @@
-import { STICKER_SIZE, type LibrarySticker } from '@lilachat/shared';
+import { STICKER_SIZE, stickerSoundField, type LibrarySticker, type StickerSound } from '@lilachat/shared';
 import { api, type ApiResult } from '../../api';
+import { withMediaType, type TrimWindow } from './videoSticker';
 
 /** «Mis stickers» from the web: the same contract the app uses (`server/src/stickersRoutes.ts`). */
 export const listStickers = (jwt: string) => api<{ stickers: LibrarySticker[] }>('/stickers', { jwt });
@@ -34,6 +35,32 @@ export function uploadGifSticker(jwt: string, gif: File): Promise<ApiResult<{ st
   form.append('file', gif);
   return postStickerForm(jwt, '/api/stickers/animated', form);
 }
+
+/** «Crear sticker desde un video» (José 26/11): the whole video, the part to keep and its sound. */
+export type VideoStickerRequest = { video: File; trim: TrimWindow; sound: StickerSound; audio?: Blob | null };
+
+const AUDIO_EXTENSIONS: Record<string, string> = { 'audio/webm': 'webm', 'audio/ogg': 'ogg', 'audio/mp4': 'm4a', 'audio/mpeg': 'mp3', 'audio/wav': 'wav' };
+
+/** A recorded voice is a bare Blob: it goes as a named file with its type (ffmpeg converts it on the server). */
+function audioPart(audio: Blob): File {
+  if (audio instanceof File) return withMediaType(audio);
+  const type = audio.type.split(';')[0] || 'audio/webm';
+  return new File([audio], `sticker-sonido.${AUDIO_EXTENSIONS[type] ?? 'webm'}`, { type });
+}
+
+/** The multipart form of `POST /api/stickers/from-video`; the fields go before the files. */
+export function videoStickerForm(request: VideoStickerRequest): FormData {
+  const form = new FormData();
+  form.append('startMs', String(Math.round(request.trim.startMs)));
+  form.append('endMs', String(Math.round(request.trim.endMs)));
+  form.append('sound', stickerSoundField(request.sound));
+  form.append('file', withMediaType(request.video));
+  if (request.sound.kind === 'file' && request.audio) form.append('audio', audioPart(request.audio));
+  return form;
+}
+
+/** The server cuts the clip into a 512×512 animated WebP and keeps its sound: answers the sticker with `audioUrl`. */
+export const createStickerFromVideo = (jwt: string, request: VideoStickerRequest) => postStickerForm(jwt, '/api/stickers/from-video', videoStickerForm(request));
 
 async function postStickerForm(jwt: string, path: string, form: FormData): Promise<ApiResult<{ sticker: LibrarySticker }>> {
   try {

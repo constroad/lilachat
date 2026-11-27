@@ -101,6 +101,7 @@ export * from './winkSketches.js';
 export * from './checklists.js';
 export * from './chatFont.js';
 export * from './animatedStickers.js';
+export * from './soundStickers.js';
 export * from './flatLayout.js';
 export * from './voiceNote.js';
 export * from './panelTab.js';

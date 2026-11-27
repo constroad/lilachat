@@ -4,7 +4,6 @@ import { Types } from 'mongoose';
 import { dimensionValida, findPackSticker, packStickerPath, STICKER_SIZE } from '@lilachat/shared';
 import { ChatModel, MessageModel } from './chatModels.js';
 import { sendMessage } from './chatService.js';
-import { pedidoSeguro } from './cookieDeDispositivo.js';
 import { toAbsoluteMediaUrl, type MediaUploader } from './mediaClient.js';
 import { defaultMediaUploader } from './localMediaUploader.js';
 import { toClientMessage } from './messageView.js';
@@ -14,11 +13,13 @@ import { StickerModel } from './stickerModel.js';
 import { toClientSticker } from './stickerView.js';
 import { animatedStickerRoutes, fetchStoredMedia, type GifConverter, type MediaFetcher } from './animatedStickerRoutes.js';
 import { gifToAnimatedSticker } from './animatedSticker.js';
+import { webFileUrl } from './webOrigin.js';
+import { videoStickerRoutes } from './videoStickerRoutes.js';
+import { videoToSoundSticker, type VideoStickerConverter } from './soundSticker.js';
 
 /** A static sticker is light (WhatsApp: ~100 KB); room left for a lossless WebP. */
 const MAX_STICKER_BYTES = 512 * 1024;
 const STICKER_TYPES = new Set(['image/webp', 'image/png']);
-const VALID_HOST = /^[a-z0-9.-]+(:\d+)?$/i;
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: MAX_STICKER_BYTES + 1 } });
 const asObjectId = (value: unknown) => (Types.ObjectId.isValid(String(value)) ? new Types.ObjectId(String(value)) : null);
@@ -34,13 +35,15 @@ const receiveFile = (req: Request, res: Response, next: NextFunction) =>
 /** The default pack lives on the server that serves the web: its absolute url, or null for a forged Host. */
 function packMedia(req: Request, id: string) {
   const sticker = findPackSticker(id);
-  const host = req.headers.host ?? '';
-  if (!sticker || !VALID_HOST.test(host)) return sticker ? 'bad-host' : null;
-  const url = `${pedidoSeguro(req) ? 'https' : 'http'}://${host}${packStickerPath(sticker.packId, sticker.slug)}`;
+  if (!sticker) return null;
+  const url = webFileUrl(req, packStickerPath(sticker.packId, sticker.slug));
+  if (!url) return 'bad-host';
   return { mediaId: id, url, mime: 'image/webp', width: STICKER_SIZE, height: STICKER_SIZE };
 }
 
-type StickerMedia = { mediaId: string; url: string; mime: string; width: number; height: number; animated?: boolean };
+type StickerMedia = { mediaId: string; url: string; mime: string; width: number; height: number; animated?: boolean; audioUrl?: string };
+/** The optional parts of a sticker that travel with it: animated, and its sound. */
+const extrasOf = (source: { animated?: boolean; audioUrl?: string }) => ({ ...(source.animated ? { animated: true } : {}), ...(source.audioUrl ? { audioUrl: source.audioUrl } : {}) });
 type UserId = Types.ObjectId | string;
 
 /** What a send refers to: one of my stickers or a pack one. */
@@ -49,14 +52,14 @@ async function mediaToSend(req: Request, me: UserId): Promise<StickerMedia | 'ba
   if (findPackSticker(id)) return packMedia(req, id);
   const objectId = asObjectId(id);
   const sticker = objectId ? await StickerModel.findOne({ _id: objectId, userId: me }).lean() : null;
-  return sticker ? { mediaId: sticker.mediaId, url: sticker.url, mime: sticker.mime, width: sticker.width, height: sticker.height, ...(sticker.animated ? { animated: true } : {}) } : null;
+  return sticker ? { mediaId: sticker.mediaId, url: sticker.url, mime: sticker.mime, width: sticker.width, height: sticker.height, ...extrasOf(sticker) } : null;
 }
 
 /** Keep a sticker in «Mis stickers» once per file (a received one, or a pack one). */
 const keepSticker = (me: UserId, media: StickerMedia, favorite = false) =>
   StickerModel.findOneAndUpdate(
     { userId: me, mediaId: media.mediaId },
-    { $setOnInsert: { url: media.url, mime: media.mime, width: media.width, height: media.height, ...(media.animated ? { animated: true } : {}) }, ...(favorite ? { $set: { favorite: true } } : {}) },
+    { $setOnInsert: { url: media.url, mime: media.mime, width: media.width, height: media.height, ...extrasOf(media) }, ...(favorite ? { $set: { favorite: true } } : {}) },
     { upsert: true, new: true, setDefaultsOnInsert: true }
   ).lean();
 
@@ -107,8 +110,8 @@ function keepRoutes(router: Router) {
     if (!chatId || !(await ChatModel.exists({ _id: chatId, 'members.userId': me }))) return res.status(404).json({ message: 'Ese chat no existe.' });
     const message = await MessageModel.findOne({ chatId, seq: Number(req.body?.seq), kind: 'sticker', deletedAt: { $exists: false } }).select('media').lean();
     if (!message?.media?.url || !message.media.mediaId) return res.status(400).json({ message: 'Ese mensaje no es un sticker.' });
-    const { mediaId, url, mime, width, height, animated } = message.media;
-    const sticker = await keepSticker(me, { mediaId, url, mime: mime ?? 'image/webp', width: width ?? STICKER_SIZE, height: height ?? STICKER_SIZE, ...(animated ? { animated: true } : {}) });
+    const { mediaId, url, mime, width, height } = message.media;
+    const sticker = await keepSticker(me, { mediaId, url, mime: mime ?? 'image/webp', width: width ?? STICKER_SIZE, height: height ?? STICKER_SIZE, ...extrasOf(message.media) });
     res.status(201).json({ sticker: toClientSticker(sticker!) });
   }));
 
@@ -128,11 +131,12 @@ function keepRoutes(router: Router) {
  * here live «Mis stickers», the default pack and the send, which reuses the
  * file instead of uploading it again. Session per route: mounted on `/api`.
  */
-export function buildStickersRouter(uploader: MediaUploader = defaultMediaUploader(), animated: { convert?: GifConverter; fetchMedia?: MediaFetcher } = {}): Router {
+export function buildStickersRouter(uploader: MediaUploader = defaultMediaUploader(), animated: { convert?: GifConverter; fetchMedia?: MediaFetcher; fromVideo?: VideoStickerConverter } = {}): Router {
   const router = Router();
   libraryRoutes(router, uploader);
   keepRoutes(router);
   animatedStickerRoutes(router, { uploader, convert: animated.convert ?? gifToAnimatedSticker, fetchMedia: animated.fetchMedia ?? fetchStoredMedia });
+  videoStickerRoutes(router, { uploader, convert: animated.fromVideo ?? videoToSoundSticker });
 
   /** A `sticker` message with the SAME file; a retry (same `clientKey`) does not duplicate. */
   router.post('/chats/:chatId/stickers', requireSession, asyncRoute(async (req, res) => {

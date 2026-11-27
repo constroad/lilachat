@@ -66,6 +66,7 @@ import { buildFileViewRouter } from './fileViewRoutes.js';
 import { notifyEdited } from './reparto.js';
 import { requireMinimumBuild, type MinimumSource } from './minimumVersion.js';
 import type { GifConverter, MediaFetcher } from './animatedStickerRoutes.js';
+import type { VideoStickerConverter } from './soundSticker.js';
 import { mountAppLinks } from './appLinks.js';
 import { buildContactShareRouter } from './contactShareRoutes.js';
 import { buildLocationShareRouter } from './locationShareRoutes.js';
@@ -112,7 +113,7 @@ export type AppDeps = {
   /** The minimum app build (LilaStore): below it, 426 (`minimumVersion.ts`). Without it, nothing is checked. */
   minimumBuild?: MinimumSource;
   /** In tests: the GIF converter and the media reader of the animated stickers (`animatedStickerRoutes.ts`). */
-  animatedStickers?: { convert?: GifConverter; fetchMedia?: MediaFetcher };
+  animatedStickers?: { convert?: GifConverter; fetchMedia?: MediaFetcher; fromVideo?: VideoStickerConverter };
 };
 
 /**

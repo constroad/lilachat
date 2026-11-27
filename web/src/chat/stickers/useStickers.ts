@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useSyncExternalStore } from 'react';
 import { addRecentSticker, packLibrary, STICKER_PACKS, type LibrarySticker } from '@lilachat/shared';
-import { keepFromMessage, keepFromPack, listStickers, removeSticker, sendSticker, setFavorite, stickerFromGif, uploadGifSticker, uploadSticker, type StickerTarget } from './stickersApi';
+import { createStickerFromVideo, keepFromMessage, keepFromPack, listStickers, removeSticker, sendSticker, setFavorite, stickerFromGif, uploadGifSticker, uploadSticker, type StickerTarget, type VideoStickerRequest } from './stickersApi';
 
 /**
  * «Mis stickers» on the web: ONE copy for the panel and the message menu (a
@@ -91,6 +91,13 @@ export function useStickers(jwt: string, owner: string) {
     return response;
   }, [jwt]);
 
+  /** A video with its sound becomes my animated sticker (José 26/11); the modal shows the server's refusal as it is. */
+  const saveVideo = useCallback(async (request: VideoStickerRequest) => {
+    const response = await createStickerFromVideo(jwt, request);
+    if (response.ok) update({ library: withSticker(response.data.sticker), error: '' });
+    return response;
+  }, [jwt]);
+
   /** A GIF of the computer, or one already in a chat, becomes my animated sticker (pending 37). Returns what to tell the person. */
   const saveGif = useCallback(async (source: File | { chatId: string; seq: number }): Promise<string> => {
     const response = source instanceof File ? await uploadGifSticker(jwt, source) : await stickerFromGif(jwt, source.chatId, source.seq);
@@ -129,5 +136,5 @@ export function useStickers(jwt: string, owner: string) {
     return 'Agregado a favoritos';
   }, [jwt]);
 
-  return { ...current, packs: STICKER_PACK_SECTIONS, reload: () => reload(jwt, owner), send, save, saveGif, toggleFavorite, remove, keepReceived };
+  return { ...current, packs: STICKER_PACK_SECTIONS, reload: () => reload(jwt, owner), send, save, saveGif, saveVideo, toggleFavorite, remove, keepReceived };
 }

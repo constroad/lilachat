@@ -2,14 +2,20 @@ import { useState } from 'react';
 import { Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { ChevronDown, ChevronUp, Navigation, Save, Undo2, X } from 'lucide-react-native';
 import { DRAW_MODES, metersLabel, streetDraftArea, streetDraftEnds, streetDraftLengthM, WORK_MAP_DRAFT_COLOR, WORK_MAP_PLANNED_COLOR, type DrawMode, type StreetDraft, type StreetEnd, type WorkMapStage } from '@lilachat/shared';
-import { useColores } from '../../../ui/tema';
+import { useColores, useTema } from '../../../ui/tema';
+import { editorBandTone } from './editorBand';
+
+/** The band's colors for the theme on screen. */
+export function useBandTone() {
+  return editorBandTone(useTema().oscuro);
+}
 
 const FIELD = 'mt-1 h-11 rounded-xl border border-outline/25 bg-background px-3 text-[15px] text-on-surface';
 const LABEL = 'text-[11px] font-semibold uppercase text-on-surface-variant';
 const LENGTH_HINT = 'Medido en el mapa';
 /** One step of «−10 m» / «+10 m»: a finger lands within a few meters, the buttons finish the job. */
 const NUDGE_M = 10;
-const ICON_BUTTON = 'h-10 w-10 items-center justify-center rounded-xl bg-on-primary/15';
+const ICON_BUTTON = 'h-10 w-10 items-center justify-center rounded-xl';
 
 /**
  * José 27/11: «el área del mapa es muy muy pequeña». One line of title with «Deshacer» and «Cancelar»
@@ -17,17 +23,18 @@ const ICON_BUTTON = 'h-10 w-10 items-center justify-center rounded-xl bg-on-prim
  */
 export function EditorTopBar(props: { kicker: string; canUndo: boolean; onUndo: () => void; onCancel: () => void }) {
   const colors = useColores();
+  const tone = useBandTone();
   return (
     <View className="flex-row items-center gap-2">
       <View className="flex-1">
-        <Text className="font-mono text-[10px] font-bold uppercase tracking-[2px] text-on-primary/80" numberOfLines={1}>{props.kicker}</Text>
-        <Text className="text-[17px] font-bold text-on-primary" numberOfLines={1}>Definir área de trabajo</Text>
+        <Text className={`font-mono text-[10px] font-bold uppercase tracking-[2px] ${tone.muted}`} numberOfLines={1}>{props.kicker}</Text>
+        <Text className={`text-[17px] font-bold ${tone.text}`} numberOfLines={1}>Definir área de trabajo</Text>
       </View>
-      <Pressable testID="editor-calle-deshacer" accessibilityLabel="Deshacer" disabled={!props.canUndo} onPress={props.onUndo} className={`${ICON_BUTTON} ${props.canUndo ? '' : 'opacity-50'}`}>
-        <Undo2 size={18} color={colors['on-primary']} />
+      <Pressable testID="editor-calle-deshacer" accessibilityLabel="Deshacer" disabled={!props.canUndo} onPress={props.onUndo} className={`${ICON_BUTTON} ${tone.soft} ${props.canUndo ? '' : 'opacity-50'}`}>
+        <Undo2 size={18} color={colors[tone.icon]} />
       </Pressable>
-      <Pressable testID="editor-calle-cancelar" accessibilityLabel="Cancelar" onPress={props.onCancel} className={ICON_BUTTON}>
-        <X size={18} color={colors['on-primary']} />
+      <Pressable testID="editor-calle-cancelar" accessibilityLabel="Cancelar" onPress={props.onCancel} className={`${ICON_BUTTON} ${tone.soft}`}>
+        <X size={18} color={colors[tone.icon]} />
       </Pressable>
     </View>
   );
@@ -35,11 +42,12 @@ export function EditorTopBar(props: { kicker: string; canUndo: boolean; onUndo: 
 
 /** «Tocar la calle» first: it is the fast one (audit 07/11). «A mano» is for a pasaje the map lacks. */
 export function ModeSwitch({ mode, onMode }: { mode: DrawMode; onMode: (mode: DrawMode) => void }) {
+  const tone = useBandTone();
   return (
-    <View accessibilityRole="radiogroup" className="mt-2 flex-row gap-1 rounded-xl bg-on-primary/15 p-1">
+    <View accessibilityRole="radiogroup" className={`mt-2 flex-row gap-1 rounded-xl ${tone.soft} p-1`}>
       {DRAW_MODES.map((one) => (
-        <Pressable key={one.mode} testID={`editor-modo-${one.mode}`} accessibilityRole="radio" accessibilityState={{ checked: mode === one.mode }} onPress={() => onMode(one.mode)} className={`h-9 flex-1 items-center justify-center rounded-lg ${mode === one.mode ? 'bg-surface' : ''}`}>
-          <Text numberOfLines={1} className={`text-[13px] font-semibold ${mode === one.mode ? 'text-primary' : 'text-on-primary'}`}>{one.label}</Text>
+        <Pressable key={one.mode} testID={`editor-modo-${one.mode}`} accessibilityRole="radio" accessibilityState={{ checked: mode === one.mode }} onPress={() => onMode(one.mode)} className={`h-9 flex-1 items-center justify-center rounded-lg ${mode === one.mode ? tone.raised : ''}`}>
+          <Text numberOfLines={1} className={`text-[13px] font-semibold ${mode === one.mode ? 'text-primary' : tone.text}`}>{one.label}</Text>
         </Pressable>
       ))}
     </View>
@@ -48,12 +56,13 @@ export function ModeSwitch({ mode, onMode }: { mode: DrawMode; onMode: (mode: Dr
 
 /** «Cambiar de forma borra lo que marcaste»: asked before a switch erases a street (audit 08/11). */
 export function SwitchQuestion(props: { question: string; onYes: () => void; onNo: () => void }) {
+  const tone = useBandTone();
   return (
-    <View testID="editor-calle-cambiar-modo" className="mt-2 rounded-xl bg-on-primary/15 p-3">
-      <Text className="text-[14px] font-semibold text-on-primary">{props.question}</Text>
+    <View testID="editor-calle-cambiar-modo" className={`mt-2 rounded-xl ${tone.soft} p-3`}>
+      <Text className={`text-[14px] font-semibold ${tone.text}`}>{props.question}</Text>
       <View className="mt-2 flex-row gap-2">
-        <Pressable testID="editor-calle-cambiar-si" onPress={props.onYes} className="h-11 flex-1 items-center justify-center rounded-xl bg-surface"><Text className="text-[14px] font-semibold text-primary">Cambiar</Text></Pressable>
-        <Pressable testID="editor-calle-cambiar-no" onPress={props.onNo} className="h-11 flex-1 items-center justify-center rounded-xl bg-on-primary/15"><Text className="text-[14px] font-semibold text-on-primary">Seguir aquí</Text></Pressable>
+        <Pressable testID="editor-calle-cambiar-si" onPress={props.onYes} className={`h-11 flex-1 items-center justify-center rounded-xl ${tone.raised}`}><Text className="text-[14px] font-semibold text-primary">Cambiar</Text></Pressable>
+        <Pressable testID="editor-calle-cambiar-no" onPress={props.onNo} className={`h-11 flex-1 items-center justify-center rounded-xl ${tone.soft}`}><Text className={`text-[14px] font-semibold ${tone.text}`}>Seguir aquí</Text></Pressable>
       </View>
     </View>
   );

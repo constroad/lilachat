@@ -1,7 +1,8 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Text, View } from 'react-native';
 import { Camera, GeoJSONSource, Images, Layer, Map as MapSurface, ViewAnnotation, type CameraRef, type MapRef, type StyleSpecification } from '@maplibre/maplibre-react-native';
 import { MapControls } from './MapControls';
+import { MY_LOCATION_DOT_PAINT, MY_LOCATION_HALO_PAINT, myLocationCollection, type LocatedPoint } from './myLocationDot';
 import { useTema } from '../../../ui/tema';
 import { OBSERVATION_PIN_PAINT, observationMapCollection, type MapPick, type WorkMapObservation, MARK_CHIP_PAINT, MARK_FILL_PAINT, MARK_GLYPH_PAINT, MARK_LINE_PAINT, MARK_TEXT_LAYOUT, MARK_TEXT_PAINT, mapMarkCollection, type WorkMapMark, PLACE_ZOOM, type MapFrame, dischargePinCollection, tapBox, tapTolerancePx, WORK_MAP_PLANNED_COLOR, workMapStyleFor, workMapCollection, type BasemapFeatureLike, type DischargePin, type StreetEnd, type StreetHandle, type TapFeatures, type WorkMapLine, type WorkMapPoint, type WorkMapView , STATION_DOT_PAINT, STATION_TEXT_LAYOUT, STATION_TEXT_PAINT, stationMarkCollection, type StationMark } from '@lilachat/shared';
 
@@ -75,6 +76,7 @@ export function WorkMapSurface(props: { view: WorkMapView; moves: boolean; pins?
   const map = useRef<MapRef>(null);
   const { oscuro } = useTema();
   const camera = useRef<CameraRef>(null);
+  const [me, setMe] = useState<LocatedPoint | null>(null);
   useEffect(() => {
     if (props.focus) camera.current?.flyTo({ center: [props.focus.lng, props.focus.lat], zoom: PLACE_ZOOM, duration: 600 });
   }, [props.focus]);
@@ -135,9 +137,14 @@ export function WorkMapSurface(props: { view: WorkMapView; moves: boolean; pins?
         <Layer id="work-map-icon-pin-badge" type="circle" paint={{ 'circle-color': '#ffffff', 'circle-radius': 8, 'circle-translate': [14, -14] }} />
         <Layer id="work-map-icon-pin-count" type="symbol" layout={{ 'text-field': ['get', 'label'], 'text-font': PIN_FONT, 'text-size': 10, 'text-offset': [1.4, -1.4], 'text-allow-overlap': true }} paint={{ 'text-color': '#6d28d9' }} />
       </GeoJSONSource>
+      {/* Where the phone is, once «Mi ubicación» found it (José 27/11). */}
+      <GeoJSONSource id="work-map-me" data={myLocationCollection(me)}>
+        <Layer id="work-map-me-halo" type="circle" paint={MY_LOCATION_HALO_PAINT} />
+        <Layer id="work-map-me-dot" type="circle" paint={MY_LOCATION_DOT_PAINT} />
+      </GeoJSONSource>
       {(props.handles ?? NO_HANDLES).map((handle) => <EndHandle key={handle.key} handle={handle} onDrop={props.onHandleDrop} />)}
     </MapSurface>
-    <MapControls map={map} camera={camera} bottomInset={props.controlsInset} />
+    <MapControls map={map} camera={camera} bottomInset={props.controlsInset} onLocated={setMe} />
     </View>
   );
 }

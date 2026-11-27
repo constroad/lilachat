@@ -422,3 +422,4 @@ Un Control de imprimación con fotos ubicadas y dos días de avance aprobado (o-
 - **APK:** sin tests de render del canal del cliente.
 - **Maestro:** sin flujo del canal del cliente.
 - **E2E:** el grabador en modo `--ensayo` y los E2E manuales en Test documentados en los specs.
+- **27/11** Editor de calle del APK: banda neutra en modo oscuro y punto de «Mi ubicación» (detalle en `obra-mapa.md`).

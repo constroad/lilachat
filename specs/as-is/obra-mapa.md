@@ -262,6 +262,11 @@ Motores puros, con test, usados por web y APK:
   (`useDisposicion().amplia`): mapa a la izquierda y panel lateral de 380 dp. Partes en
   `WorkStreetEditorParts.tsx`. Mismos testIDs; nuevos `editor-calle-plegar`, `editor-calle-resumen`,
   `editor-calle-panel`.
+- **27/11** Modo oscuro del editor de calle (APK): la banda era `bg-primary`, que en oscuro es lila
+  claro y se veía rosada. Ahora en oscuro es `bg-surface` con texto `on-surface`; en claro sigue
+  violeta (`editorBandTone`, `useBandTone` en `WorkStreetEditorParts.tsx`).
+- **27/11** «Mi ubicación» (APK, todo `WorkMapSurface`) movía el mapa sin marcar dónde está el
+  teléfono. Ahora dibuja el punto azul con halo (capa `work-map-me`, `myLocationDot.ts`) al ubicarse.
 - **27/11** Arreglo: la línea violeta no unía los dos aros. Causa: en el APK el aro arrastrado se
   queda donde lo soltó el dedo si su punto no cambia (el aro del inicio tenía la clave fija
   `start-0+000`); pasaba al soltarlo más allá del fin de la calle del mapa (se recorta al extremo) o

@@ -4,6 +4,7 @@ import { LocateFixed, Minus, Plus } from 'lucide-react-native';
 import type { CameraRef, MapRef } from '@maplibre/maplibre-react-native';
 import { useCurrentLocation } from '../../../chat/location/useCurrentLocation';
 import { useColores } from '../../../ui/tema';
+import type { LocatedPoint } from './myLocationDot';
 
 /** Street level is enough to tell one side of the road from the other; past it the tiles run out. */
 const ZOOM_MIN = 3;
@@ -20,15 +21,18 @@ const zoomWithin = (zoom: number) => Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, zoom)
  * the APK had none). The location is asked only when the person taps it, and only while in use.
  */
 /** `bottomInset` lifts the buttons over the system bar on a full-screen map (APK brush map, 08/11). */
-export function MapControls(props: { map: RefObject<MapRef | null>; camera: RefObject<CameraRef | null>; bottomInset?: number }) {
+export function MapControls(props: { map: RefObject<MapRef | null>; camera: RefObject<CameraRef | null>; bottomInset?: number; /** The surface draws the dot where the phone is. */ onLocated?: (point: LocatedPoint) => void }) {
   const colors = useColores();
   const [locating, setLocating] = useState(false);
   const { current } = useCurrentLocation(locating);
   useEffect(() => {
     if (!locating || current.state === 'locating') return;
-    if (current.state === 'ready') props.camera.current?.easeTo({ center: [current.location.lng, current.location.lat], zoom: LOCATE_ZOOM, duration: ZOOM_STEP_MS });
+    if (current.state === 'ready') {
+      props.camera.current?.easeTo({ center: [current.location.lng, current.location.lat], zoom: LOCATE_ZOOM, duration: ZOOM_STEP_MS });
+      props.onLocated?.({ lat: current.location.lat, lng: current.location.lng });
+    }
     setLocating(false);
-  }, [locating, current, props.camera]);
+  }, [locating, current, props.camera, props.onLocated]);
   const zoomBy = async (step: number) => {
     const map = props.map.current;
     if (!map) return;

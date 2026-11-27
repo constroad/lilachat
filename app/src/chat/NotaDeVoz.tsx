@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { nextPlaybackRate } from '@lilachat/shared';
+import { NATIVE_MAX_PLAYBACK_RATE, nextPlaybackRate } from '@lilachat/shared';
 import { useVoiceNoteSource } from './voiceNoteCache';
 import { VoiceNoteView as VistaDeNota } from './VoiceNoteView';
 import { playVoiceNote, seekVoiceNote, setVoiceNoteRate, toggleVoiceNote, useNowPlaying } from './voicePlayer';
@@ -18,6 +18,7 @@ type PropsDeNota = {
 /**
  * La nota de voz, con su play, su tiempo y —como WhatsApp (FL9b)— la velocidad
  * (1× / 1,5× / 2×), una sola sonando a la vez, y tocar la barra para saltar.
+ * The speed stops at 2× here: expo-audio clamps it there, the web goes on to 3×.
  *
  * **El reproductor nace al primer toque** (FL12, §49 #10). `useAudioPlayer`
  * crea un reproductor nativo y empieza a bajar el audio al montarse: un chat
@@ -54,7 +55,7 @@ export function NotaDeVoz(props: PropsDeNota) {
         avance={duracion > 0 ? Math.min(1, now.currentS / duracion) : 0}
         velocidad={now.rate}
         onPlay={toggleVoiceNote}
-        onVelocidad={() => setVoiceNoteRate(nextPlaybackRate(now.rate))}
+        onVelocidad={() => setVoiceNoteRate(nextPlaybackRate(now.rate, NATIVE_MAX_PLAYBACK_RATE))}
         loading={!now.loaded}
         durationS={duracion}
         onSeek={seekVoiceNote}
@@ -71,7 +72,7 @@ export function NotaDeVoz(props: PropsDeNota) {
       avance={0}
       velocidad={velocidad}
       onPlay={() => start(null)}
-      onVelocidad={() => setVelocidad(nextPlaybackRate(velocidad))}
+      onVelocidad={() => setVelocidad(nextPlaybackRate(velocidad, NATIVE_MAX_PLAYBACK_RATE))}
       durationS={durationS}
       onSeek={start}
     />

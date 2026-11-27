@@ -1,6 +1,6 @@
 import { Pressable, Text, View } from 'react-native';
 import { Pause, Play, X } from 'lucide-react-native';
-import { nextPlaybackRate, nowPlayingLabel, nowPlayingProgress, showsNowPlayingBar } from '@lilachat/shared';
+import { NATIVE_MAX_PLAYBACK_RATE, nextPlaybackRate, nowPlayingLabel, nowPlayingProgress, showsNowPlayingBar } from '@lilachat/shared';
 import { Avatar } from '../ui/Avatar';
 import { useColores } from '../ui/tema';
 import { setVoiceNoteRate, stopVoiceNote, toggleVoiceNote, useNowPlaying } from './voicePlayer';
@@ -25,7 +25,7 @@ export function NowPlayingBar(props: { openChatId: string | null; onOpen: (chatI
             <Text numberOfLines={1} className="text-[12px] text-on-surface-variant">{nowPlayingLabel(now)}</Text>
           </View>
         </Pressable>
-        <Pressable testID="barra-audio-velocidad" onPress={() => setVoiceNoteRate(nextPlaybackRate(now.rate))} className="min-h-[32px] justify-center rounded-full border border-outline/20 bg-surface px-2.5">
+        <Pressable testID="barra-audio-velocidad" onPress={() => setVoiceNoteRate(nextPlaybackRate(now.rate, NATIVE_MAX_PLAYBACK_RATE))} className="min-h-[32px] justify-center rounded-full border border-outline/20 bg-surface px-2.5">
           <Text className="text-[12px] font-bold text-primary">{`${String(now.rate).replace('.', ',')}×`}</Text>
         </Pressable>
         <Pressable testID="barra-audio-pausa" accessibilityLabel={now.playing ? 'Pausar' : 'Reproducir'} onPress={toggleVoiceNote} className="h-10 w-10 items-center justify-center rounded-full bg-primary">

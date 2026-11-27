@@ -117,7 +117,10 @@ function RowBody({ row, tappable }: { row: RowsBlock['rows'][number]; tappable: 
   );
 }
 
-/** Rows for the detail: label and value, an optional mini bar and a second line (districts, today's readings, who is missing). One with a command runs it on a tap (José, 05/11). */
+/**
+ * Rows for the detail: label and value, an optional mini bar and a second line (districts, today's readings, who is missing).
+ * One with a command runs it on a tap (José, 05/11); one with a link opens it like an attachment does (José 27/11).
+ */
 function Rows({ rows }: { rows: RowsBlock['rows'] }) {
   const { runLine } = useAccionesDeTarjeta();
   return (
@@ -125,9 +128,10 @@ function Rows({ rows }: { rows: RowsBlock['rows'] }) {
       {rows.map((row, index) => {
         const key = `${row.label}-${index}`;
         const frame = `min-h-[44px] justify-center py-2 ${index ? 'border-t border-outline/10' : ''}`;
-        const { command } = row;
-        if (!runLine || !command) return <View key={key} className={frame}><RowBody row={row} tappable={false} /></View>;
-        return <Pressable key={key} testID={`fila-comando-${index}`} accessibilityRole="button" accessibilityLabel={row.label} onPress={() => runLine(command)} className={frame}><RowBody row={row} tappable /></Pressable>;
+        const { command, url } = row;
+        if (runLine && command) return <Pressable key={key} testID={`fila-comando-${index}`} accessibilityRole="button" accessibilityLabel={row.label} onPress={() => runLine(command)} className={frame}><RowBody row={row} tappable /></Pressable>;
+        if (url && !command) return <Pressable key={key} testID={`fila-enlace-${index}`} accessibilityRole="link" accessibilityLabel={row.label} onPress={() => void Linking.openURL(url)} className={frame}><RowBody row={row} tappable /></Pressable>;
+        return <View key={key} className={frame}><RowBody row={row} tappable={false} /></View>;
       })}
     </View>
   );

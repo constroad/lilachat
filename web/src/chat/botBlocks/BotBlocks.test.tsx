@@ -259,3 +259,38 @@ describe('the map block on an attendance card (José via agentes, 09/11)', () =>
     expect(screen.getByTestId('punto-ruta-3')).toHaveTextContent('3');
   });
 });
+
+describe('a row with a link (José 27/11: «quiero abrir cada uno»)', () => {
+  const videos = validateBotCard({
+    title: 'Videos',
+    fields: [],
+    blocks: [{ type: 'rows', rows: [{ label: 'Bacheo en Ate', value: '2:10', url: 'https://www.youtube.com/watch?v=abc' }, { label: 'Con las dos', value: '1', url: 'https://youtu.be/x', command: '/videos ver 2' }] }],
+    detail: { title: 'Canales', blocks: [{ type: 'rows', rows: [{ label: 'Carlos', value: 'canal', url: 'https://www.youtube.com/@carlos' }] }] },
+  });
+  const renderCard = (run: ((line: string) => void) | null) => {
+    if (!videos.ok) throw new Error(videos.message);
+    render(<CardCommandContext.Provider value={run}><BotCardView card={videos.card} chatId="c" seq={1} jwt="j" /></CardCommandContext.Provider>);
+  };
+
+  it('opens the link in a new tab, without handing it the chat', () => {
+    renderCard(vi.fn());
+    const link = screen.getByTestId('fila-enlace-0');
+    expect(link).toHaveAttribute('href', 'https://www.youtube.com/watch?v=abc');
+    expect(link).toHaveAttribute('target', '_blank');
+    expect(link).toHaveAttribute('rel', expect.stringContaining('noopener'));
+    expect(link).toHaveTextContent('Bacheo en Ate');
+  });
+
+  it('a row with both runs its command, not the link', () => {
+    const run = vi.fn();
+    renderCard(run);
+    fireEvent.click(screen.getByRole('button', { name: /Con las dos/ }));
+    expect(run).toHaveBeenCalledWith('/videos ver 2', 1, expect.objectContaining({ title: 'Videos' }));
+    expect(screen.queryByTestId('fila-enlace-1')).toBeNull();
+  });
+
+  it('the link works where commands cannot run', () => {
+    renderCard(null);
+    expect(screen.getByTestId('fila-enlace-0')).toHaveAttribute('href', 'https://www.youtube.com/watch?v=abc');
+  });
+});

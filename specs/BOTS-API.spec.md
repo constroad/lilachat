@@ -1023,6 +1023,7 @@ José: «si toco un distrito no muestra el detalle». Cada fila acepta `command`
 
 - Es la línea que escribiría una persona, hasta 200 caracteres. Debe empezar con `/` y una letra.
   Otro valor se descarta, y la fila queda igual.
+- Una fila puede traer en cambio `url` (https) y se abre al tocarla (27/11, §c-tretricies). Con los dos gana `command`.
 - En una tarjeta guardada corre por `POST /api/chats/:chatId/card-commands` con `{ seq, line, forms }`, con respuesta
   «Solo tú ves esto». Corre aunque el comando esté apagado en ese canal: la tarjeta cae ahí por su tema, y la app ya eligió ese
   lugar al publicarla. El menú no cambia. **Quién** sigue valiendo: sin permiso sale «No tienes permiso para usar /clima aquí».
@@ -2026,7 +2027,8 @@ con el default de busboy «Ríos» llegaba como «RÃos».
 **`POST /api/bots/messages`** acepta `files: [{ file_id }]` (hasta 10). Cada archivo es su propio mensaje, como el de
 un miembro: foto y video normales, documento como tarjeta de archivo; el `text` va de pie del primero. Con
 `as_contact` el autor es el prospecto. Un `file_id` de otra app es `404 file_not_found` y no se publica nada. El
-mismo `idempotency_key` no duplica (cada archivo lleva `:<índice>` en su clave).
+mismo `idempotency_key` no duplica (cada archivo lleva `:<índice>` en su clave). Un audio puede traer `duration_ms` y
+`waveform` (27/11, ver §c-tretricies).
 
 **Campos leídos del documento**: un ítem de `fields` puede llevar `source: "document"`, `file_id` y `confirmed`
 (default `false`). La ficha muestra la pastilla «Leído del documento · por confirmar» hasta que agentes mande
@@ -2173,3 +2175,41 @@ es miembro se descarta en silencio: el mensaje se publica igual, sin esa menció
 texto de la mención ni calcula offsets: solo manda los ids; Lilachat resuelve el nombre y el texto final. Pensado
 para el aviso «Falta crear el pedido» de Inframaq, etiquetando a quien reportó la producción (su `author.id` del
 webhook `message.created`).
+
+## c-tretricies. La nota de voz de un bot y las filas con enlace (José 27/11)
+
+José, en su 1:1 con «Portal» (agentes) en la web: el audio del bot salía en **0:00** con la onda plana, no podía ponerlo
+a 1,5×/2×, quería **3×**, y las filas de la tarjeta no se podían tocar para abrir cada video o canal.
+
+**Duración y onda de un audio.** Cada ítem de `files: [{ file_id }]` acepta dos campos opcionales:
+
+```json
+{ "files": [ { "file_id": "6ade7935c6013f4b0dbc8f86", "duration_ms": 12400, "waveform": [0.1, 0.4, 0.8, 0.5, 0.2, 0.6, 0.9, 0.3, 0.1, 0.4, 0.7, 0.5, 0.2, 0.6, 0.3, 0.1] } ] }
+```
+
+- `duration_ms`: entero, mayor que 0 y hasta 900 000 (15 min).
+- `waveform`: de 16 a 64 números entre 0 y 1 (un nivel por barra, en orden).
+- Un valor fuera de eso (otro tipo, decimal en `duration_ms`, una barra fuera de 0..1, menos de 16 o más de 64) es
+  `400 invalid_request` y no se publica nada.
+- Se guardan como los de una nota de voz de un miembro: `media.durationMs` y `media.onda` (barras de 0 a 100,
+  `round(nivel × 100)`). Web y APK la dibujan igual que la de una persona.
+- Solo valen en un archivo de audio (`kind: 'audio'`); en una foto, video o documento se ignoran.
+- Sin ellos, la web lee la duración del archivo (`loadedmetadata`/`durationchange`) y dibuja una onda neutra; el APK
+  muestra la duración cuando el reproductor la lee. No se mide con ffprobe en el server: con los dos campos alcanza.
+- **Sin romper nada:** un server anterior acepta el `file_id` y descarta los campos nuevos.
+
+**Velocidad.** La web va 1× → 1,5× → 2× → 3× → 1×. El APK se queda en 1× → 1,5× → 2×: expo-audio no pasa de 2×
+(`coerceIn(0.1f, 2.0f)` en Android), y un «3×» que suena a 2× mentiría.
+
+**Una fila con enlace.** Una fila de `rows` (en la tarjeta y en su `detail`) acepta `url`:
+
+```json
+{ "type": "rows", "rows": [ { "label": "Bacheo en Ate", "value": "2:10", "url": "https://www.youtube.com/watch?v=abc" } ] }
+```
+
+- Solo `https://`, hasta 500 caracteres (`BLOCK_LIMITS.url`), sin espacios. Otro valor o uno más largo se descarta
+  (no se corta) y la fila queda igual, quieta.
+- Al tocarla, la web la abre en otra pestaña (`target="_blank"`, `rel="noopener noreferrer"`) y el APK con
+  `Linking.openURL`, como un adjunto. Lleva la misma «›» de una fila que corre un comando.
+- **Una fila con `command` y `url` se queda con `command`**: el `url` se descarta al validar.
+- Una Lilachat anterior dibuja la fila quieta.

@@ -188,6 +188,7 @@ Lo demás (editar, borrar, reenviar, fijar, destacar, info, reacciones, mencione
   (ver `bots-api-y-tarjetas.md`).
 - **25/11:** una tarjeta «INFORME» de un canal de cliente lleva «Abrir informe» (web y APK, `BotCardView`); el mensaje le pasa su `clientRef`. Detalle en `obra-canal-cliente-y-tutoriales.md`.
 - **25/11:** el visor de fotos y videos (`VisorDeFotos.tsx`) tiene fondo negro sólido, como WhatsApp (antes `bg-black/95` dejaba ver el chat).
+- **27/11:** nota de voz a 3× en la web (el APK para en 2×) y su duración leída del archivo cuando el mensaje no la trae; una fila de tarjeta con `url` se abre al tocarla. Detalle en `chat-medios-y-archivos.md` y `bots-api-y-tarjetas.md`.
 - **26/11 (web):** una foto, video, GIF o álbum llena su burbuja como WhatsApp Web (`PictureInBubble.tsx`, `photoBubbleStyle.ts`): 300 px de ancho (o lo que deje la burbuja en el celular), su forma entre 4:5 y 1,91:1 recortada con `object-cover`, 3 px de borde (`p-[3px]` en la burbuja). Sin texto, la hora y los checks van sobre la foto con un degradado; el video muestra su duración abajo a la izquierda. Un video de WhatsApp sin medidas toma la forma de su miniatura al cargar (antes salía como una tira angosta). El nombre, la cita y el texto conservan su margen.
 - **25/10:** tocar un aviso abre el espacio, el mensaje y el hilo. Aviso de menciones fuera del canal.
 - **28/10:** saltar a un mensaje lo mantiene en vista. En la web, el campo es de cada chat y guarda su borrador.

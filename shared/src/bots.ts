@@ -1,5 +1,5 @@
 import { cutAtWord } from './textCut.js';
-import { uploadIdsOf } from './botUploads.js';
+import { uploadIdsOf, type BotUploadRef } from './botUploads.js';
 import { normalizePeruPhone } from './phone.js';
 import { TOPIC_KEY } from './noticeTopics.js';
 import { validateChecklist } from './checklists.js';
@@ -61,7 +61,7 @@ export type BotClientRef = { kind: string; serviceId?: string; recordId?: string
 export type BotAsContact = { name?: string; phone?: string; sentAt?: string };
 /** A WhatsApp vCard, forwarded as its own message (agentes 23/11): the server matches `phone` to a Lilachat user. */
 export type BotContact = { name: string; phone: string };
-export type BotPost = { target: BotTarget; text?: string; card?: BotCard; /** Photos and videos drawn as a person's album (José via agentes 09/11). */ files?: GalleryItem[]; /** Files of `POST /api/bots/files` (José 17/11): each one its own message, a document as a file card. */ uploads?: string[]; checklist?: BotChecklist; /** A WhatsApp location, forwarded as its own message (agentes 23/11). */ location?: SharedLocation; contact?: BotContact; threadOf?: number; clientRef?: BotClientRef; mentionUserIds?: string[]; asContact?: BotAsContact; idempotencyKey: string };
+export type BotPost = { target: BotTarget; text?: string; card?: BotCard; /** Photos and videos drawn as a person's album (José via agentes 09/11). */ files?: GalleryItem[]; /** Files of `POST /api/bots/files` (José 17/11): each one its own message, a document as a file card; an audio may carry its length and waveform (José 27/11). */ uploads?: BotUploadRef[]; checklist?: BotChecklist; /** A WhatsApp location, forwarded as its own message (agentes 23/11). */ location?: SharedLocation; contact?: BotContact; threadOf?: number; clientRef?: BotClientRef; mentionUserIds?: string[]; asContact?: BotAsContact; idempotencyKey: string };
 export type BotPostError = { ok: false; error: 'invalid_request'; message: string };
 
 export const BOT_LIMITS = { text: 4000, idempotencyKey: 120, fields: 12, actions: 3, /** lv01: Marcar punto, Entrevista, Foto suelta, Terminar and the croquis (agentes 14/11). */ visitActions: 5, actionValue: 2000, kicker: 60, title: 120, subtitle: 120, footer: 120, status: 24, label: 40, value: 120, linkLabel: 40, actionLabel: 24, actionId: 40, url: 500, mentionUserIds: 10 };
@@ -285,7 +285,7 @@ export function validateBotPost(raw: unknown): { ok: true; post: BotPost } | Bot
   }
   const uploads = uploadIdsOf(body.files);
   if (uploads && !uploads.ok) return refuse(uploads.message);
-  if (uploads) post.uploads = uploads.ids;
+  if (uploads) post.uploads = uploads.refs;
   else if (body.files !== undefined) {
     const files = validateBotFiles(body.files);
     if (!files.ok) return refuse(files.message);

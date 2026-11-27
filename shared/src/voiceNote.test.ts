@@ -1,13 +1,19 @@
 import { describe, expect, it } from 'vitest';
-import { firstPlay, nextPlaybackRate, scrubFraction } from './voiceNote.js';
+import { firstPlay, NATIVE_MAX_PLAYBACK_RATE, nextPlaybackRate, scrubFraction } from './voiceNote.js';
 
 /** Voice notes like WhatsApp (FL9b; backlog 34, José 21/10: «se siente torpe, recién al segundo toque, y no se puede adelantar ni retroceder»). */
 describe('voice notes', () => {
-  it('speed: 1× → 1,5× → 2× → 1×, and an odd value goes back to 1×', () => {
+  it('speed: 1× → 1,5× → 2× → 3× → 1× (José 27/11 asked for 3×), and an odd value goes back to 1×', () => {
     expect(nextPlaybackRate(1)).toBe(1.5);
     expect(nextPlaybackRate(1.5)).toBe(2);
-    expect(nextPlaybackRate(2)).toBe(1);
+    expect(nextPlaybackRate(2)).toBe(3);
     expect(nextPlaybackRate(3)).toBe(1);
+    expect(nextPlaybackRate(1.25)).toBe(1);
+  });
+  it('on the phone it stops at 2×: expo-audio clamps the speed there, and the chip must not lie', () => {
+    expect(nextPlaybackRate(2, NATIVE_MAX_PLAYBACK_RATE)).toBe(1);
+    expect(nextPlaybackRate(1.5, NATIVE_MAX_PLAYBACK_RATE)).toBe(2);
+    expect(nextPlaybackRate(3, NATIVE_MAX_PLAYBACK_RATE)).toBe(1);
   });
   it('dragging along the bar gives a share of the audio, kept inside it', () => {
     expect(scrubFraction(50, 200)).toBe(0.25);

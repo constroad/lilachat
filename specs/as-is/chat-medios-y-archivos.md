@@ -94,6 +94,10 @@ Los archivos viven en el disco propio de Lilachat (pendiente 82); los viejos sig
 - Cámara del celular en la web (12–13/11): `camera/WebCamera.tsx`, `useWebCamera.ts`, `cameraControls.ts`, `shotStamp.ts`, `ComposerCameraButton.tsx`. Sello en vivo, zoom, flash, galería y revisión.
 - Notas de voz: `useGrabadoraDeVoz.ts`, `BarraDeGrabacion.tsx`, `nivelDeAudio.ts`, `NotaDeVoz.tsx`, `voicePlayer.ts`, `NowPlayingBar.tsx`, `useVoiceNoteQueue.ts`.
 - La nota de voz sigue sonando en otro chat, con su barra arriba de la lista (22/10).
+- Velocidad 1× · 1,5× · 2× · 3× en la web (`nextPlaybackRate`, 27/11); el APK para en 2× (`NATIVE_MAX_PLAYBACK_RATE`:
+  expo-audio no pasa de 2×). `voicePlayer.ts` pone también `defaultPlaybackRate` y la vuelve a poner en `loadedmetadata`.
+- Sin `durationMs` en el mensaje (el audio de un bot sin `duration_ms`), la web lee la duración del archivo
+  (`loadedmetadata`/`durationchange`, `useKnownDurationMs`) en vez de mostrar 0:00; sin onda dibuja barras neutras.
 - Videos: `VideoEmbedOverlay.tsx` (YouTube y otros), mini reproductor `web/src/media/MiniVideoPlayer.tsx`, `miniPlayer.ts`.
 - «Medios»: `web/src/media/MediaDialog.tsx`. Archivos del chat en la info: `info/ArchivosDelChat.tsx`.
   Cada foto, video o documento lleva el «⋮» del Drive (`DriveFileMenu`): hoja inferior en el celular, menú flotante
@@ -168,6 +172,8 @@ Los archivos viven en el disco propio de Lilachat (pendiente 82); los viejos sig
 - **17/11:** José mandó «Cotizacion-103.pdf» y solo salía el nombre: primera página en el chat, relleno de los viejos y zoom con dos dedos.
 - **18/11:** José tocó dos veces el PDF y no hizo zoom. Doble toque: 200 % sobre el punto, y otra vez a 100 %. Las mejoras del visor del 17/11 no le llegaban porque no se había publicado la OTA; salió el 18/11.
 - **20/11:** un video de ~50 MB se subía sin avisar nada —ni barra ni error—. La web no tenía ningún techo de tiempo en su `XMLHttpRequest`: una subida colgada se quedaba esperando para siempre. El techo de la app y del salto server→lila, 120 s, también se quedaba corto para un archivo grande en una red lenta. Ahora los tres comparten `UPLOAD_TIMEOUT_MS` (`shared/src/media.ts`, 300 s): una subida colgada avisa «La subida tardó demasiado» y se puede reintentar.
+- **27/11:** el audio de un bot salía en 0:00 con la onda plana; José pidió 3×. Duración y onda por la API de bots,
+  duración leída del archivo en la web, 3× en la web.
 - **25/11:** José: «el visor en la web no se abre como lo hace WhatsApp». La foto y el video ya ocupaban la pantalla; el PDF abría en un modal chico. Ahora el PDF del chat (`PdfViewer`) y el de Portal (`PortalPdf`) usan `media/FullscreenFileViewer.tsx`: fondo negro a pantalla completa, nombre y fecha arriba, «Abrir en otra pestaña», «Descargar» y cerrar (o Escape), y el documento con todo el alto. Test: `PortalFileViewer.test.tsx`. En el E2E se veía la app detrás del fondo (`bg-black/95`): el visor del PDF y el de fotos pasan a negro sólido, y el PDF ocupa todo el ancho, sin márgenes.
 
 ## 5. Diseños de Stitch relacionados

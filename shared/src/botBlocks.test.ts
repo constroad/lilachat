@@ -219,6 +219,42 @@ describe('a row with a command', () => {
   });
 });
 
+/** José 27/11: «quiero abrir cada uno» — a YouTube video, a prospect's channel, from the card's row. */
+describe('a row with a link', () => {
+  const rowsOf = (row: Record<string, unknown>, where: 'card' | 'detail' = 'card') => {
+    const card = validateBotCard({ title: 'Videos', fields: [], ...(where === 'card' ? { blocks: [{ type: 'rows', rows: [{ label: 'Bacheo', value: '2:10', ...row }] }] } : { detail: { title: 'Todos', blocks: [{ type: 'rows', rows: [{ label: 'Bacheo', value: '2:10', ...row }] }] } }) });
+    if (!card.ok) throw new Error(card.message);
+    const blocks = where === 'card' ? card.card.blocks : card.card.detail?.blocks;
+    return (blocks?.[0] as Extract<BotBlock, { type: 'rows' }>).rows[0]!;
+  };
+
+  it('keeps an https link, on the card and in its detail', () => {
+    expect(rowsOf({ url: 'https://www.youtube.com/watch?v=abc' })).toMatchObject({ label: 'Bacheo', url: 'https://www.youtube.com/watch?v=abc' });
+    expect(rowsOf({ url: ' https://youtu.be/abc ' }, 'detail')).toMatchObject({ url: 'https://youtu.be/abc' });
+  });
+
+  it('drops what is not https, and the row stays', () => {
+    for (const url of ['http://youtube.com/x', 'javascript:alert(1)', 'youtube.com/x', 'https://', 'https://a b.com', 42, null]) {
+      const row = rowsOf({ url });
+      expect(row.label).toBe('Bacheo');
+      expect(row).not.toHaveProperty('url');
+    }
+  });
+
+  it('drops a link longer than the limit instead of cutting it', () => {
+    const long = `https://youtube.com/${'a'.repeat(BLOCK_LIMITS.url)}`;
+    expect(rowsOf({ url: long })).not.toHaveProperty('url');
+    const fits = `https://youtube.com/${'a'.repeat(BLOCK_LIMITS.url - 'https://youtube.com/'.length)}`;
+    expect(rowsOf({ url: fits }).url).toBe(fits);
+  });
+
+  it('a row with both keeps the command', () => {
+    const row = rowsOf({ command: '/videos ver 3', url: 'https://youtu.be/abc' });
+    expect(row.command).toBe('/videos ver 3');
+    expect(row).not.toHaveProperty('url');
+  });
+});
+
 describe('cardCommandsOf', () => {
   const rows = (...commands: (string | undefined)[]): BotBlock => ({ type: 'rows', rows: commands.map((command, index) => ({ label: `Fila ${index}`, value: '1', tone: 'neutral' as const, ...(command ? { command } : {}) })) });
 

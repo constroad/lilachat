@@ -42,6 +42,8 @@ Contrato: `specs/BOTS-API.spec.md` §c-bis a §c-vicies, §c-octodecies (formula
 - `POST .../commands/:commandId/line`: la línea de una respuesta «Solo tú ves esto» (15/11).
 - Corren aunque el comando esté apagado en ese canal. «Quién puede usarlo» sigue valiendo.
 - `anyone: true` en una fila la abre a todo miembro (datos sin nada sensible, como `/clima`).
+- Una fila sin `command` y con `url` abre el enlace (27/11, `Rows` en `BotBlocksView.tsx` web y APK): `<a target="_blank"
+  rel="noopener noreferrer">` en la web, `Linking.openURL` en el APK. Abre aunque la fila no pueda correr comandos ahí.
 
 **Formularios** (`botForms.ts`, `botFormLive.ts`).
 - Fotos: `POST .../commands/:commandId/files`. Envío: `POST .../commands/:commandId/form`.
@@ -168,6 +170,8 @@ Pregunta a la app por `link.status` y `link.revoke`. Lilachat no guarda nada.
   (`spaceIdsWithAccess`, el mismo mecanismo de `miembrosDelChat.ts`), no solo en el dueño. Sin
   cambio para un canal no compartido ni para el ⚡ del espacio. Test: `botCommands.test.ts`
   («a channel shared with another space»).
+- **27/11** Una fila con `url` se abre al tocarla (José: abrir cada video o canal desde la tarjeta). Con `command`
+  gana `command`. Tests: `botBlocks.test.ts` («a row with a link») y `BotBlocks.test.tsx`.
 
 ## 5. Diseños de Stitch relacionados
 

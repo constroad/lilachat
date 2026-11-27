@@ -36,13 +36,25 @@ export function setVoiceNoteQueue(next: (finishedId: string) => QueuedVoiceNote 
   noteAfter = next;
 }
 
+/** Both: `playbackRate` for now, `defaultPlaybackRate` so a reload of the source keeps it. */
+function applyRate(player: HTMLAudioElement, rate: number): void {
+  player.defaultPlaybackRate = rate;
+  player.playbackRate = rate;
+}
+
 /** The one <audio>, created on the first note; its own events say what it is doing. */
 function audio(): HTMLAudioElement {
   if (element) return element;
   const created = new Audio();
   const sync = (change: Partial<NowPlaying> = {}) => current && publish({ ...current, currentS: created.currentTime, durationS: durationOf(created, current.durationS), ...change });
   created.addEventListener('timeupdate', () => sync());
-  created.addEventListener('loadedmetadata', () => sync({ loaded: true }));
+  // A new source may put the speed back to `defaultPlaybackRate` once it loads: the note's speed is set again then (José 27/11).
+  created.addEventListener('loadedmetadata', () => {
+    if (current) applyRate(created, current.rate);
+    sync({ loaded: true });
+  });
+  // A file that does not say its length up front (a bot's audio) tells it later: the bar and the time follow it.
+  created.addEventListener('durationchange', () => sync());
   created.addEventListener('play', () => sync({ playing: true }));
   created.addEventListener('pause', () => sync({ playing: false }));
   created.addEventListener('ended', finishVoiceNote);
@@ -56,7 +68,7 @@ export function playVoiceNote(note: VoiceNote): void {
   if (current?.id === note.id) return toggleVoiceNote();
   player.pause();
   player.src = note.url;
-  player.playbackRate = note.rate;
+  applyRate(player, note.rate);
   publish({ id: note.id, chatId: note.chatId, authorName: note.authorName, playing: false, currentS: 0, durationS: note.durationS, rate: note.rate, loaded: false });
   if (note.startShare) player.currentTime = note.startShare * note.durationS;
   void player.play().catch(() => current && publish({ ...current, playing: false }));
@@ -76,7 +88,7 @@ export function seekVoiceNote(share: number): void {
 
 export function setVoiceNoteRate(rate: number): void {
   if (!element || !current) return;
-  element.playbackRate = rate;
+  applyRate(element, rate);
   publish({ ...current, rate });
 }
 

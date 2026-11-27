@@ -1,6 +1,6 @@
 import { Types } from 'mongoose';
 import { uploadsOf, type BotUpload } from './botUploads.js';
-import { botCardSummary, botFilesSummary, normalizePeruPhone, SHARED_LOCATION_BODY, sharedContactBody, type BotCard, type BotClientRef, type BotPost, type GalleryItem } from '@lilachat/shared';
+import { botCardSummary, botFilesSummary, normalizePeruPhone, SHARED_LOCATION_BODY, sharedContactBody, type BotCard, type BotClientRef, type BotPost, type BotUploadRef, type GalleryItem } from '@lilachat/shared';
 import { ChatModel, MessageModel, type Chat, type Message } from '../chatModels.js';
 import { chatMemberIds, deleteMessage, sendMessage } from '../chatService.js';
 import { createChecklistInChat } from '../checklistService.js';
@@ -104,12 +104,14 @@ async function externalAuthorOf(installation: Installation, post: BotPost): Prom
 }
 
 /** One uploaded file as its own message, like a member's (José 17/11): the caption rides on the first one. */
-type UploadSlot = { upload: BotUpload; index: number };
-const uploadMedia = (upload: BotUpload): Message['media'] => ({ mediaId: upload.storageName, url: upload.url, ...(upload.thumbUrl ? { thumbUrl: upload.thumbUrl } : {}), mime: upload.mime, fileName: upload.name, sizeBytes: upload.size, ...(upload.pages ? { pages: upload.pages } : {}), ...(upload.width && upload.height ? { width: upload.width, height: upload.height } : {}) });
+type UploadSlot = { upload: BotUpload; index: number; ref?: BotUploadRef };
+/** An audio's `duration_ms` and `waveform` (José 27/11) go where a member's voice note keeps them, so both players draw it the same. */
+const voiceOf = (upload: BotUpload, ref?: BotUploadRef) => (upload.kind === 'audio' ? { ...(ref?.durationMs ? { durationMs: ref.durationMs } : {}), ...(ref?.onda ? { onda: ref.onda } : {}) } : {});
+const uploadMedia = (upload: BotUpload, ref?: BotUploadRef): Message['media'] => ({ mediaId: upload.storageName, url: upload.url, ...(upload.thumbUrl ? { thumbUrl: upload.thumbUrl } : {}), mime: upload.mime, fileName: upload.name, sizeBytes: upload.size, ...(upload.pages ? { pages: upload.pages } : {}), ...(upload.width && upload.height ? { width: upload.width, height: upload.height } : {}), ...voiceOf(upload, ref) });
 
 /** What a text post or one of its uploads carries: an upload is its own message, captioned only the first. */
 function contentOf(post: BotPost, slot?: UploadSlot) {
-  if (slot) return { kind: slot.upload.kind, media: uploadMedia(slot.upload), body: slot.index === 0 ? post.text : undefined };
+  if (slot) return { kind: slot.upload.kind, media: uploadMedia(slot.upload, slot.ref), body: slot.index === 0 ? post.text : undefined };
   if (post.location) return { kind: 'location' as const, body: post.text ?? SHARED_LOCATION_BODY };
   if (post.contact) return { kind: 'contact' as const, body: post.text ?? sharedContactBody(post.contact.name) };
   return { kind: 'text' as const, body: post.text ?? (post.card ? botCardSummary(post.card) : botFilesSummary(post.files ?? [])) };
@@ -198,9 +200,9 @@ async function publishChecklist(installation: Installation, chatId: Types.Object
 async function publishAll(installation: Installation, chatId: Types.ObjectId, post: BotPost, assignees: Map<string, Types.ObjectId>, sharedBy?: Message['sharedBy']): Promise<Message | BotApiError | null> {
   try {
     let last: Message | null = null;
-    const uploads = post.uploads ? await uploadsOf(installation._id, post.uploads) : null;
+    const uploads = post.uploads ? await uploadsOf(installation._id, post.uploads.map((ref) => ref.fileId)) : null;
     if (post.uploads && !uploads) return fail(404, 'file_not_found', 'Un file_id no es de esta app. Súbelo con POST /api/bots/files.');
-    for (const [index, upload] of (uploads ?? []).entries()) last = await publishText(installation, chatId, post, sharedBy, { upload, index });
+    for (const [index, upload] of (uploads ?? []).entries()) last = await publishText(installation, chatId, post, sharedBy, { upload, index, ref: post.uploads?.[index] });
     if (!uploads && (post.text || post.card || post.files || post.location || post.contact)) last = await publishText(installation, chatId, post, sharedBy);
     if (post.checklist) last = (await publishChecklist(installation, chatId, post, assignees)) ?? last;
     return last;

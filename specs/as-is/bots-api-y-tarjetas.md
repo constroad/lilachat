@@ -48,7 +48,10 @@ Montaje en `server/src/app.ts` (líneas 160–166): `/api/oauth`, `/api/bots/app
 - `DELETE /api/bots/messages/:id` y `DELETE /api/bots/messages?idempotency_key=` (14/11).
   Queda la lápida «Se eliminó este mensaje». Desde el 15/11 borrar libera la clave.
 - `files: [{ url, mime }]` de hosts de Constroad = álbum de fotos y videos (09/11).
-- `files: [{ file_id }]` = archivos subidos antes por `POST /api/bots/files` (17/11).
+- `files: [{ file_id }]` = archivos subidos antes por `POST /api/bots/files` (17/11). Un audio acepta
+  `duration_ms` (entero, 1 ms a 15 min) y `waveform` (16 a 64 niveles de 0 a 1) (27/11): `uploadIdsOf` los valida
+  (fuera de rango, `400`) y `voiceOf` en `botMessages.ts` los guarda como `media.durationMs` y `media.onda`
+  (0 a 100), lo mismo que una nota de voz de un miembro. En otro tipo de archivo se ignoran.
 - `mention_user_ids` (20/11): Lilachat antepone un `@Nombre` real por cada id que sigue siendo miembro del
   destino, con su mención válida; el que ya no es miembro se descarta en silencio (`mentionedTextOf` en
   `botMessages.ts`). Agentes solo manda ids, nunca el texto de la mención.
@@ -79,6 +82,8 @@ Montaje en `server/src/app.ts` (líneas 160–166): `/api/oauth`, `/api/bots/app
   `chart`, `weather`, `gallery`, `map` (lugar o ruta de hasta 31 puntos), `stat`, `section` y `tiles`.
 - Diseño a10 (12/11): `accent`, `subtitle`, `url` del cuerpo, `footer`, `link.style: 'button'`, `link.mime`.
 - Una fila o un botón con `command` corre esa línea para quien toca (05/11). Ver el archivo de comandos.
+- Una fila con `url` (https, hasta 500, sin cortar) se abre al tocarla, en la tarjeta y en su detalle (27/11):
+  pestaña nueva en la web, `Linking.openURL` en el APK, con la «›» de siempre. Con `command` gana `command`.
 - Una tarjeta pesa hasta 16 KB con su detalle. Los textos no se cortan con «…» (`upToWord`).
 
 **Eventos hacia la app** (`botEvents.ts`, `botTriggers.ts`, `botLoopback.ts`).
@@ -203,6 +208,8 @@ Montaje en `server/src/app.ts` (líneas 160–166): `/api/oauth`, `/api/bots/app
 - **15/11** Borrar libera la clave de idempotencia (agentes mueve una tarjeta de canal con la misma clave).
 - **16/11** Destino `prospect` y `as_contact` (ver as-is de Dali).
 - **17/11** `POST /api/bots/files` y `files: [{ file_id }]`. Nombres en UTF-8 también en las subidas de miembros.
+- **27/11** José: el audio de «Portal» salía en 0:00 con la onda plana y sin velocidad. `duration_ms` y `waveform`
+  en `files`, y `url` en una fila de `rows` (spec §c-tretricies).
 - **18/11** Una foto de formulario o de informe con sello Timemark acepta `place`: es la dirección del geocodificador del teléfono. El server la limpia y la quema (`placeOfShot`). Sin ella, la busca en Nominatim.
 - **19/11** El mapa de la obra pide `service_croquis` (`workMapForms`): el server abre la tool de Portal `abrir_croquis_de_servicio` con `{ servicioId }` y devuelve el enlace del croquis embebido. Solo lee: no escribe nada en Lilachat.
 - **20/11** Una acción de tarjeta puede traer `open: { route: 'service', service_id }`: Lilachat navega sola

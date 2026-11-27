@@ -3,15 +3,37 @@ import { Pause, Play } from 'lucide-react';
 import { duracionDeVoz, nextPlaybackRate, scrubFraction } from '@lilachat/shared';
 import { playVoiceNote, seekVoiceNote, setVoiceNoteRate, toggleVoiceNote, useNowPlaying } from './voicePlayer';
 
-/** Las barras que se dibujan si el mensaje no trae onda (una nota vieja). */
-const ONDA_PLANA = Array.from({ length: 40 }, () => 20);
+/** The bars drawn when the message brings no waveform (an old note, a bot's audio): a soft, even pattern, not a dead line (José 27/11). */
+const NEUTRAL_WAVEFORM = Array.from({ length: 40 }, (_, index) => Math.round(30 + 25 * Math.abs(Math.sin(index * 0.6))));
+
+/**
+ * Fetched ahead while it is on screen (José, 21/10: «carga y luego reproduce»): the session's player then reads it from the cache.
+ * The message list is virtualized, so only the notes in sight download. When the message does not say how long it is
+ * (a bot's audio, José 27/11: it showed 0:00), the length is read from the file itself.
+ */
+function useKnownDurationMs(url: string, durationMs: number | undefined): number | undefined {
+  const [fromMedia, setFromMedia] = useState<number | undefined>(undefined);
+  useEffect(() => {
+    const ahead = new Audio(url);
+    ahead.preload = 'auto';
+    if (durationMs) return undefined;
+    const read = () => Number.isFinite(ahead.duration) && ahead.duration > 0 && setFromMedia(Math.round(ahead.duration * 1000));
+    ahead.addEventListener('loadedmetadata', read);
+    ahead.addEventListener('durationchange', read);
+    return () => {
+      ahead.removeEventListener('loadedmetadata', read);
+      ahead.removeEventListener('durationchange', read);
+    };
+  }, [url, durationMs]);
+  return durationMs || fromMedia;
+}
 
 /**
  * A voice note in the bubble, like WhatsApp (W2; backlog 34, José 21/10: it
  * felt clumsy and could not be moved forward or back): one tap plays, the
  * waveform fills as it goes and can be clicked or dragged to jump (also
  * before playing), the time runs while it plays, the speed goes 1× · 1,5× ·
- * 2×, and only one note sounds at a time. The player is the session's
+ * 2× · 3×, and only one note sounds at a time. The player is the session's
  * (`voicePlayer.ts`): opening another chat does not cut it.
  */
 export function NotaDeVoz(props: { id: string; chatId: string; authorName: string; url: string; durationMs?: number; onda?: number[]; mio: boolean }) {
@@ -20,16 +42,12 @@ export function NotaDeVoz(props: { id: string; chatId: string; authorName: strin
   const [dragShare, setDragShare] = useState<number | null>(null);
   const now = useNowPlaying();
   const mine = now?.id === props.id ? now : null;
-  // Fetched ahead while it is on screen (José, 21/10: «carga y luego reproduce»): the session's player then reads it from the cache.
-  // The message list is virtualized, so only the notes in sight download.
-  useEffect(() => {
-    new Audio(props.url).preload = 'auto';
-  }, [props.url]);
-  const durationS = () => (mine && mine.durationS > 0 ? mine.durationS : (props.durationMs ?? 0) / 1000);
+  const knownMs = useKnownDurationMs(props.url, props.durationMs);
+  const durationS = () => (mine && mine.durationS > 0 ? mine.durationS : (knownMs ?? 0) / 1000);
   const sounding = Boolean(mine?.playing);
   const share = mine && durationS() > 0 ? Math.min(1, mine.currentS / durationS()) : 0;
   const rate = mine?.rate ?? idleRate;
-  const start = (startShare: number | null) => playVoiceNote({ id: props.id, chatId: props.chatId, url: props.url, authorName: props.authorName, durationS: (props.durationMs ?? 0) / 1000, rate, startShare });
+  const start = (startShare: number | null) => playVoiceNote({ id: props.id, chatId: props.chatId, url: props.url, authorName: props.authorName, durationS: (knownMs ?? 0) / 1000, rate, startShare });
   const toggle = () => (mine ? toggleVoiceNote() : start(null));
 
   const shareAt = (event: PointerEvent<HTMLDivElement>) => {
@@ -39,8 +57,8 @@ export function NotaDeVoz(props: { id: string; chatId: string; authorName: strin
   const seek = (target: number) => (mine ? seekVoiceNote(target) : start(target));
 
   const shown = dragShare ?? share;
-  const ms = dragShare !== null || sounding || share > 0 ? shown * durationS() * 1000 : props.durationMs;
-  const onda = props.onda?.length ? props.onda : ONDA_PLANA;
+  const ms = dragShare !== null || sounding || share > 0 ? shown * durationS() * 1000 : knownMs;
+  const onda = props.onda?.length ? props.onda : NEUTRAL_WAVEFORM;
   return (
     <div data-testid="nota-de-voz" className="flex min-w-[240px] items-center gap-3 py-1">
       <button type="button" aria-label={sounding ? 'Pausar' : 'Reproducir'} onClick={toggle} className={`grid h-9 w-9 shrink-0 place-items-center rounded-full ${props.mio ? 'bg-on-burbuja-propia/20' : 'bg-primary/10 text-primary'}`}>

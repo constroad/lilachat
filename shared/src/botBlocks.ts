@@ -29,7 +29,7 @@ export type BotBlock =
    * `command`: the line a person would type; tapping the row runs it (José, 05/11).
    * `mid`: a muted middle column («24,43 gl/m³»); `before`: the previous value, struck through (Stitch a10).
    */
-  | { type: 'rows'; rows: { label: string; value: string; sub?: string; mid?: string; before?: string; bar?: number; tone: CardTone; command?: string; anyone?: boolean }[] }
+  | { type: 'rows'; rows: { label: string; value: string; sub?: string; mid?: string; before?: string; bar?: number; tone: CardTone; command?: string; anyone?: boolean; /** https only: a tap opens it (José 27/11: a video, a prospect's channel); `command` wins when both come. */ url?: string }[] }
   /** The inset figure (Stitch a10): a caption on top, the label on the left and the big value on the right. */
   | { type: 'stat'; caption?: string; label: string; value: string; unit?: string }
   /** A section header with a text on the right («Combustible … Consumo total en planta»). */
@@ -231,8 +231,20 @@ function peopleBlock(raw: Record<string, unknown>): Result<BotBlock> {
   };
 }
 
+/** A row's link, like an attachment's: https only and up to `BLOCK_LIMITS.url` (a longer one is dropped, never cut); a row that runs a line keeps the line. */
+function withRowLink(row: Record<string, unknown>, command: string | undefined): { url?: string } {
+  const url = !command && typeof row.url === 'string' ? row.url.trim() : '';
+  if (!url.startsWith('https://') || url.length > BLOCK_LIMITS.url || /\s/.test(url)) return {};
+  try {
+    return new URL(url).hostname ? { url } : {};
+  } catch {
+    return {};
+  }
+}
+
 function rowOf(item: unknown): Extract<BotBlock, { type: 'rows' }>['rows'][number] {
   const row = record(item);
+  const command = withCommand(row);
   return {
     label: text(row.label, BLOCK_LIMITS.label),
     value: text(row.value, BLOCK_LIMITS.text),
@@ -241,7 +253,8 @@ function rowOf(item: unknown): Extract<BotBlock, { type: 'rows' }>['rows'][numbe
     ...withWords('before', row.before, BLOCK_LIMITS.short),
     ...(row.bar !== undefined ? { bar: clamp01(row.bar) } : {}),
     tone: tone(row.tone),
-    ...withCommand(row),
+    ...command,
+    ...withRowLink(row, command.command),
   };
 }
 

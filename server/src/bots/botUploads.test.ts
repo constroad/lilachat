@@ -122,6 +122,26 @@ describe('POST /api/bots/messages with files', () => {
     expect(message?.media).toMatchObject({ width: 1200, height: 800 });
   });
 
+  it('an audio with duration_ms and waveform is drawn like a member\'s voice note (José 27/11: it showed 0:00 and a flat line)', async () => {
+    const token = await installApp();
+    const voice = (await upload(token, Buffer.from('m4a'), 'nota.m4a', 'audio/mp4').expect(201)).body.file_id;
+    const pdf = (await upload(token, Buffer.from('%PDF'), 'metrados.pdf', 'application/pdf').expect(201)).body.file_id;
+    const waveform = Array.from({ length: 16 }, (_, index) => index / 15);
+    await post(token, { user: { id: String(jose) }, files: [{ file_id: voice, duration_ms: 12_400, waveform }, { file_id: pdf, duration_ms: 5000 }], idempotency_key: 'voz.1' }).expect(201);
+    const audio = await MessageModel.findOne({ kind: 'audio' }).lean();
+    expect(audio?.media).toMatchObject({ mime: 'audio/mp4', durationMs: 12_400, onda: waveform.map((bar) => Math.round(bar * 100)) });
+    const document = await MessageModel.findOne({ kind: 'file' }).lean();
+    expect(document?.media?.durationMs).toBeUndefined();
+  });
+
+  it('refuses a waveform off 0..1 or a duration over 15 minutes (400) and posts nothing', async () => {
+    const token = await installApp();
+    const voice = (await upload(token, Buffer.from('m4a'), 'nota.m4a', 'audio/mp4').expect(201)).body.file_id;
+    expect((await post(token, { user: { id: String(jose) }, files: [{ file_id: voice, waveform: Array.from({ length: 16 }, () => 2) }], idempotency_key: 'voz.2' }).expect(400)).body.error).toBe('invalid_request');
+    expect((await post(token, { user: { id: String(jose) }, files: [{ file_id: voice, duration_ms: 15 * 60 * 1000 + 1 }], idempotency_key: 'voz.3' }).expect(400)).body.error).toBe('invalid_request');
+    expect(await MessageModel.countDocuments({ kind: 'audio' })).toBe(0);
+  });
+
   it('a file_id of another app is not found (404) and posts nothing', async () => {
     const dali = await installApp();
     await request(app).put(`/api/bots/prospects/${encodeURIComponent(PROSPECT)}`).set(asBot(dali)).send({ phone: '51949123824', last_activity_at: new Date().toISOString() }).expect(201);

@@ -96,16 +96,19 @@ function RowBody({ row, tappable }: { row: RowsBlock['rows'][number]; tappable: 
   );
 }
 
-/** A row with a command runs it on a tap, like typing it (José, 05/11). */
+const ROW_FRAME = 'flex min-h-[44px] flex-col justify-center py-2';
+
+/** A row with a command runs it on a tap, like typing it (José, 05/11); one with a link opens it in a new tab (José 27/11). */
 function Rows({ rows }: { rows: RowsBlock['rows'] }) {
   const run = useCardCommand();
   return (
     <div data-testid="bloque-filas" className="divide-y divide-outline/10">
       {rows.map((row, index) => {
         const key = `${row.label}-${index}`;
-        const { command } = row;
-        if (!run || !command) return <div key={key} className="flex min-h-[44px] flex-col justify-center py-2"><RowBody row={row} tappable={false} /></div>;
-        return <button key={key} type="button" data-testid={`fila-comando-${index}`} onClick={() => run(command)} className="flex min-h-[44px] w-full flex-col justify-center py-2 text-left hover:bg-background"><RowBody row={row} tappable /></button>;
+        const { command, url } = row;
+        if (run && command) return <button key={key} type="button" data-testid={`fila-comando-${index}`} onClick={() => run(command)} className={`${ROW_FRAME} w-full text-left hover:bg-background`}><RowBody row={row} tappable /></button>;
+        if (url && !command) return <a key={key} data-testid={`fila-enlace-${index}`} href={url} target="_blank" rel="noopener noreferrer" className={`${ROW_FRAME} w-full text-left hover:bg-background`}><RowBody row={row} tappable /></a>;
+        return <div key={key} className={ROW_FRAME}><RowBody row={row} tappable={false} /></div>;
       })}
     </div>
   );

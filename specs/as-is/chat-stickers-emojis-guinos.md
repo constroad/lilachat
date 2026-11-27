@@ -85,7 +85,7 @@ Tono adulto: nada chibi ni infantil (decisión de José, §74).
 - Ajuste del grupo: `info/GroupFunRow.tsx`. Lo visto: `funSeen.ts`.
 - Emojis propios: `reacciones/SpaceEmojiSection.tsx`, `AddCustomEmojiDialog.tsx`, `ReactionGlyph.tsx`.
 
-- Opciones de un sticker guardado (27/11, José: «quiero agregarle audio sin volver a buscar el GIF»; diseño `sa-03`): «⋯» al pasar el cursor (`StickerCellMenu.tsx`) con «Agregar/Cambiar sonido», «Quitar sonido», «Exportar para WhatsApp», favoritos y «Quitar de Mis stickers» (`stickerOptionsOf`, shared). El sonido se elige en `StickerSoundDialog.tsx` (sin «Sonido original»; abre en su preset). Un sticker del paquete se guarda primero (`useStickers › setSound`).
+- Opciones de un sticker guardado (27/11, José: «quiero agregarle audio sin volver a buscar el GIF»; diseño `sa-03`): «⋯» al pasar el cursor (`StickerCellMenu.tsx`) con «Agregar/Cambiar sonido», «Quitar sonido», «Exportar para WhatsApp», favoritos y «Quitar de Mis stickers» (`stickerOptionsOf`, shared). El menú va en un portal con posición fija (`menuPlaceOf`): dentro del panel con scroll se cortaba en el borde (E2E 27/11). El sonido se elige en `StickerSoundDialog.tsx` (sin «Sonido original»; abre en su preset). Un sticker del paquete se guarda primero (`useStickers › setSound`).
 - «Exportar para WhatsApp» (27/11, diseño `sa-05`): `StickerExportDialog.tsx` descarga el video con su sonido (MP4 del server) y la imagen WebP/PNG. WhatsApp no recibe sonido desde otras apps: el sonido se pone en su «Crear sticker» con ese video (beta 2.26.47, 25/11).
 - Pestaña GIF (27/11, diseño `sa-04`): «Sticker con sonido» en cada GIF (al pasar el cursor; siempre en pantalla táctil) abre el editor con ese GIF sin mandarlo (`GET /api/gifs/:id/file`, `giphyGifFile`).
 

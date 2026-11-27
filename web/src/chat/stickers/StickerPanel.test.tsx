@@ -2,6 +2,7 @@ import { fireEvent, render, screen, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import type { LibrarySticker } from '@lilachat/shared';
 import { StickerPanel } from './StickerPanel';
+import { menuPlaceOf } from './StickerCellMenu';
 
 const sticker = (id: string, favorite = false): LibrarySticker => ({ id, url: `https://storage.test/${id}.webp`, mime: 'image/webp', width: 512, height: 512, favorite, at: '2026-10-20T12:00:00.000Z' });
 const pack = { id: 'lila-1', title: 'Lila', stickers: [sticker('pack:lila-1/dog-ready'), sticker('pack:lila-1/cat')] };
@@ -114,5 +115,20 @@ describe('StickerPanel (web)', () => {
     const { onCreate } = draw({ library: [] });
     fireEvent.change(screen.getByTestId('input-crear-sticker'), { target: { files: [] } });
     expect(onCreate).not.toHaveBeenCalled();
+  });
+});
+
+/** E2E 27/11: the menu of the first sticker of a row was cut by the panel; it lives on the page, inside the window. */
+describe('menuPlaceOf', () => {
+  const view = { width: 1568, height: 746 };
+  it('under the «⋯», right-aligned with it', () => {
+    expect(menuPlaceOf({ left: 900, right: 928, top: 300, bottom: 328 }, view)).toEqual({ left: 688, top: 332 });
+  });
+  it('a button near the left edge keeps the menu inside the window', () => {
+    expect(menuPlaceOf({ left: 420, right: 448, top: 300, bottom: 328 }, { width: 1568, height: 746 }).left).toBe(208);
+    expect(menuPlaceOf({ left: 10, right: 38, top: 300, bottom: 328 }, view).left).toBe(8);
+  });
+  it('near the bottom it opens above', () => {
+    expect(menuPlaceOf({ left: 900, right: 928, top: 640, bottom: 668 }, view).top).toBe(440);
   });
 });

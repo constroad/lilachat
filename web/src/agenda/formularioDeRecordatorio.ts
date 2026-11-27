@@ -18,3 +18,10 @@ const dos = (numero: number) => String(numero).padStart(2, '0');
 export function aValorLocal(fecha: Date): string {
   return `${fecha.getFullYear()}-${dos(fecha.getMonth() + 1)}-${dos(fecha.getDate())}T${dos(fecha.getHours())}:${dos(fecha.getMinutes())}`;
 }
+
+/** What deleting a reminder does, said before it happens (José 27/11): who stops hearing it. */
+export function deleteReminderText(chat: { name?: string | null; kind: 'direct' | 'group' | 'notas' } | null): string {
+  if (!chat || chat.kind === 'notas') return 'Deja de sonar y sale de tu agenda.';
+  if (chat.kind === 'direct') return `Deja de sonar para ti y para ${chat.name ?? 'la otra persona'}.`;
+  return `Deja de sonar para todos en ${chat.name ?? 'el grupo'}.`;
+}

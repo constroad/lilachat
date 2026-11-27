@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { CrearRecordatorio, aValorLocal, validarRecordatorio } from './CrearRecordatorio';
+import { deleteReminderText } from './formularioDeRecordatorio';
 
 /**
  * W3c (20/10): el recordatorio del chat también se crea y se edita desde la
@@ -67,7 +68,8 @@ describe('CrearRecordatorio', () => {
 
   it('editar manda PATCH al recordatorio y eliminar pide confirmar', async () => {
     const alGuardar = vi.fn();
-    vi.stubGlobal('confirm', vi.fn(() => true));
+    const browserConfirm = vi.fn(() => true);
+    vi.stubGlobal('confirm', browserConfirm);
     const editando = { _id: 'r9', title: 'Pagar la luz', startsAt: '2030-10-21T14:00:00.000Z', recurrence: 'once' as const, active: true, chatId: 'c1' };
     render(<CrearRecordatorio jwt="j" chat={{ id: 'c1', name: 'Obra', kind: 'group' }} editando={editando} onClose={() => {}} onGuardado={alGuardar} />);
     const titulo = screen.getByTestId('titulo-recordatorio') as HTMLInputElement;
@@ -76,8 +78,23 @@ describe('CrearRecordatorio', () => {
     await userEvent.type(titulo, 'Pagar el agua');
     await userEvent.click(screen.getByTestId('btn-guardar-recordatorio'));
     await waitFor(() => expect(llamadas.find((l) => l.url.endsWith('/api/agenda/reminders/r9') && l.method === 'PATCH')?.body).toMatchObject({ title: 'Pagar el agua', recurrence: 'once' }));
+    // José 27/11: the app's own question, never the browser's (it froze the tab).
     await userEvent.click(screen.getByTestId('btn-eliminar-recordatorio'));
+    expect(screen.getByRole('alertdialog').textContent).toContain('Obra');
+    expect(llamadas.some((l) => l.method === 'DELETE')).toBe(false);
+    await userEvent.click(screen.getByTestId('btn-confirmar'));
     await waitFor(() => expect(llamadas.some((l) => l.url.endsWith('/api/agenda/reminders/r9') && l.method === 'DELETE')).toBe(true));
+    expect(browserConfirm).not.toHaveBeenCalled();
+  });
+
+  it('cancelling the question keeps the reminder and the form', async () => {
+    const editando = { _id: 'r9', title: 'Pagar la luz', startsAt: '2030-10-21T14:00:00.000Z', recurrence: 'once' as const, active: true };
+    render(<CrearRecordatorio jwt="j" chat={null} editando={editando} onClose={() => {}} onGuardado={vi.fn()} />);
+    await userEvent.click(screen.getByTestId('btn-eliminar-recordatorio'));
+    await userEvent.click(screen.getByTestId('btn-cancelar-confirmacion'));
+    expect(screen.queryByRole('alertdialog')).toBeNull();
+    expect(screen.getByTestId('titulo-recordatorio')).toBeTruthy();
+    expect(llamadas.some((l) => l.method === 'DELETE')).toBe(false);
   });
 });
 
@@ -165,3 +182,12 @@ describe('CrearRecordatorio: avisos previos y ubicación', () => {
   });
 });
 
+describe('deleteReminderText', () => {
+  it('says who stops hearing it', () => {
+    expect(deleteReminderText(null)).toBe('Deja de sonar y sale de tu agenda.');
+    expect(deleteReminderText({ name: 'Tú', kind: 'notas' })).toBe('Deja de sonar y sale de tu agenda.');
+    expect(deleteReminderText({ name: 'Alonso', kind: 'direct' })).toBe('Deja de sonar para ti y para Alonso.');
+    expect(deleteReminderText({ name: 'Obra', kind: 'group' })).toBe('Deja de sonar para todos en Obra.');
+    expect(deleteReminderText({ kind: 'group' })).toBe('Deja de sonar para todos en el grupo.');
+  });
+});

@@ -5,8 +5,9 @@ import { AdvanceFieldWeb } from './AdvanceFieldWeb';
 import { RepeatPickerWeb } from './RepeatPickerWeb';
 import { VistaPreviaAlEscribir } from '../chat/VistaPreviaAlEscribir';
 import { api } from '../api';
+import { ConfirmDialog } from '../ui/ConfirmDialog';
 import { FieldError, Overlay, PrimaryButton } from '../ui/Overlay';
-import { aValorLocal, validarRecordatorio } from './formularioDeRecordatorio';
+import { aValorLocal, deleteReminderText, validarRecordatorio } from './formularioDeRecordatorio';
 import { shrinkPhotoBlob } from '../chat/shrinkPhoto';
 
 export { aValorLocal, validarRecordatorio } from './formularioDeRecordatorio';
@@ -53,6 +54,8 @@ export function CrearRecordatorio({ jwt, chat, editando, onClose, onGuardado }: 
   const [quitarImagen, setQuitarImagen] = useState(false);
   const [error, setError] = useState('');
   const [guardando, setGuardando] = useState(false);
+  const [askingDelete, setAskingDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const atajos = useMemo(() => opcionesRapidas(new Date()), []);
 
   const guardar = async () => {
@@ -92,9 +95,13 @@ export function CrearRecordatorio({ jwt, chat, editando, onClose, onGuardado }: 
     setError(resultado.motivo);
   };
 
+  // José 27/11: asked with the app's own dialog; the browser's confirm froze the tab.
   const eliminar = async () => {
-    if (!editando || !window.confirm('¿Eliminar el recordatorio? Deja de sonar para todos.')) return;
+    if (!editando || deleting) return;
+    setDeleting(true);
     const r = await api(`/agenda/reminders/${editando._id}`, { method: 'DELETE', jwt });
+    setDeleting(false);
+    setAskingDelete(false);
     if (r.ok) onGuardado();
     else setError(r.message);
   };
@@ -108,7 +115,7 @@ export function CrearRecordatorio({ jwt, chat, editando, onClose, onGuardado }: 
         <>
           <div className="flex items-center gap-2">
             {editando ? (
-              <button type="button" data-testid="btn-eliminar-recordatorio" onClick={() => void eliminar()} className="grid h-11 w-11 shrink-0 place-items-center rounded-xl text-error hover:bg-error/10" aria-label="Eliminar el recordatorio" title="Eliminar">
+              <button type="button" data-testid="btn-eliminar-recordatorio" onClick={() => setAskingDelete(true)} className="grid h-11 w-11 shrink-0 place-items-center rounded-xl text-error hover:bg-error/10" aria-label="Eliminar el recordatorio" title="Eliminar">
                 <Trash2 size={18} />
               </button>
             ) : null}
@@ -181,6 +188,16 @@ export function CrearRecordatorio({ jwt, chat, editando, onClose, onGuardado }: 
           </button>
         ) : null}
       </div>
+      {askingDelete ? (
+        <ConfirmDialog
+          title="¿Eliminar el recordatorio?"
+          text={deleteReminderText(chat)}
+          confirmLabel="Eliminar"
+          busy={deleting}
+          onConfirm={() => void eliminar()}
+          onCancel={() => setAskingDelete(false)}
+        />
+      ) : null}
     </Overlay>
   );
 }

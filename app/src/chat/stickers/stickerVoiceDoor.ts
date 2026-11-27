@@ -5,8 +5,8 @@ import { BASE_URL } from '../../api/client';
 import { useCurrentSpaceId, useMySpaces } from '../../spaces/currentSpace';
 import { audioBase64Of } from './spokenVoice';
 
-/** agentes waits 15 s for Voice Studio; the server 20 s. */
-const PREVIEW_TIMEOUT_MS = 25_000;
+/** agentes waits 15 s for Voice Studio; the server 20 s per ask and asks once more after a cold 503. */
+const PREVIEW_TIMEOUT_MS = 45_000;
 
 /** The last «Escuchar» file: the next one replaces it, so the cache keeps one. */
 let lastPreview: string | null = null;

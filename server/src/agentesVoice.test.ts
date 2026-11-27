@@ -21,6 +21,8 @@ type Heard = { path: string; installation: string; signedOk: boolean; body: Reco
 const heard: Heard[] = [];
 let reply: { status: number; body: Buffer | string } = { status: 200, body: Buffer.from('m4a') };
 let installationId = '';
+/** Answers used once each, before `reply`: a cold Voice Studio first, then a warm one. */
+const queued: { status: number; body: Buffer | string }[] = [];
 
 const read = (req: IncomingMessage) => new Promise<string>((resolve) => { let raw = ''; req.on('data', (chunk) => (raw += chunk)); req.on('end', () => resolve(raw)); });
 
@@ -31,8 +33,9 @@ beforeAll(async () => {
     const raw = await read(req);
     const ts = Number(req.headers['x-lilachat-timestamp']);
     heard.push({ path: req.url ?? '', installation: String(req.headers['x-lilachat-installation']), signedOk: req.headers['x-lilachat-signature'] === eventSignature(SECRET, ts, raw), body: JSON.parse(raw || '{}') });
-    res.writeHead(reply.status, { 'Content-Type': reply.status === 200 ? 'audio/mp4' : 'application/json' });
-    res.end(reply.body);
+    const answer = queued.shift() ?? reply;
+    res.writeHead(answer.status, { 'Content-Type': answer.status === 200 ? 'audio/mp4' : 'application/json' });
+    res.end(answer.body);
   }).listen(0);
   base = `http://127.0.0.1:${(agentes.address() as AddressInfo).port}`;
 });
@@ -44,6 +47,7 @@ afterAll(async () => {
 });
 beforeEach(async () => {
   heard.length = 0;
+  queued.length = 0;
   reply = { status: 200, body: Buffer.from('m4a') };
   await Promise.all([WorkspaceMemberModel.deleteMany({}), BotAppModel.deleteMany({}), BotInstallationModel.deleteMany({})]);
   configureDevelopers(['lca_test_lila']);
@@ -70,6 +74,24 @@ describe('speakWithAgentes', () => {
     expect(await speakWithAgentes(speech)).toEqual({ ok: false, reason: 'refused' });
     reply = { status: 503, body: '{"reason":"voice_unavailable"}' };
     expect(await speakWithAgentes(speech)).toEqual({ ok: false, reason: 'unavailable' });
+  });
+
+  it('a 503 from a cold Voice Studio is asked once more: the second, warm, answers (José 27/11: «el 2do intento sí funciona»)', async () => {
+    // Arrange
+    queued.push({ status: 503, body: '{"reason":"voice_unavailable"}' });
+    // Act
+    const outcome = await speakWithAgentes(speech);
+    // Assert
+    expect(outcome).toEqual({ ok: true, audio: Buffer.from('m4a') });
+    expect(heard).toHaveLength(2);
+  });
+
+  it('a cap or a refused phrase is not asked again', async () => {
+    reply = { status: 429, body: '{}' };
+    await speakWithAgentes(speech);
+    reply = { status: 400, body: '{}' };
+    await speakWithAgentes(speech);
+    expect(heard).toHaveLength(2);
   });
 
   it('an empty 200 is not a voice', async () => {

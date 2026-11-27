@@ -123,6 +123,10 @@ José 20/11: espacio perdido arriba, el cliente repetido, los días debían flot
   estilo propio en español. En modo oscuro el mapa base es oscuro
   (auditoría 20/11, mapa-v2): `workMapStyleFor(dark)`, mismas teselas y mismos ids de capa;
   la web repinta al cambiar el tema (`useDarkClass`), el APK cambia `mapStyle` (`useTema().oscuro`).
+  Desde el 27/11 (José: «tonos de Waze») `DARK_MAP_PALETTE` usa los colores nocturnos de Portal
+  (9abf42a49, `DARK_WORK_MAP_COLORS`): tierra azul marino, calles pizarra más claras y avenidas más
+  brillantes, parques verdes, agua oscura y nombres claros con halo. Cubre todas las vistas de mapa
+  (`WorkMapSurface`/`WorkMapCanvas`); el «Editar croquis» embebido es de Portal.
   El trozo del mapa pesa ~256 KB comprimidos y baja al abrir.
 - Archivos propios de la web: `WorkMapCanvas.tsx`, `WorkMapOverlays.tsx`, `CutFields.tsx`,
   `useWorkMap.ts`, `maplibre-csp.d.ts`.

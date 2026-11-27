@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { ROAD_SOURCE_LAYERS } from './workStreetPick.js';
-import { LIGHT_MAP_PALETTE, WORK_MAP_DARK_STYLE, WORK_MAP_STYLE, workMapStyleFor } from './workMapStyle.js';
+import { DARK_MAP_PALETTE, LIGHT_MAP_PALETTE, WORK_MAP_DARK_STYLE, WORK_MAP_STYLE, workMapStyleFor } from './workMapStyle.js';
 
 /**
  * José 09/11: «ese mapa no me gusta… se ve feo, no se parece en nada a tus diseños». The base
@@ -55,5 +55,21 @@ describe('the dark base map', () => {
     const color = String(ground?.paint?.['background-color']);
     expect(color).not.toBe(LIGHT_MAP_PALETTE.ground);
     expect(Number(/(\d+)%\)$/.exec(color)?.[1])).toBeLessThan(20);
+  });
+});
+
+/** José 27/11: «que el mapa en dark mode se vea más parecido a los tonos de Waze», like Portal's (9abf42a49). */
+describe('the dark base map reads like a navigation app', () => {
+  const lightness = (hsl: string) => Number(/,\s*(\d+)%\)$/.exec(hsl)?.[1]);
+  const hue = (hsl: string) => Number(/hsl\((\d+)/.exec(hsl)?.[1]);
+  it('roads are clearly lighter than the land, and avenues brighter than streets', () => {
+    expect(lightness(DARK_MAP_PALETTE.road) - lightness(DARK_MAP_PALETTE.ground)).toBeGreaterThanOrEqual(15);
+    expect(lightness(DARK_MAP_PALETTE.majorRoad)).toBeGreaterThan(lightness(DARK_MAP_PALETTE.road));
+  });
+  it('parks are green and every name is light on a dark halo', () => {
+    expect(hue(DARK_MAP_PALETTE.park)).toBeGreaterThanOrEqual(120);
+    expect(hue(DARK_MAP_PALETTE.park)).toBeLessThanOrEqual(160);
+    for (const name of [DARK_MAP_PALETTE.label, DARK_MAP_PALETTE.placeLabel]) expect(lightness(name)).toBeGreaterThanOrEqual(85);
+    expect(lightness(DARK_MAP_PALETTE.halo)).toBeLessThanOrEqual(12);
   });
 });

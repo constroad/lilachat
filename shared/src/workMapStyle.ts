@@ -45,12 +45,16 @@ export const LIGHT_MAP_PALETTE: MapPalette = {
   label: 'hsl(222, 12%, 38%)', placeLabel: 'hsl(222, 14%, 30%)', halo: 'hsl(0, 0%, 100%)',
 };
 
-/** Same tiles, same layers: only the paint turns dark, so the work's colors keep standing out. */
+/**
+ * Same tiles, same layers: only the paint turns dark, so the work's colors keep standing out. José 27/11: like Portal's
+ * night map (Portal 9abf42a49, `DARK_WORK_MAP_COLORS`), a navigation app at night — navy land, roads as clearly lighter
+ * slate lines (avenues brighter), green parks with green names, darker water and light names on a dark halo.
+ */
 export const DARK_MAP_PALETTE: MapPalette = {
-  ground: 'hsl(222, 24%, 10%)', block: 'hsl(222, 18%, 16%)', blockEdge: 'hsl(222, 16%, 22%)',
-  park: 'hsl(152, 24%, 15%)', parkEdge: 'hsl(152, 22%, 22%)', parkText: 'hsl(142, 30%, 62%)', water: 'hsl(210, 38%, 18%)',
-  road: 'hsl(222, 14%, 24%)', roadEdge: 'hsl(222, 20%, 13%)', majorRoad: 'hsl(222, 12%, 33%)', majorEdge: 'hsl(222, 18%, 15%)',
-  label: 'hsl(222, 14%, 72%)', placeLabel: 'hsl(222, 16%, 80%)', halo: 'hsl(222, 24%, 10%)',
+  ground: 'hsl(218, 24%, 16%)', block: 'hsl(218, 20%, 20%)', blockEdge: 'hsl(218, 18%, 24%)',
+  park: 'hsl(148, 36%, 25%)', parkEdge: 'hsl(148, 34%, 31%)', parkText: 'hsl(146, 45%, 62%)', water: 'hsl(214, 42%, 11%)',
+  road: 'hsl(216, 27%, 33%)', roadEdge: 'hsl(218, 26%, 21%)', majorRoad: 'hsl(214, 30%, 45%)', majorEdge: 'hsl(216, 28%, 26%)',
+  label: 'hsl(214, 25%, 88%)', placeLabel: 'hsl(0, 0%, 96%)', halo: 'hsl(220, 30%, 10%)',
 };
 
 /** The local name, which in Peru is the Spanish one («Jirón Moquegua»), in capitals. */

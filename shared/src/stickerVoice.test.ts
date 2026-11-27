@@ -1,0 +1,64 @@
+import { describe, expect, it } from 'vitest';
+import { parseStickerSound, stickerSoundField, stickerSoundLabelOf } from './soundStickers.js';
+import { canUseStickerVoice, STICKER_VOICES, stickerVoiceFileName, stickerVoiceOfUrl, voiceTextOf, MAX_VOICE_TEXT } from './stickerVoice.js';
+
+/** José 27/11: «voces… las de latino español»; «solo admins, y deja solo Valeria y Daniel». */
+describe('the sticker voices', () => {
+  it('are only Valeria and Daniel', () => {
+    expect(STICKER_VOICES.map((voice) => voice.id)).toEqual(['valeria', 'daniel']);
+  });
+
+  it('only a space owner or admin can use them', () => {
+    expect(canUseStickerVoice('owner')).toBe(true);
+    expect(canUseStickerVoice('admin')).toBe(true);
+    expect(canUseStickerVoice('member')).toBe(false);
+    expect(canUseStickerVoice('guest')).toBe(false);
+    expect(canUseStickerVoice(undefined)).toBe(false);
+  });
+});
+
+describe('voice as a sticker sound', () => {
+  it('is a sound choice that goes and comes back through the form', () => {
+    // Arrange / Act
+    const parsed = parseStickerSound('voice:daniel');
+    // Assert
+    expect(parsed).toEqual({ kind: 'voice', voiceId: 'daniel' });
+    expect(stickerSoundField({ kind: 'voice', voiceId: 'valeria' })).toBe('voice:valeria');
+  });
+
+  it('a voice that is not offered is not a sound (Lucía, Mateo or the clone)', () => {
+    expect(parseStickerSound('voice:lucia')).toBeNull();
+    expect(parseStickerSound('voice:clone_f57d5fd345ae')).toBeNull();
+    expect(parseStickerSound('voice:')).toBeNull();
+  });
+});
+
+describe('voiceTextOf', () => {
+  it('keeps a trimmed phrase of up to 120 characters', () => {
+    expect(voiceTextOf('  ¡Vaciado listo!  ')).toBe('¡Vaciado listo!');
+    expect(voiceTextOf('a'.repeat(MAX_VOICE_TEXT))).toHaveLength(MAX_VOICE_TEXT);
+  });
+
+  it('refuses an empty, too long or non-text phrase', () => {
+    expect(voiceTextOf('   ')).toBeNull();
+    expect(voiceTextOf('a'.repeat(MAX_VOICE_TEXT + 1))).toBeNull();
+    expect(voiceTextOf(undefined)).toBeNull();
+    expect(voiceTextOf(42)).toBeNull();
+  });
+});
+
+describe('a saved voice sound', () => {
+  it('its file says which voice, and the sticker names it', () => {
+    // Arrange
+    const audioUrl = `https://lilachat.constroad.com/files/a/${stickerVoiceFileName('valeria')}`;
+    // Act / Assert
+    expect(stickerVoiceFileName('daniel')).toBe('sticker-voz-daniel.m4a');
+    expect(stickerVoiceOfUrl(audioUrl)?.id).toBe('valeria');
+    expect(stickerSoundLabelOf({ audioUrl })).toBe('Voz de Valeria');
+  });
+
+  it('a recorded sound is not a voice', () => {
+    expect(stickerVoiceOfUrl('https://x/files/a/sticker-sonido.m4a')).toBeNull();
+    expect(stickerVoiceOfUrl(null)).toBeNull();
+  });
+});

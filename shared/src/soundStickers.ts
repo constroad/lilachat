@@ -5,6 +5,7 @@
  * chat it arrives muted with a speaker button; a tap plays it three times.
  */
 import type { WinkSound } from './winks.js';
+import { stickerVoiceOf, stickerVoiceOfUrl, type StickerVoiceId } from './stickerVoice.js';
 
 /** The longest clip a sticker keeps, like the animated stickers made from a GIF. */
 export const VIDEO_STICKER_MAX_MS = 6_000;
@@ -38,13 +39,19 @@ export function soundPresetPath(presetId: string): string | null {
 }
 
 /** What the sticker sounds like: the video's own sound, a recorded or uploaded file, one of ours, or nothing. */
-export type StickerSound = { kind: 'original' } | { kind: 'file' } | { kind: 'none' } | { kind: 'preset'; presetId: string };
+export type StickerSound = { kind: 'original' } | { kind: 'file' } | { kind: 'none' } | { kind: 'preset'; presetId: string } | { kind: 'voice'; voiceId: StickerVoiceId };
 
 const PRESET_PREFIX = 'preset:';
+/** A phrase spoken by one of the sticker voices; the phrase travels in its own field (`voiceText`). */
+const VOICE_PREFIX = 'voice:';
 
 /** The form field `sound` → a sound choice, or null when it is not one. */
 export function parseStickerSound(raw: unknown): StickerSound | null {
   if (raw === 'original' || raw === 'file' || raw === 'none') return { kind: raw };
+  if (typeof raw === 'string' && raw.startsWith(VOICE_PREFIX)) {
+    const voice = stickerVoiceOf(raw.slice(VOICE_PREFIX.length));
+    return voice ? { kind: 'voice', voiceId: voice.id } : null;
+  }
   if (typeof raw !== 'string' || !raw.startsWith(PRESET_PREFIX)) return null;
   const presetId = raw.slice(PRESET_PREFIX.length);
   return soundPresetPath(presetId) ? { kind: 'preset', presetId } : null;
@@ -52,7 +59,8 @@ export function parseStickerSound(raw: unknown): StickerSound | null {
 
 /** The form value of a sound choice (the inverse of `parseStickerSound`). */
 export function stickerSoundField(sound: StickerSound): string {
-  return sound.kind === 'preset' ? `${PRESET_PREFIX}${sound.presetId}` : sound.kind;
+  if (sound.kind === 'preset') return `${PRESET_PREFIX}${sound.presetId}`;
+  return sound.kind === 'voice' ? `${VOICE_PREFIX}${sound.voiceId}` : sound.kind;
 }
 
 export type ClipWindow = { startMs: number; durationMs: number };
@@ -110,7 +118,8 @@ export function soundPresetIdOf(audioUrl: string | null | undefined): string | n
 /** «Risa» for one of ours, «Sonido propio» for a recorded or uploaded one, or null without sound. */
 export function stickerSoundLabelOf(sticker: { audioUrl?: string | null }): string | null {
   if (!stickerHasSound(sticker)) return null;
-  return presetOfUrl(sticker.audioUrl)?.label ?? 'Sonido propio';
+  const voice = stickerVoiceOfUrl(sticker.audioUrl);
+  return presetOfUrl(sticker.audioUrl)?.label ?? (voice ? `Voz de ${voice.label}` : 'Sonido propio');
 }
 
 export type StickerOptions = { sound: 'Agregar sonido' | 'Cambiar sonido'; canRemoveSound: boolean; soundLine: string; canExport: boolean; favorite: 'Agregar a Favoritos' | 'Quitar de Favoritos'; canRemove: boolean };

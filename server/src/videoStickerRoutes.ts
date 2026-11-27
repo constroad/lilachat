@@ -1,10 +1,11 @@
 import type { NextFunction, Request, Response, Router } from 'express';
 import multer from 'multer';
-import { clipWindowOf, isStickerClipMime, MAX_STICKER_AUDIO_BYTES, MAX_STICKER_VIDEO_BYTES, parseStickerSound, soundPresetPath, STICKER_SIZE, type StickerSound } from '@lilachat/shared';
+import { clipWindowOf, isStickerClipMime, MAX_STICKER_AUDIO_BYTES, MAX_STICKER_VIDEO_BYTES, parseStickerSound, soundPresetPath, STICKER_SIZE, stickerVoiceFileName, type StickerSound } from '@lilachat/shared';
 import type { MediaUploader } from './mediaClient.js';
 import { asyncRoute, requireSession } from './requireSession.js';
 import type { VideoStickerConverter } from './soundSticker.js';
 import { StickerModel } from './stickerModel.js';
+import { spokenSoundOf, type StickerVoiceSpeaker } from './stickerVoice.js';
 import { toClientSticker } from './stickerView.js';
 import { webFileUrl } from './webOrigin.js';
 
@@ -36,15 +37,15 @@ function refusalOf(parts: Parts, sound: StickerSound | null): string | null {
   return parts.audio.size > MAX_STICKER_AUDIO_BYTES ? 'Ese audio pesa demasiado (máximo 4 MB).' : null;
 }
 
-const soundSourceOf = (sound: StickerSound, parts: Parts): 'video' | Buffer | null =>
-  sound.kind === 'original' ? 'video' : sound.kind === 'file' ? parts.audio!.buffer : null;
+const soundSourceOf = (sound: StickerSound, parts: Parts, spoken: Buffer | null): 'video' | Buffer | null =>
+  sound.kind === 'original' ? 'video' : sound.kind === 'file' ? parts.audio!.buffer : spoken;
 
 /**
  * A sticker with sound from a video (José 26/11, designs ss-01…ss-04): the
  * clip of up to 6 s becomes a 512×512 animated WebP in «Mis stickers», and its
  * sound (the video's, a recorded or uploaded one, or one of ours) goes with it.
  */
-export function videoStickerRoutes(router: Router, deps: { uploader: MediaUploader; convert: VideoStickerConverter }): void {
+export function videoStickerRoutes(router: Router, deps: { uploader: MediaUploader; convert: VideoStickerConverter; speak: StickerVoiceSpeaker }): void {
   router.post('/stickers/from-video', requireSession, receiveParts, asyncRoute(async (req, res) => {
     const me = req.session!.userId;
     const parts = partsOf(req);
@@ -56,11 +57,15 @@ export function videoStickerRoutes(router: Router, deps: { uploader: MediaUpload
     const presetUrl = sound!.kind === 'preset' ? webFileUrl(req, soundPresetPath(sound!.presetId)!) : null;
     if (sound!.kind === 'preset' && !presetUrl) return void res.status(400).json({ message: 'No se pudo guardar el sticker.' });
 
-    const made = await deps.convert({ video: parts.video!.buffer, window, soundFrom: soundSourceOf(sound!, parts) });
+    // A voice (José 27/11): checked and spoken before the video is cut, so a refusal costs no ffmpeg.
+    const spoken = sound!.kind === 'voice' ? await spokenSoundOf({ voiceId: sound!.voiceId, text: req.body?.voiceText, spaceId: req.body?.spaceId, userId: me }, deps.speak) : null;
+    if (spoken && 'status' in spoken) return void res.status(spoken.status).json({ message: spoken.message });
+
+    const made = await deps.convert({ video: parts.video!.buffer, window, soundFrom: soundSourceOf(sound!, parts, spoken?.audio ?? null) });
     if (typeof made === 'string') return void res.status(REFUSALS[made].status).json({ message: REFUSALS[made].message });
     const chatId = `stickers-${me}`;
     const picture = await deps.uploader.upload({ chatId, fileName: 'sticker-video.webp', mimeType: 'image/webp', kind: 'image', bytes: made.webp });
-    const track = made.audio ? await deps.uploader.upload({ chatId, fileName: 'sticker-sonido.m4a', mimeType: 'audio/mp4', kind: 'audio', bytes: made.audio }) : null;
+    const track = made.audio ? await deps.uploader.upload({ chatId, fileName: sound!.kind === 'voice' ? stickerVoiceFileName(sound!.voiceId) : 'sticker-sonido.m4a', mimeType: 'audio/mp4', kind: 'audio', bytes: made.audio }) : null;
     if (!picture.ok || (track && !track.ok)) return void res.status(503).json({ message: 'No se pudo guardar el sticker. Inténtalo de nuevo.' });
     const audioUrl = track?.ok ? track.media.url : presetUrl;
     const sticker = await StickerModel.create({ userId: me, mediaId: picture.media.storageName, url: picture.media.url, mime: 'image/webp', width: STICKER_SIZE, height: STICKER_SIZE, animated: true, ...(audioUrl ? { audioUrl } : {}) });

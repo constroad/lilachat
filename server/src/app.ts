@@ -56,6 +56,7 @@ import { buildPlaceRouter } from './placeSearch.js';
 import { buildFieldConditionsRouter } from './fieldConditions.js';
 import { buildTaskEvidenceRouter } from './taskEvidenceRoutes.js';
 import { buildStickersRouter } from './stickersRoutes.js';
+import type { StickerVoiceSpeaker } from './stickerVoice.js';
 import { buildReenvioRouter } from './reenvioRoutes.js';
 import { buildHilosRouter } from './hilosRoutes.js';
 import { buildBotAppsRouter, buildBotRouter, buildBotSpacesRouter, buildOAuthRouter } from './bots/botRoutes.js';
@@ -114,7 +115,7 @@ export type AppDeps = {
   /** The minimum app build (LilaStore): below it, 426 (`minimumVersion.ts`). Without it, nothing is checked. */
   minimumBuild?: MinimumSource;
   /** In tests: the GIF converter and the media reader of the animated stickers (`animatedStickerRoutes.ts`). */
-  animatedStickers?: { convert?: GifConverter; fetchMedia?: MediaFetcher; fromVideo?: VideoStickerConverter; cutSound?: StickerSoundCutter; makeVideo?: StickerVideoMaker; readBytes?: (url: string) => Promise<Buffer | null> };
+  animatedStickers?: { convert?: GifConverter; fetchMedia?: MediaFetcher; fromVideo?: VideoStickerConverter; cutSound?: StickerSoundCutter; makeVideo?: StickerVideoMaker; readBytes?: (url: string) => Promise<Buffer | null>; speak?: StickerVoiceSpeaker };
 };
 
 /**

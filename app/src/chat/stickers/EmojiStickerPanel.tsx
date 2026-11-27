@@ -16,6 +16,7 @@ import { CreateSticker } from './CreateSticker';
 import { CreateVideoSticker } from './CreateVideoSticker';
 import { pickStickerSource, type GalleryVideo, type PickedPhoto } from './pickStickerSource';
 import { useStickers } from './useStickers';
+import { useSavedStickerSheets } from './useSavedStickerSheets';
 import { StickerPhotoContext } from './useStickerCutout';
 import type { StickerThread } from './stickersApi';
 
@@ -85,6 +86,7 @@ export const EmojiStickerPanel = memo(function EmojiStickerPanel(props: {
   /** A new editor each time (its layers and brushes do not leak into the next sticker); it stays mounted to slide out. */
   const [editorSession, setEditorSession] = useState(0);
   const stickers = useStickers(props.jwt);
+  const saved = useSavedStickerSheets(props.jwt, stickers);
   // GIPHY only when the server has its key (backlog 37); never in a secret chat.
   const gifs = useGifsAvailable(props.jwt) && props.withStickers;
   const closeEditor = useCallback(() => setCreating(false), []);
@@ -132,9 +134,10 @@ export const EmojiStickerPanel = memo(function EmojiStickerPanel(props: {
         <WinkPanel recipient={props.chatName} onSend={(wink) => { onWink(wink, props.replyTo?.()); props.onStickerSent?.(); }} onNudge={props.onNudge} />
       ) : (
         <View style={{ flex: 1 }}>
-          <StickerPanel stickers={stickers} onSend={(sticker) => void stickers.send(props.chatId, sticker, { ...props.thread, replyToSeq: props.replyTo?.() }).then((sent) => sent && props.onStickerSent?.())} onCreate={() => void create()} />
+          <StickerPanel stickers={stickers} onSend={(sticker) => void stickers.send(props.chatId, sticker, { ...props.thread, replyToSeq: props.replyTo?.() }).then((sent) => sent && props.onStickerSent?.())} onCreate={() => void create()} onOptions={saved.onOptions} />
         </View>
       )}
+      {saved.sheets}
       {videoForSticker ? (
         <CreateVideoSticker key={videoForSticker.uri} visible video={videoForSticker} onClose={() => setVideoForSticker(null)} onSave={stickers.saveFromVideo} onSend={(sticker) => stickers.send(props.chatId, sticker, { ...props.thread, replyToSeq: props.replyTo?.() })} />
       ) : null}

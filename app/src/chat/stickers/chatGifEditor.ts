@@ -1,6 +1,7 @@
 import { useSyncExternalStore } from 'react';
 import * as FileSystem from 'expo-file-system/legacy';
 import { reportarError } from '../../ui/reportarError';
+import { BASE_URL } from '../../api/client';
 import { chatGifCacheName, chatGifClip, chatGifRefusal } from './stickerSource';
 import type { PickedVideo } from './videoStickerSound';
 
@@ -34,6 +35,27 @@ export async function openChatGifInEditor(params: { jwt: string; chatId: string;
   } catch (error) {
     reportarError('openChatGifInEditor', error);
     return 'Sin conexión para descargar el GIF.';
+  }
+}
+
+const GIPHY_ID = /^[A-Za-z0-9]{1,40}$/;
+
+/**
+ * «Sticker con sonido» on a GIF of the GIF tab (José 27/11, design sa-04): the server hands the GIF (it keeps GIPHY's
+ * key), and the editor opens with it for this chat, without sending it first. Null when the editor opened.
+ */
+export async function openGiphyGifInEditor(params: { jwt: string; chatId: string; gifId: string }): Promise<string | null> {
+  if (!GIPHY_ID.test(params.gifId)) return 'Ese GIF no se puede usar.';
+  try {
+    const target = `${FileSystem.cacheDirectory}sticker-giphy-${params.gifId}.gif`;
+    const { status, uri } = await FileSystem.downloadAsync(`${BASE_URL}/api/gifs/${params.gifId}/file`, target, { headers: { Authorization: `Bearer ${params.jwt}` } });
+    if (status < HTTP_OK_MIN || status > HTTP_OK_MAX) return 'No se pudo traer ese GIF. Inténtalo de nuevo.';
+    pending = { jwt: params.jwt, chatId: params.chatId, gif: chatGifClip(uri) };
+    tell();
+    return null;
+  } catch (error) {
+    reportarError('openGiphyGifInEditor', error);
+    return 'Sin conexión para traer el GIF.';
   }
 }
 

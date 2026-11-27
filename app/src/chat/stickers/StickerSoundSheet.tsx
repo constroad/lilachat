@@ -47,13 +47,13 @@ function ListenChip(props: { testID: string; label: string; onPress: () => void 
 }
 
 /** «Sonidos de Lilachat»: our wink sounds; a tap chooses one and plays it. */
-function PresetGrid(props: { choice: SoundChoice; onChoose: (choice: SoundChoice) => void }) {
+function PresetGrid(props: { choice: SoundChoice | null; onChoose: (choice: SoundChoice) => void }) {
   return (
     <View className="rounded-2xl border-2 border-outline/15 px-3 py-3">
       <Text className="pb-2 text-[15px] font-semibold text-on-surface">Sonidos de Lilachat</Text>
       <View className="flex-row flex-wrap gap-2">
         {STICKER_SOUND_PRESETS.map((preset) => {
-          const selected = props.choice.kind === 'preset' && props.choice.presetId === preset.id;
+          const selected = props.choice?.kind === 'preset' && props.choice.presetId === preset.id;
           return (
             <Pressable key={preset.id} testID={`sonido-preset-${preset.id}`} accessibilityRole="radio" accessibilityState={{ checked: selected }} onPress={() => { props.onChoose({ kind: 'preset', presetId: preset.id }); previewPreset(preset.id); }} className={`min-h-[44px] items-center justify-center rounded-full border px-4 ${selected ? 'border-primary bg-primary/10' : 'border-outline/25'}`}>
               <Text className={`text-[14px] ${selected ? 'font-semibold text-primary' : 'text-on-surface'}`}>{preset.label}</Text>
@@ -86,13 +86,13 @@ async function pickPhoneAudio(): Promise<{ clip: AudioClip } | { refusal: string
  * Lilachat», or none. A choice applies at once; «Listo» closes. A GIF has no
  * sound of its own: `offerOriginal` false hides that option (José 26/11).
  */
-export function StickerSoundSheet(props: { visible: boolean; offerOriginal?: boolean; choice: SoundChoice; clipLength: string; onChoose: (choice: SoundChoice) => void; onPreviewOriginal: () => void; onClose: () => void }) {
+export function StickerSoundSheet(props: { visible: boolean; offerOriginal?: boolean; /** null: nothing chosen yet (a saved sticker, José 27/11). */ choice: SoundChoice | null; clipLength: string; onChoose: (choice: SoundChoice) => void; onPreviewOriginal: () => void; onClose: () => void; /** «Listo» says what it does: «Guardar sonido» on a saved sticker. */ doneLabel?: string; /** Its own «Listo» (a saved sticker saves there); the backdrop and back only close. */ onDone?: () => void; /** What it sounds like now, under the title. */ current?: string }) {
   const { choice, onChoose } = props;
   const [notice, setNotice] = useState('');
   /** A voice or an audio already made stays when another choice is tried and then this one again. */
   const [kept, setKept] = useState<{ voice: AudioClip | null; upload: AudioClip | null }>({ voice: null, upload: null });
-  const voiceClip = choice.kind === 'voice' ? choice.clip : kept.voice;
-  const uploadClip = choice.kind === 'upload' ? choice.clip : kept.upload;
+  const voiceClip = choice?.kind === 'voice' ? choice.clip : kept.voice;
+  const uploadClip = choice?.kind === 'upload' ? choice.clip : kept.upload;
 
   const choose = (next: SoundChoice) => {
     stopSoundPreview();
@@ -122,33 +122,34 @@ export function StickerSoundSheet(props: { visible: boolean; offerOriginal?: boo
         <View className="pb-1">
           <Text className="text-[20px] font-bold text-on-surface">Sonido del sticker</Text>
           <Text className="text-[14px] text-on-surface-variant">Se escucha cuando lo tocan. Hasta 6 segundos.</Text>
+          {props.current ? <Text testID="sonido-actual-sticker" className="pt-1 text-[13px] font-semibold text-primary">{props.current}</Text> : null}
         </View>
         {props.offerOriginal === false ? null : (
           <SoundOption
             testID="sonido-original"
             Icon={Music}
             title="Sonido original del video"
-            selected={choice.kind === 'original'}
+            selected={choice?.kind === 'original'}
             onPress={() => choose({ kind: 'original' })}
             detail={<ListenChip testID="escuchar-sonido-original" label={props.clipLength} onPress={() => { choose({ kind: 'original' }); props.onPreviewOriginal(); }} />}
           />
         )}
-        <SoundOption testID="sonido-grabar" Icon={Mic} title="Grabar tu voz" selected={choice.kind === 'voice'} onPress={() => choose({ kind: 'voice', clip: voiceClip })}>
+        <SoundOption testID="sonido-grabar" Icon={Mic} title="Grabar tu voz" selected={choice?.kind === 'voice'} onPress={() => choose({ kind: 'voice', clip: voiceClip })}>
           <VoiceClipRecorder clip={voiceClip} onRecorded={recorded} />
         </SoundOption>
         <SoundOption
           testID="sonido-subir"
           Icon={FolderOpen}
           title="Elegir un audio del teléfono"
-          selected={choice.kind === 'upload'}
+          selected={choice?.kind === 'upload'}
           onPress={() => void chooseUpload()}
           detail={uploadClip ? <ListenChip testID="escuchar-audio-sticker" label={uploadClip.name} onPress={() => previewClip(uploadClip.uri)} /> : <Text className="text-[13px] text-on-surface-variant">MP3, M4A u otro, hasta 4 MB</Text>}
         />
         <PresetGrid choice={choice} onChoose={choose} />
-        <SoundOption testID="sin-sonido" Icon={Ban} title="Sin sonido" selected={choice.kind === 'none'} onPress={() => choose({ kind: 'none' })} detail={<Text className="text-[13px] text-on-surface-variant">El sticker se mueve sin sonar</Text>} />
+        <SoundOption testID="sin-sonido" Icon={Ban} title="Sin sonido" selected={choice?.kind === 'none'} onPress={() => choose({ kind: 'none' })} detail={<Text className="text-[13px] text-on-surface-variant">El sticker se mueve sin sonar</Text>} />
         {notice ? <Text testID="aviso-sonido-sticker" className="text-[13px] text-error">{notice}</Text> : null}
-        <Pressable testID="listo-sonido-sticker" onPress={close} className="mt-1 min-h-[48px] items-center justify-center rounded-full bg-primary">
-          <Text className="text-[15px] font-semibold text-on-primary">Listo</Text>
+        <Pressable testID="listo-sonido-sticker" onPress={props.onDone ? () => { stopSoundPreview(); props.onDone?.(); } : close} className="mt-1 min-h-[48px] items-center justify-center rounded-full bg-primary">
+          <Text className="text-[15px] font-semibold text-on-primary">{props.doneLabel ?? 'Listo'}</Text>
         </Pressable>
       </ScrollView>
     </Sheet>

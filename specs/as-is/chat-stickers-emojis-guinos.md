@@ -62,6 +62,10 @@ Tono adulto: nada chibi ni infantil (decisión de José, §74).
 - Agregar uno con imagen, nombre `:casco-ok:` y vista previa: `AddCustomEmojiSheet.tsx`, `app/src/spaces/customEmojis.tsx` (diseño `c-07`).
 - Se dibujan en las reacciones: `ReactionGlyph.tsx`.
 
+- Opciones de un sticker guardado (27/11, diseños `sa-01`, `sa-02`): mantener presionado abre `StickerOptionsSheet.tsx` (el sticker en grande, «Animado · sin sonido» o «con sonido · Risa», y «Agregar/Cambiar sonido», «Quitar sonido», «Exportar para WhatsApp», favoritos, «Quitar de Mis stickers»; `stickerOptionsOf`). El sonido usa la misma hoja `StickerSoundSheet.tsx` sin «Sonido original» (`SavedStickerSoundSheet.tsx`, decisiones en `savedStickerSound.ts`): «Guardar sonido» manda solo lo que cambió; atrás o el fondo solo cierran. Las hojas viven en `useSavedStickerSheets.tsx`.
+- «Exportar para WhatsApp» (27/11, diseño `sa-05`): `StickerExportSheet.tsx` + `stickerExport.ts`. El video con su sonido se baja con la sesión y va a la galería (permiso de solo escritura) o a compartir; la imagen WebP/PNG, a compartir.
+- Pestaña GIF (27/11, diseño `sa-04`): «Sticker con sonido» en cada GIF y mantener presionado («Enviar GIF» / «Hacer sticker con sonido») abren el editor con ese GIF sin mandarlo (`chatGifEditor.ts › openGiphyGifInEditor`, por `GET /api/gifs/:id/file`).
+
 ### Web/PWA (`web/src/chat/`)
 
 - Panel: `PanelDeEmojis.tsx`, `stickers/EmojiStickerPanel.tsx`; cierra con clic afuera o Escape; colores en oscuro (21/10).

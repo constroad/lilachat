@@ -5,7 +5,7 @@ import { BASE_URL } from '../../api/client';
 import { addMediaInFlight, HANDOVER_MS, removeMediaInFlight, stickerAsQueuedFile } from '../gifs/gifsInFlight';
 import { isEmojiPanelOpen, subscribeEmojiPanel } from '../emojiPanel';
 import { beginInteraction, SEND_FRAME_WINDOW_MS } from '../../diagnostico/frameMonitor';
-import { createStickerFromVideo, keepFromMessage, keepFromPack, listStickers, removeSticker, sendSticker, setFavorite, uploadSticker, type StickerTarget, type VideoStickerUpload } from './stickersApi';
+import { createStickerFromVideo, keepFromMessage, keepFromPack, listStickers, removeSticker, sendSticker, setFavorite, setStickerSound, uploadSticker, type ApiOutcome, type SavedSoundUpload, type StickerTarget, type VideoStickerUpload } from './stickersApi';
 
 const RECENTS_KEY = 'lilachat.stickers.recientes';
 /**
@@ -151,7 +151,16 @@ export function useStickers(jwt: string) {
     replace((cachedLibrary ?? []).filter((one) => one.id !== sticker.id));
   };
 
-  return { library, recents, packs: STICKER_PACK_SECTIONS, error, reload, send, save, saveFromVideo, toggleFavorite, remove };
+  /** José 27/11: a sound for a sticker already saved; a pack one is kept first, so the sound has a copy to live on. */
+  const setSound = async (sticker: LibrarySticker, upload: SavedSoundUpload): Promise<ApiOutcome<LibrarySticker>> => {
+    const kept = sticker.id.startsWith('pack:') ? await keepFromPack(jwt, sticker.id, sticker.favorite) : null;
+    if (kept && !kept.ok) return kept;
+    const changed = await setStickerSound(jwt, kept?.ok ? kept.data.sticker.id : sticker.id, upload);
+    if (changed.ok) replace((cachedLibrary ?? []).some((one) => one.id === changed.data.id) ? (cachedLibrary ?? []).map((one) => (one.id === changed.data.id ? changed.data : one)) : withSticker(changed.data));
+    return changed;
+  };
+
+  return { library, recents, packs: STICKER_PACK_SECTIONS, error, reload, send, save, saveFromVideo, toggleFavorite, remove, setSound };
 }
 
 export type StickersState = ReturnType<typeof useStickers>;

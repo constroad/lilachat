@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ActivityIndicator, Alert, Pressable, ScrollView, Text, useWindowDimensions, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, Text, useWindowDimensions, View } from 'react-native';
 import { Image } from 'expo-image';
 import { Clock3, FolderHeart, Star, WandSparkles } from 'lucide-react-native';
 import { stickerSections, type LibrarySticker, type StickerSection } from '@lilachat/shared';
@@ -20,9 +20,9 @@ const FILTERS: { key: Exclude<Filter, 'all'>; label: string; Icon: typeof Clock3
 /**
  * The Stickers tab of the panel (José, 20/10; design `s1-app-panel-stickers`),
  * like WhatsApp: Recientes, Favoritos, Mis stickers, the default pack, and
- * «Crear» first. A tap sends; a long press offers favorite or removal.
+ * «Crear» first. A tap sends; a long press opens its options, its sound first (José 27/11, design sa-01).
  */
-export function StickerPanel(props: { stickers: StickersState; onSend: (sticker: LibrarySticker) => void; /** «Crear» (José 26/11): a photo, a video or a GIF of the gallery. */ onCreate: () => void }) {
+export function StickerPanel(props: { stickers: StickersState; onSend: (sticker: LibrarySticker) => void; /** «Crear» (José 26/11): a photo, a video or a GIF of the gallery. */ onCreate: () => void; /** A long press: the options sheet of that sticker. */ onOptions: (sticker: LibrarySticker) => void }) {
   const colors = useColores();
   const { width } = useWindowDimensions();
   const [filter, setFilter] = useState<Filter>('all');
@@ -31,14 +31,6 @@ export function StickerPanel(props: { stickers: StickersState; onSend: (sticker:
   const side = (width - GAP * (COLUMNS + 1)) / COLUMNS;
   const sections = stickerSections({ library: library ?? [], recents, packs });
   const visible = filter === 'all' ? sections : sections.filter((section) => section.key === filter);
-  const showOptions = (sticker: LibrarySticker) => {
-    const isPack = sticker.id.startsWith('pack:');
-    Alert.alert('Sticker', undefined, [
-      { text: 'Cancelar', style: 'cancel' },
-      { text: sticker.favorite ? 'Quitar de favoritos' : 'Agregar a favoritos', onPress: () => void props.stickers.toggleFavorite(sticker) },
-      ...(isPack ? [] : [{ text: 'Quitar de Mis stickers', style: 'destructive' as const, onPress: () => void props.stickers.remove(sticker) }]),
-    ]);
-  };
   const shown = (section: StickerSection) => (section.key === 'mine' && !allMine && filter === 'all' ? section.stickers.slice(0, COLLAPSED_MINE) : section.stickers);
 
   return (
@@ -71,7 +63,7 @@ export function StickerPanel(props: { stickers: StickersState; onSend: (sticker:
               <View className="flex-row flex-wrap" style={{ gap: GAP }}>
                 {index === 0 ? <CreateTile side={side} onCreate={props.onCreate} /> : null}
                 {shown(section).map((sticker) => (
-                  <Pressable key={`${section.key}-${sticker.id}`} testID={`sticker-${section.key}-${sticker.id}`} accessibilityLabel="Mandar el sticker" onPress={() => props.onSend(sticker)} onLongPress={() => showOptions(sticker)} className="items-center justify-center rounded-2xl border border-outline/10 bg-surface" style={{ width: side, height: side }}>
+                  <Pressable key={`${section.key}-${sticker.id}`} testID={`sticker-${section.key}-${sticker.id}`} accessibilityLabel="Mandar el sticker" onPress={() => props.onSend(sticker)} onLongPress={() => props.onOptions(sticker)} className="items-center justify-center rounded-2xl border border-outline/10 bg-surface" style={{ width: side, height: side }}>
                     <Image source={{ uri: sticker.url }} style={{ width: side - 14, height: side - 14 }} contentFit="contain" recyclingKey={sticker.id} />
                   </Pressable>
                 ))}

@@ -69,6 +69,16 @@ export function createStickerFromVideo(jwt: string, upload: VideoStickerUpload, 
   return postStickerForm(jwt, '/api/stickers/from-video', form, { timeoutMs: VIDEO_UPLOAD_TIMEOUT_MS, onProgress });
 }
 
+/** A new sound for a saved sticker (José 27/11): `sound` and, for a voice or an audio of the phone, the file. */
+export type SavedSoundUpload = { audio: FormFile | null; fields: [string, string][] };
+
+export function setStickerSound(jwt: string, stickerId: string, upload: SavedSoundUpload): Promise<ApiOutcome<LibrarySticker>> {
+  const form = new FormData();
+  upload.fields.forEach(([name, value]) => form.append(name, value));
+  if (upload.audio) form.append('audio', asFormPart(upload.audio));
+  return postStickerForm(jwt, `/api/stickers/${stickerId}/sound`, form);
+}
+
 async function postStickerForm(jwt: string, path: string, form: FormData, options: { timeoutMs?: number; onProgress?: (ratio: number) => void } = {}): Promise<ApiOutcome<LibrarySticker>> {
   const response = await subirPorXhr({ url: `${BASE_URL}${path}`, token: jwt, form, timeoutMs: options.timeoutMs ?? UPLOAD_TIMEOUT_MS, onProgress: options.onProgress });
   if (response.tipo === 'fallo') return { ok: false, reason: response.motivo };

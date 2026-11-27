@@ -45,7 +45,7 @@ Montaje en `server/src/app.ts` (líneas 160–166): `/api/oauth`, `/api/bots/app
   Contenido: `text`, `card`, `checklist` o `files`. `idempotency_key` obligatorio. 60 por minuto.
 - `thread_of` responde en un hilo. Un hilo ajeno da `400 invalid_thread` (07/11).
 - `PATCH /api/bots/messages/:id` reemplaza texto, tarjeta o álbum, y avisa `msg.edited`.
-- `DELETE /api/bots/messages/:id` y `DELETE /api/bots/messages?idempotency_key=` (14/11).
+- `DELETE /api/bots/messages/:id` y `DELETE /api/bots/messages?idempotency_key=` (14/11). Desde el 27/11 no deja lápida: lo oculta para cada miembro (`hideForEveryone`, la lista de «Eliminar para mí»).
   Queda la lápida «Se eliminó este mensaje». Desde el 15/11 borrar libera la clave.
 - `files: [{ url, mime }]` de hosts de Constroad = álbum de fotos y videos (09/11).
 - `files: [{ file_id }]` = archivos subidos antes por `POST /api/bots/files` (17/11). Un audio acepta

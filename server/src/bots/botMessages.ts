@@ -3,6 +3,7 @@ import { uploadsOf, type BotUpload } from './botUploads.js';
 import { botCardSummary, botFilesSummary, normalizePeruPhone, SHARED_LOCATION_BODY, sharedContactBody, type BotCard, type BotClientRef, type BotPost, type BotUploadRef, type GalleryItem } from '@lilachat/shared';
 import { ChatModel, MessageModel, type Chat, type Message } from '../chatModels.js';
 import { chatMemberIds, deleteMessage, sendMessage } from '../chatService.js';
+import { hideForEveryone } from '../hiddenMessages.js';
 import { createChecklistInChat } from '../checklistService.js';
 import { HiloInvalidoError } from '../hilos.js';
 import { UserModel } from '../models.js';
@@ -240,7 +241,7 @@ export async function updateBotMessage(installation: Installation, messageId: st
 
 /**
  * The bot takes down its own message, as «Eliminar para todos» does (Portal 14/11: a deleted visit takes its card
- * with it): the tombstone, off the pinned bar, its thread recounted, and every member told.
+ * with it): off the pinned bar, its thread recounted, every member told, and no tombstone left (Agentes 27/11).
  */
 export async function deleteBotMessage(installation: Installation, which: { id: string } | { idempotencyKey: string }): Promise<{ deleted: true } | BotApiError> {
   if ('id' in which && !Types.ObjectId.isValid(which.id)) return fail(404, 'message_not_found', 'Ese mensaje no existe.');
@@ -253,7 +254,9 @@ export async function deleteBotMessage(installation: Installation, which: { id: 
   if (!deleted.ok) return fail(409, 'not_deleted', deleted.motivo);
   await releaseKey(installation, message);
   const thread = deleted.hilo && deleted.message.hiloDe ? { rootSeq: deleted.message.hiloDe, summary: deleted.hilo } : undefined;
-  notifyDeleted(chatId, message.seq, await chatMemberIds(message.chatId), thread);
+  const members = await chatMemberIds(message.chatId);
+  notifyDeleted(chatId, message.seq, members, thread);
+  await hideForEveryone(chatId, members, message.seq);
   return { deleted: true };
 }
 

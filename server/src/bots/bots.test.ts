@@ -17,6 +17,7 @@ import { configureBotDeliveries } from './botEvents.js';
 import { forgetBots } from './botRegistry.js';
 import { botsHearMessage } from './botTriggers.js';
 import { sha256 } from './botSecrets.js';
+import { hiddenSeqsOf } from '../hiddenMessages.js';
 
 /** The bots API, end to end (`specs/BOTS-API.spec.md`): install by OAuth + PKCE, publish, hear signed events, uninstall. */
 let mongo: MongoMemoryServer;
@@ -258,6 +259,18 @@ describe('the bot publishes (§b) and reads (§d)', () => {
     await request(app).delete(`/api/bots/messages/${sent.body.message.id}`).set(asBot(token)).expect(404);
     await request(app).delete(`/api/bots/messages/${someone._id}`).set(asBot(token)).expect(404);
     expect((await MessageModel.findById(someone._id).lean<Message>())!.deletedAt).toBeUndefined();
+  });
+
+  it('what a bot takes down leaves no «Se eliminó este mensaje»: it is hidden for every member (Agentes 27/11: 9 tombstones in Alonso\'s chat)', async () => {
+    // Arrange
+    const { token } = await install();
+    const sent = await request(app).post('/api/bots/messages').set(asBot(token)).send({ channel_id: String(channel), text: 'duplicado', idempotency_key: 'dup1' }).expect(201);
+    // Act
+    await request(app).delete(`/api/bots/messages/${sent.body.message.id}`).set(asBot(token)).expect(204);
+    // Assert
+    const seq = (await MessageModel.findById(sent.body.message.id).lean<Message>())!.seq;
+    expect(await hiddenSeqsOf(String(channel), jose)).toEqual([seq]);
+    expect(await hiddenSeqsOf(String(channel), ana)).toEqual([seq]);
   });
 
   it('agentes keeps no message ids: it takes a card down by the idempotency key it posted with; twice is 404 (agentes 14/11)', async () => {

@@ -248,14 +248,15 @@ con responsable solo la marca esa persona o el bot (regla de la §86).
 ### `DELETE /api/bots/messages/:id`
 
 El bot baja su propio mensaje como «Eliminar para todos» (Portal 14/11: al borrar una visita, su tarjeta se va).
-Queda la lápida «Se eliminó este mensaje», sale de los fijados, su hilo se recuenta y cada miembro recibe
-`msg.deleted`. `204` si se borró. `404 message_not_found` si no existe, no es de este bot o ya se borró.
+Sale de los fijados, su hilo se recuenta y cada miembro recibe `msg.deleted`. **Sin lápida** (Agentes 27/11: nueve
+«Se eliminó este mensaje» de duplicados borrados en el chat de un prospecto): queda oculto para cada miembro, con la
+misma lista y el mismo `msg.hidden` de «Eliminar para mí» (`hideForEveryone`, `hiddenMessages.ts`). `204` si se borró. `404 message_not_found` si no existe, no es de este bot o ya se borró.
 `409 not_deleted` si el chat no lo deja (por ejemplo, el bot ya no está en el canal).
 
 También por la clave con que se publicó: `DELETE /api/bots/messages?idempotency_key=<clave>` (agentes 14/11: no
 guarda ids; encuentra la tarjeta por su clave, p. ej. `visita:<visitId>`). Solo mensajes de este bot. Las mismas
-respuestas; un segundo DELETE da `404` con `error: 'message_not_found'`. Sin la clave, `400`. El cliente muestra la
-lápida «Se eliminó este mensaje», igual que un borrado de una persona.
+respuestas; un segundo DELETE da `404` con `error: 'message_not_found'`. Sin la clave, `400`. Tampoco deja lápida.
+Lo borrado antes del 27/11 sigue con su lápida.
 
 **Borrar libera la clave (15/11).** Después de un DELETE, por id o por clave, un `POST` con esa misma clave crea
 una tarjeta NUEVA (`201`), en el canal que diga su `topic`, y desde ahí la clave encuentra la nueva. Así agentes

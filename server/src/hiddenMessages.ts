@@ -42,6 +42,18 @@ export async function hiddenSeqsOf(chatId: string, userId: Types.ObjectId): Prom
   return row?.seqs ?? [];
 }
 
+/**
+ * What a bot takes down is hidden for every member, not left as «Se eliminó este mensaje» (Agentes 27/11: nine
+ * tombstones of removed duplicates in a prospect's chat). Same list and socket event as «Eliminar para mí».
+ */
+export async function hideForEveryone(chatId: string, memberIds: readonly string[], seq: number): Promise<void> {
+  if (memberIds.length === 0) return;
+  await HiddenMessagesModel.bulkWrite(memberIds.map((userId) => ({
+    updateOne: { filter: { userId: new Types.ObjectId(userId), chatId: new Types.ObjectId(chatId) }, update: { $addToSet: { seqs: seq } }, upsert: true },
+  })));
+  for (const userId of memberIds) emitHiddenForMe(userId, chatId, [seq]);
+}
+
 export function buildHiddenMessagesRouter(): Router {
   const router = Router();
   router.use(requireSession);

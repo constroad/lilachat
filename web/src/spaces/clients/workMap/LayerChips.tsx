@@ -1,5 +1,5 @@
 import { Check, Plus } from 'lucide-react';
-import { AVANCE_NO_WORKS, type AvanceChip } from '@lilachat/shared';
+import { AVANCE_NO_WORKS, percentLabel, type AvanceChip } from '@lilachat/shared';
 import { NewLayerButton } from './WorkLayers';
 
 type ChipsProps = {
@@ -12,8 +12,9 @@ type ChipsProps = {
 };
 
 /**
- * The strip of layers (designs av-01 and ma01): 56 px chips with the colour dot, the FULL name and
- * the percent, the picked one with its check. Chips size to their text; the strip scrolls sideways.
+ * The strip of layers (designs av-01 and ma01): compact 40 px chips (José 28/11: «está grandazo»)
+ * with the colour dot, the name and the percent; the picked one raised with a small check. A long
+ * name gives way to the percent, so 3–4 chips fit across a phone. The strip scrolls sideways.
  */
 export function LayerChips(props: ChipsProps) {
   if (!props.chips.length) {
@@ -27,13 +28,14 @@ export function LayerChips(props: ChipsProps) {
   return (
     <div role="group" aria-label="Capas" className="pointer-events-auto -mx-3 flex gap-2 overflow-x-auto px-3 pb-1">
       {props.chips.map((chip) => (
-        <button key={chip.id} type="button" data-testid={`${props.testPrefix}-${chip.id}`} aria-pressed={chip.selected} onClick={() => props.onPick(chip.id)} className={`flex h-14 shrink-0 items-center gap-2 whitespace-nowrap rounded-full border px-5 text-[15px] font-semibold text-on-surface shadow-md ${chip.selected ? 'border-primary bg-primary/15' : 'border-outline/15 bg-surface hover:bg-background'}`}>
-          <span aria-hidden className="h-3 w-3 shrink-0 rounded-full" style={{ backgroundColor: chip.color }} />
-          {chip.label}
-          {chip.selected ? <Check size={16} className="text-primary" /> : null}
+        <button key={chip.id} type="button" data-testid={`${props.testPrefix}-${chip.id}`} aria-pressed={chip.selected} aria-label={chip.label} onClick={() => props.onPick(chip.id)} className={`flex h-10 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-xl border px-3 text-[14px] text-on-surface shadow-md ${chip.selected ? 'border-primary/60 bg-surface font-bold' : 'border-outline/15 bg-surface/90 font-medium hover:bg-background'}`}>
+          <span aria-hidden className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: chip.color }} />
+          <span className="max-w-[132px] truncate">{chip.name}</span>{' '}
+          <span className="font-mono text-[13px] font-normal text-on-surface-variant">{percentLabel(chip.percent)}</span>
+          {chip.selected ? <Check size={14} className="text-primary" /> : null}
         </button>
       ))}
-      {props.onNewLayer ? <button type="button" data-testid="avance-trabajo-nuevo" onClick={props.onNewLayer} className="flex h-14 shrink-0 items-center gap-2 rounded-full border border-dashed border-primary/50 bg-surface px-5 text-[15px] font-semibold text-primary shadow-md hover:bg-background"><Plus size={16} />Trabajo</button> : null}
+      {props.onNewLayer ? <button type="button" data-testid="avance-trabajo-nuevo" onClick={props.onNewLayer} className="flex h-10 shrink-0 items-center gap-1.5 rounded-xl border border-dashed border-primary/50 bg-surface px-3 text-[14px] font-semibold text-primary shadow-md hover:bg-background"><Plus size={14} />Trabajo</button> : null}
     </div>
   );
 }

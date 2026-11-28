@@ -1,0 +1,57 @@
+import { sliceLine, workMapView, type WorkMap, type WorkMapFilter, type WorkMapLine, type WorkMapStreet, type WorkMapView } from './workMap.js';
+import type { StationMark } from './workMapStations.js';
+import type { LayerStreetSummary } from './workLayerSummary.js';
+
+/**
+ * The map drawn by layer (design ma01, José 28/11: «¿por qué sigue mostrándose líneas punteadas?»).
+ * Every street of the work is a thin solid neutral line; the selected layer paints its planned
+ * stretches dashed in ITS color with the street's % beside them, and what is done solid on top.
+ * No grey dashes outside «Editar croquis». PURE: the web and the APK paint what this returns.
+ */
+export type LayerMapLines = { base: WorkMapLine[]; planned: WorkMapLine[]; done: WorkMapLine[]; labels: StationMark[] };
+
+/** MapLibre paints hex, not tokens: a slate that reads on the light and the dark basemap. */
+export const LAYER_BASE_COLOR = '#64748b';
+export const LAYER_BASE_PAINT = { 'line-color': ['get', 'color'], 'line-width': 2.5, 'line-opacity': 0.85 };
+export const LAYER_PLANNED_PAINT = { 'line-color': ['get', 'color'], 'line-width': 5, 'line-dasharray': [1.6, 1.2] };
+export const LAYER_LABEL_LAYOUT = { 'text-field': ['get', 'label'], 'text-font': ['Noto Sans Bold'], 'text-size': 12, 'text-offset': [0, -1.3], 'text-anchor': 'bottom', 'text-allow-overlap': false };
+export const LAYER_LABEL_PAINT = { 'text-color': '#0f172a', 'text-halo-color': '#ffffff', 'text-halo-width': 2 };
+/** «0+000» marks only from this zoom on: zoomed out they covered every street (José 28/11). */
+export const STATION_MIN_ZOOM = 17;
+
+const HALF = 2;
+const MIN_POINTS = 2;
+const lngLat = (street: WorkMapStreet): Array<[number, number]> => street.line.map((point) => [point.lng, point.lat]);
+
+/** The streets the view shows, whole, thin and neutral: the work reads without looking pending. */
+export function baseLinesOf(map: Pick<WorkMap, 'streets'>, view: Pick<WorkMapView, 'streets'>): WorkMapLine[] {
+  const shown = new Set(view.streets.map((row) => row.id));
+  return map.streets.filter((street) => shown.has(street.id) && street.line.length >= MIN_POINTS).map((street) => ({ streetId: street.id, color: LAYER_BASE_COLOR, coordinates: lngLat(street) }));
+}
+
+/** The street's % at the middle of its line, as the design writes «42 %» beside the stretch. */
+export function layerLabelsOf(map: Pick<WorkMap, 'streets'>, rows: readonly Pick<LayerStreetSummary, 'streetId' | 'percentText'>[]): StationMark[] {
+  return rows.flatMap((row) => {
+    const street = map.streets.find((one) => one.id === row.streetId);
+    const middle = street && street.line.length >= MIN_POINTS ? sliceLine(street.line, 0, street.lengthM / HALF).at(-1) : undefined;
+    return middle ? [{ streetId: row.streetId, label: row.percentText, lat: middle.lat, lng: middle.lng }] : [];
+  });
+}
+
+type LayerLinesInput = { map: WorkMap; view: WorkMapView; filter: WorkMapFilter; workId: string | null; rows: readonly Pick<LayerStreetSummary, 'streetId' | 'percentText'>[]; /** The layer's switch in «Capas y leyenda» is off. */ hidden: boolean };
+
+/** What the board draws: without a layer (no works yet) only the neutral streets and what is done. */
+export function layerMapLinesOf(input: LayerLinesInput): LayerMapLines {
+  const base = baseLinesOf(input.map, input.view);
+  if (!input.workId) return { base, planned: [], done: input.view.done, labels: [] };
+  if (input.hidden) return { base, planned: [], done: [], labels: [] };
+  const color = input.map.works.find((work) => work.id === input.workId)?.color ?? LAYER_BASE_COLOR;
+  const layer = workMapView(input.map, { ...input.filter, workId: input.workId });
+  return { base, planned: layer.planned.map((line) => ({ ...line, color, workId: input.workId ?? undefined })), done: layer.done, labels: layerLabelsOf(input.map, input.rows) };
+}
+
+/** The layer sheet's legend (design ma01). */
+export const LAYER_LEGEND = { done: 'Hecho', planned: 'Planificado' } as const;
+
+/** The peek's link to the street rows: «Ver 4 calles» or, open, «Ocultar calles». */
+export const layerStreetsToggle = (count: number, expanded: boolean): string => (expanded ? 'Ocultar calles' : `Ver ${count === 1 ? '1 calle' : `${count} calles`}`);

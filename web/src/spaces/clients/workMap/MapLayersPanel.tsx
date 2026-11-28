@@ -5,7 +5,8 @@ import { KICKER } from './WorkMapPanel';
 /** The layers the map hides; everything starts on (José 19/11, design cc-04). */
 export function useMapLayers() {
   const [layers, setLayers] = useState<MapLayers>(NO_HIDDEN_LAYERS);
-  const [open, setOpen] = useState(true);
+  // José 28/11: «Capas y leyenda» stays closed until its button is pressed.
+  const [open, setOpen] = useState(false);
   return { layers, toggle: (group: MapLayerGroup, key: string) => setLayers((before) => toggleLayer(before, group, key)), open, setOpen };
 }
 
@@ -44,7 +45,7 @@ function StageChips(props: { map: WorkMap; filter: WorkMapFilter; onFilter: (fil
 
 /** «Fotos» and its sub-layers, one per report type (José 19/11). */
 export type PhotoLayersProps = { count: number; shown: boolean; onToggle: () => void; reports: readonly ReportPhotoLayerRow[]; onToggleReport: (type: string) => void };
-type PanelProps = { map: WorkMap; view: WorkMapView; filter: WorkMapFilter; onFilter: (filter: WorkMapFilter) => void; layers: MapLayers; onToggle: (group: MapLayerGroup, key: string) => void; photos?: PhotoLayersProps };
+type PanelProps = { map: WorkMap; view: WorkMapView; filter: WorkMapFilter; onFilter: (filter: WorkMapFilter) => void; layers: MapLayers; onToggle: (group: MapLayerGroup, key: string) => void; photos?: PhotoLayersProps; /** «Hasta hoy», the work, the days and the legend (José 28/11: off the top of the map). */ controls?: React.ReactNode };
 
 /**
  * «Fotos» with a sub-row per report type (José 19/11, as Portal): each its switch and count. The
@@ -80,6 +81,7 @@ export function MapLayersPanel(props: PanelProps) {
   return (
     <div data-testid="mapa-capas" className="shrink-0 bg-surface">
       <p className="px-4 pt-4 md:px-5"><span className={KICKER}>Capas y leyenda</span></p>
+      {props.controls ? <Section title="Ver"><div className="space-y-3">{props.controls}</div></Section> : null}
       {rows.works.length ? (
         <Section title={`Partidas (trabajos) · ${rows.works.length}`} aside="Avance">
           {rows.works.map((work) => (

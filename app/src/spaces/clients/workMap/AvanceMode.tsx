@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { ArrowLeft, Pointer } from 'lucide-react-native';
-import { AVANCE_PICK_STREET, AVANCE_TITLE, avanceChipsOf, avanceHint, avancePickedWork, avanceTargetOf, brushLinesOf, byApproveLinesOf, undoableOf, type ByApproveList, stretchLineOf, streetAtTap, workMapView, type MapEditSend, type WorkMap, type WorkMapFilter, type WorkMapLine, type WorkMapPoint } from '@lilachat/shared';
+import { AVANCE_MANUAL_HINT, AVANCE_MANUAL_ONE, AVANCE_PICK_STREET, AVANCE_TITLE, addManualMark, avanceLinesOf, avanceStreetAtTap, manualHandlesOf, manualRangeOf, measureOnStreet, moveManualMark, tapReachM, type StreetEnd, avanceChipsOf, avanceHint, avancePickedWork, avanceTargetOf, byApproveLinesOf, undoableOf, type ByApproveList, workMapView, type MapEditSend, type WorkMap, type WorkMapFilter, type WorkMapPoint } from '@lilachat/shared';
 import { Modal } from '../../../ui/Modal';
 import { useColores } from '../../../ui/tema';
 import { useMargenes } from '../../../ui/useMargenes';
@@ -26,22 +26,33 @@ function Head(props: { title: string; onExit: () => void }) {
   );
 }
 
+/** The hint, one line where it fits (José 28/11: «está grandazo»). */
 function Hint(props: { text: string; error: string | null }) {
   const colors = useColores();
   return (
-    <View testID="avance-pista" className="mx-3 flex-row items-center gap-3 rounded-full bg-surface/95 px-4 py-3" style={MAP_SHADOW}>
-      <Pointer size={20} color={colors.primary} />
-      <Text className={`flex-1 text-[14px] font-semibold ${props.error ? 'text-error' : 'text-on-surface'}`}>{props.error ?? props.text}</Text>
+    <View testID="avance-pista" className="mx-3 flex-row items-center gap-2 self-start rounded-full bg-surface/95 px-3 py-2" style={MAP_SHADOW}>
+      <Pointer size={16} color={colors.primary} />
+      <Text numberOfLines={2} className={`flex-shrink text-[13px] font-semibold ${props.error ? 'text-error' : 'text-on-surface'}`}>{props.error ?? props.text}</Text>
     </View>
   );
 }
 
-/** The work's stretches in its colour and the tapped street on top, in the stretch colour. */
-function linesOf(map: WorkMap, workId: string | null, streetId: string | null): WorkMapLine[] {
-  const own = workId ? brushLinesOf(map, { kind: 'work', id: workId }) : [];
+/** «Marcar a mano» (José 28/11): two taps on the picked street set «desde» and «hasta»; the rings drag. */
+export type ManualMarks = ReturnType<typeof useManualMarks>;
+
+export function useManualMarks(map: WorkMap, streetId: string | null) {
+  const [on, setOn] = useState(false);
+  const [marks, setMarks] = useState<number[]>([]);
   const street = map.streets.find((one) => one.id === streetId);
-  const picked = street ? stretchLineOf(map, street.id, 0, street.lengthM) : null;
-  return picked ? [...own, picked] : own;
+  const range = on ? manualRangeOf(marks) : null;
+  return {
+    on, marks, range,
+    handles: on ? manualHandlesOf(street, marks) : [],
+    toggle: () => { setOn(!on); setMarks([]); },
+    reset: () => setMarks([]),
+    tap: (place: WorkMapPoint) => { if (street) setMarks(addManualMark(marks, measureOnStreet(street, place))); },
+    drop: (handle: StreetEnd, place: WorkMapPoint) => { if (street) setMarks(moveManualMark(marks, handle, measureOnStreet(street, place))); },
+  };
 }
 
 /**
@@ -67,21 +78,25 @@ export function AvanceMode(props: { map: WorkMap; /** The board's stage and day 
   const target = workId && streetId ? avanceTargetOf(map, streetId, workId) : null;
   const workName = chips.find((chip) => chip.selected)?.name ?? '';
   const pending = useMemo(() => byApproveLinesOf(map, props.byApprove).filter((one) => one.workId === workId), [map, props.byApprove, workId]);
-  const tap = (place: WorkMapPoint) => {
-    const found = streetAtTap(map, place);
+  const manual = useManualMarks(map, streetId);
+  // A short patch on a long road is hard to hit: the reach grows as the map zooms out (José 28/11).
+  const tap = (place: WorkMapPoint, _roads?: unknown, zoom?: number) => {
+    if (manual.on && target) return manual.tap(place);
+    const found = avanceStreetAtTap(map, place, tapReachM(zoom, place.lat));
     setError(found ? null : AVANCE_PICK_STREET);
-    if (found) setStreetId(found);
+    if (found && found !== streetId) { setStreetId(found); manual.reset(); }
   };
+  const hint = manual.on && target ? (manual.marks.length === 1 ? AVANCE_MANUAL_ONE : AVANCE_MANUAL_HINT) : avanceHint(workName);
   return (
     <Modal visible animationType="slide" onRequestClose={props.onExit}>
       <View testID="avance-modo" className="flex-1 bg-background">
-        <WorkMapSurface view={view} moves controlsInset={margins.pie} stretches={linesOf(map, workId, streetId)} pending={pending} onTap={workId ? tap : undefined} />
+        <WorkMapSurface view={view} moves controlsInset={margins.pie} stretches={avanceLinesOf(map, workId, streetId, manual.range)} pending={pending} onTap={workId ? tap : undefined} handles={manual.handles} onHandleDrop={manual.drop} />
         <View pointerEvents="box-none" className="absolute inset-x-0 gap-3" style={{ top: margins.cabecera + 8 }}>
           <Head title={props.title} onExit={props.onExit} />
           <LayerChips testPrefix="avance-trabajo" chips={chips} onPick={(id) => { setChosen(id); setError(null); }} onNewLayer={() => setNewLayer(true)} />
-          {workId ? <Hint text={avanceHint(workName)} error={error} /> : null}
+          {workId ? <Hint text={hint} error={error} /> : null}
         </View>
-        {target ? <AvancePanel key={`${target.streetId}|${target.workId}`} map={map} target={target} send={props.send} undoable={undoableOf(props.byApprove, target.streetId, target.workId)} onUndo={props.onUndo} bottom={margins.pie} onClose={() => setStreetId(null)} /> : null}
+        {target ? <AvancePanel key={`${target.streetId}|${target.workId}`} map={map} target={target} send={props.send} undoable={undoableOf(props.byApprove, target.streetId, target.workId)} onUndo={props.onUndo} bottom={margins.pie} manual={manual} onClose={() => { setStreetId(null); manual.reset(); }} /> : null}
       </View>
       <NewLayerSheet open={newLayer} map={map} send={props.send} onCreated={created} onClose={() => setNewLayer(false)} />
     </Modal>

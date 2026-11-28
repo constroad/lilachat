@@ -7,8 +7,7 @@ import { KICKER } from './WorkMapPanel';
 /** The layers the map hides; everything starts on (José 19/11, design cc-04). */
 export function useMapLayers() {
   const [layers, setLayers] = useState<MapLayers>(NO_HIDDEN_LAYERS);
-  const [open, setOpen] = useState(true);
-  return { layers, toggle: (group: MapLayerGroup, key: string) => setLayers((before) => toggleLayer(before, group, key)), open, setOpen };
+  return { layers, toggle: (group: MapLayerGroup, key: string) => setLayers((before) => toggleLayer(before, group, key)) };
 }
 
 const ROW = 'min-h-[52px] flex-row items-center gap-3 border-b border-outline/10';
@@ -44,7 +43,7 @@ function StageChips(props: { map: WorkMap; filter: WorkMapFilter; onFilter: (fil
 
 /** «Fotos» and its sub-layers, one per report type (José 19/11). */
 type PhotoLayersProps = { count: number; shown: boolean; onToggle: () => void; reports: readonly ReportPhotoLayerRow[]; onToggleReport: (type: string) => void };
-type PanelProps = { map: WorkMap; view: WorkMapView; filter: WorkMapFilter; onFilter: (filter: WorkMapFilter) => void; layers: MapLayers; onToggle: (group: MapLayerGroup, key: string) => void; photos?: PhotoLayersProps };
+type PanelProps = { map: WorkMap; view: WorkMapView; filter: WorkMapFilter; onFilter: (filter: WorkMapFilter) => void; layers: MapLayers; onToggle: (group: MapLayerGroup, key: string) => void; photos?: PhotoLayersProps; /** «Hasta hoy», the work, the days and the legend (José 28/11: off the top of the map). */ controls?: ReactNode };
 
 /**
  * «Fotos» with a sub-row per report type (José 19/11, as Portal): each its switch and count. The
@@ -80,6 +79,7 @@ export function MapLayersPanel(props: PanelProps) {
   return (
     <View testID="mapa-capas" className="mb-2">
       <Text className="text-[13px] font-bold uppercase tracking-[1.5px] text-primary">Capas y leyenda</Text>
+      {props.controls ? <Section title="Ver">{props.controls}</Section> : null}
       {rows.works.length ? (
         <Section title={`Partidas (trabajos) · ${rows.works.length}`} aside="Avance">
           {rows.works.map((work) => (

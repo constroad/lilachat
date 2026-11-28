@@ -19,6 +19,8 @@ const FULL_PERCENT = 100;
 export type AvanceChip = { id: string; name: string; color: string; percent: number; label: string; selected: boolean };
 /** `doneM`: the approved end of that work on the street; `fromM`: where the new progress starts; `pendingM`: where what waits for approval ends. */
 export type AvanceTarget = { streetId: string; streetName: string; workId: string; workName: string; lengthM: number; doneM: number; fromM: number; needsScope: boolean; pendingM: number | null };
+/** A hand-marked stretch of the street («Marcar a mano», José 28/11). */
+export type ManualRange = { fromM: number; toM: number };
 export type AvanceRequest = WorkScopeRequest | WorkManualProgressRequest;
 /** One id per save for each door: a resend after a lost answer is the same entry, never a twin. */
 export type AvanceEntryIds = { scope: string; progress: string };
@@ -93,21 +95,42 @@ export function avanceProblem(target: AvanceTarget, toM: number | null): string 
   return manualProblem({ workId: target.workId, fromM: target.fromM, toM, photoIds: [], note: '' }, target.lengthM);
 }
 
+const overlaps = (range: ManualRange, fromM: number, toM: number) => range.fromM < toM && range.toM > fromM;
+
+/**
+ * Why a hand-marked stretch cannot go; null when it can. From the front on it is the usual check;
+ * behind the front it goes only over free metres: nothing approved and nothing waiting there.
+ */
+export function avanceRangeProblem(map: Pick<WorkMap, 'progress' | 'scopes' | 'pending'>, target: AvanceTarget, range: ManualRange): string | null {
+  if (range.toM <= range.fromM) return MANUAL_NO_LENGTH;
+  if (range.fromM < target.fromM) {
+    const starts = map.scopes.filter((scope) => scope.streetId === target.streetId && scope.workIds.includes(target.workId)).map((scope) => scope.fromM);
+    const scopeStart = starts.length ? Math.min(...starts) : 0;
+    if (!target.needsScope && range.fromM < scopeStart) return avanceStartsLater(scopeStart);
+    if (map.progress.some((one) => one.streetId === target.streetId && one.workId === target.workId && !one.rework && overlaps(range, one.fromM, one.toM))) return avanceAlready(target.doneM, target.workName);
+    const waiting = (map.pending ?? []).some((one) => one.streetId === target.streetId && one.workId === target.workId && overlaps(range, one.fromM, one.toM));
+    if (waiting && target.pendingM !== null) return pendingAlready(target.pendingM);
+  }
+  return manualProblem({ workId: target.workId, fromM: range.fromM, toM: range.toM, photoIds: [], note: '' }, target.lengthM);
+}
+
 /** In order: the stretch when the street lacks the work (the brush's rule), then the progress. */
-export function avanceRequests(map: WorkMap, target: AvanceTarget, toM: number, ids: AvanceEntryIds, now: Date): AvanceRequest[] {
+export function avanceRequests(map: WorkMap, target: AvanceTarget, toM: number, ids: AvanceEntryIds, now: Date, fromM: number = target.fromM): AvanceRequest[] {
   const scope = target.needsScope ? brushRequests(map, { kind: 'work', id: target.workId }, target.streetId, ids.scope) : [];
-  const draft = { workId: target.workId, fromM: target.fromM, toM, photoIds: [], note: '' };
+  const draft = { workId: target.workId, fromM, toM, photoIds: [], note: '' };
   return [...scope, workManualProgressRequest(map, target.streetId, draft, ids.progress, now)];
 }
 
-type AvanceSave = { map: WorkMap; target: AvanceTarget; toM: number | null; ids: AvanceEntryIds; now: Date; send: MapEditSend };
+/** `range`: a hand-marked stretch («Marcar a mano»), then `toM` is ignored. */
+type AvanceSave = { map: WorkMap; target: AvanceTarget; toM: number | null; ids: AvanceEntryIds; now: Date; send: MapEditSend; range?: ManualRange | null };
 
 /** «Guardar avance»: checks, then sends each request; the first refusal stops and is what is read. */
 export async function runAvanceSave(save: AvanceSave): Promise<WorkProgressResult> {
-  const problem = avanceProblem(save.target, save.toM);
-  if (problem || save.toM === null) return { ok: false, message: problem ?? MANUAL_NO_LENGTH };
+  const toM = save.range ? save.range.toM : save.toM;
+  const problem = save.range ? avanceRangeProblem(save.map, save.target, save.range) : avanceProblem(save.target, save.toM);
+  if (problem || toM === null) return { ok: false, message: problem ?? MANUAL_NO_LENGTH };
   let answer: WorkProgressResult = { ok: false, message: MANUAL_NO_LENGTH };
-  for (const request of avanceRequests(save.map, save.target, save.toM, save.ids, save.now)) {
+  for (const request of avanceRequests(save.map, save.target, toM, save.ids, save.now, save.range?.fromM)) {
     answer = await save.send(request, request.kind === 'work_scope' ? sendWorkScope : (deps) => sendWorkManualProgress(deps, ''));
     if (!answer.ok) return answer;
   }

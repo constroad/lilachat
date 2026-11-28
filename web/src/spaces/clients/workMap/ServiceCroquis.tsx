@@ -7,7 +7,7 @@ import { FRAMED_ORIGINS, PortalEmbedFrame, type LinkState } from '../reports/Por
  * Portal's croquis editor of the service (José 19/11), in the same frame as a visit's croquis. Its
  * link lives only here (12 h), never in a message. Closing reads the map again: new drawings show.
  */
-function ServiceCroquisFrame(props: { send: MapEditSend; title: string; onClose: () => void }) {
+export function ServiceCroquisFrame(props: { send: MapEditSend; title: string; onClose: () => void }) {
   const [state, setState] = useState<LinkState>({ kind: 'asking' });
   const [round, setRound] = useState(0);
   // The door is made again on every render of the map: only «Reintentar» asks for a new link.

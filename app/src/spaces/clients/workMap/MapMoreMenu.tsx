@@ -1,21 +1,21 @@
 import { useState } from 'react';
 import { Pressable, Text } from 'react-native';
-import { ArchiveRestore, Download, ExternalLink, Layers, Maximize2, MoreVertical, Paintbrush, Plus, Route, Share2, type LucideIcon } from 'lucide-react-native';
+import { ArchiveRestore, Download, ExternalLink, Layers, Maximize2, MoreVertical, Paintbrush, Pencil, PenLine, Plus, Route, Share2, TrendingUp, type LucideIcon } from 'lucide-react-native';
 import { mapMoreItems, type MapMoreKey, type MapScreenItem } from '@lilachat/shared';
 import { Sheet } from '../../../ui/Sheet';
 import { useColores } from '../../../ui/tema';
 import { KICKER } from './WorkMapPanel';
 import { MAP_ROUND, MAP_SHADOW } from './MapFloating';
 
-const ICONS: Record<MapMoreKey, LucideIcon> = { share: Share2, screen: Maximize2, area: Route, draw: Plus, stages: Layers, works: Paintbrush, export: Download, open: ExternalLink, deleted: ArchiveRestore };
+const ICONS: Record<MapMoreKey, LucideIcon> = { share: Share2, screen: Maximize2, record: Pencil, avance: TrendingUp, croquis: PenLine, area: Route, draw: Plus, stages: Layers, works: Paintbrush, export: Download, open: ExternalLink, deleted: ArchiveRestore };
 /** The test ids the buttons had before they moved under «Más»: the E2E and the tutorials keep them. */
-const TEST_IDS: Record<MapMoreKey, string> = { share: 'mapa-compartir', screen: 'mapa-pantalla-completa', area: 'mapa-marcar-calles', draw: 'mapa-nueva-calle', stages: 'mapa-etapas-abrir', works: 'mapa-trabajos-abrir', export: 'mapa-exportar', open: 'mapa-abrir', deleted: 'mapa-borrados-abrir' };
+const TEST_IDS: Record<MapMoreKey, string> = { share: 'mapa-compartir', screen: 'mapa-pantalla-completa', record: 'mapa-registrar-avance', avance: 'mapa-modo-avance', croquis: 'mapa-editar-croquis', area: 'mapa-marcar-calles', draw: 'mapa-nueva-calle', stages: 'mapa-etapas-abrir', works: 'mapa-trabajos-abrir', export: 'mapa-exportar', open: 'mapa-abrir', deleted: 'mapa-borrados-abrir' };
 
 /**
  * «Más» (José 09/11): everything that is not «Registrar avance», in one sheet. José 20/11 (design
  * mapa-v2): a round ⋮ over the map, with «Compartir avance» and «Pantalla completa» first.
  */
-export function MapMoreMenu(props: { onPick: (key: MapMoreKey) => void; draws: boolean; edits: boolean; admin: boolean; share?: boolean; screen?: MapScreenItem }) {
+export function MapMoreMenu(props: { onPick: (key: MapMoreKey) => void; draws: boolean; edits: boolean; admin: boolean; share?: boolean; screen?: MapScreenItem; /** «Modo avance» and «Editar croquis» (José 28/11). */ fieldTools?: boolean; /** «Registrar avance» when no layer sheet carries it. */ record?: boolean }) {
   const colors = useColores();
   const [open, setOpen] = useState(false);
   const items = mapMoreItems(props);

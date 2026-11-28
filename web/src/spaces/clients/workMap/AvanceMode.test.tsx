@@ -15,6 +15,11 @@ const MAP: WorkMap = {
 };
 const ON_STREET = { lat: -12, lng: -76.9995 };
 const OFF_STREET = { lat: -12.01, lng: -76.9995 };
+/** ~110 m off the axis: missed at street zoom, picked when the map is zoomed out (30 px ≈ 300 m). */
+const NEAR_ZOOMED_OUT = { lat: -12.001, lng: -76.9995 };
+const ZOOMED_OUT = 14;
+const TO_TAP = { lat: -12, lng: -76.9991 };
+const FROM_TAP = { lat: -12, lng: -76.9993 };
 const NO_FILTER = {};
 
 function Harness(props: { map: WorkMap; send: MapEditSend; onUndo?: (id: string) => Promise<string | null>; undoable?: ReturnType<typeof byApproveOf>['items'][number]; onNewLayer?: () => void }) {
@@ -25,7 +30,11 @@ function Harness(props: { map: WorkMap; send: MapEditSend; onUndo?: (id: string)
       {mode.on ? <AvanceTop mode={mode} title="Pachacamac" onNewLayer={props.onNewLayer ?? (() => undefined)} /> : null}
       <button type="button" data-testid="toque-calle" onClick={() => mode.tap(ON_STREET)} />
       <button type="button" data-testid="toque-fuera" onClick={() => mode.tap(OFF_STREET)} />
-      {mode.target ? <AvancePanel map={props.map} target={mode.target} send={props.send} undoable={props.undoable ?? null} onUndo={props.onUndo} /> : null}
+      <button type="button" data-testid="toque-lejos-alejado" onClick={() => mode.tap(NEAR_ZOOMED_OUT, undefined, ZOOMED_OUT)} />
+      <button type="button" data-testid="toque-desde" onClick={() => mode.tap(FROM_TAP)} />
+      <button type="button" data-testid="toque-hasta" onClick={() => mode.tap(TO_TAP)} />
+      <p data-testid="anillos">{mode.manual.handles.map((handle) => handle.label).join(' ')}</p>
+      {mode.target ? <AvancePanel map={props.map} target={mode.target} manual={mode.manual} send={props.send} undoable={props.undoable ?? null} onUndo={props.onUndo} /> : null}
     </>
   );
 }
@@ -147,5 +156,49 @@ describe('Modo Avance with what waits for approval (web)', () => {
     fireEvent.click(screen.getByTestId('deshacer-si-a9'));
     // Assert
     await waitFor(() => expect(onUndo).toHaveBeenCalledWith('a9'));
+  });
+
+  it('a short patch is picked with a reach that grows as the map zooms out (José 28/11)', () => {
+    render(<Harness map={MAP} send={okSend()} />);
+    fireEvent.click(screen.getByTestId('mapa-modo-avance'));
+    fireEvent.click(screen.getByTestId('toque-lejos-alejado'));
+    expect(screen.getByTestId('avance-panel')).toHaveTextContent('JR. LIMA');
+  });
+
+  it('«Marcar a mano»: two taps set «desde» and «hasta» with rings, and «Guardar avance» sends that stretch', async () => {
+    // Arrange
+    const send = okSend();
+    render(<Harness map={MAP} send={send} />);
+    fireEvent.click(screen.getByTestId('mapa-modo-avance'));
+    fireEvent.click(screen.getByTestId('toque-calle'));
+    // Act
+    fireEvent.click(screen.getByTestId('avance-a-mano'));
+    expect(screen.queryByTestId('avance-pct-75')).toBeNull();
+    expect(screen.getByTestId('avance-pista')).toHaveTextContent('Toca en la calle dónde empieza y dónde termina el avance');
+    fireEvent.click(screen.getByTestId('toque-hasta'));
+    expect(screen.getByTestId('avance-pista')).toHaveTextContent('Ahora toca dónde termina el avance');
+    fireEvent.click(screen.getByTestId('toque-desde'));
+    // Assert
+    expect(screen.getByTestId('anillos').textContent).toMatch(/^0\+0\d\d 0\+0\d\d$/);
+    expect(screen.getByTestId('avance-a-mano-tramo')).toHaveTextContent(/^\+\d+ m · 0\+0\d\d → 0\+0\d\d$/);
+    fireEvent.click(screen.getByTestId('avance-guardar'));
+    await waitFor(() => expect(screen.getByTestId('avance-respuesta-modo')).toHaveTextContent(MANUAL_SENT));
+    const request = send.mock.calls[0]?.[0] as { from_m: number; to_m: number };
+    expect(request).toMatchObject({ kind: 'work_manual_progress', street_id: 's1' });
+    expect(request.from_m).toBeGreaterThan(60);
+    expect(request.to_m).toBeGreaterThan(request.from_m);
+  });
+
+  it('a hand-marked stretch over what is approved is refused before sending', async () => {
+    const send = okSend();
+    render(<Harness map={MAP} send={send} />);
+    fireEvent.click(screen.getByTestId('mapa-modo-avance'));
+    fireEvent.click(screen.getByTestId('toque-calle'));
+    fireEvent.click(screen.getByTestId('avance-a-mano'));
+    fireEvent.click(screen.getByTestId('toque-calle'));
+    fireEvent.click(screen.getByTestId('toque-hasta'));
+    fireEvent.click(screen.getByTestId('avance-guardar'));
+    await waitFor(() => expect(screen.getByTestId('avance-respuesta-modo')).toHaveTextContent('Esta calle ya va en 60 m de Imprimación.'));
+    expect(send).not.toHaveBeenCalled();
   });
 });

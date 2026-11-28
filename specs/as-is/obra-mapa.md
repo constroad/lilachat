@@ -420,6 +420,32 @@ Motores puros, con test, usados por web y APK:
   horizontal junto a un hermano `flex-1`, o raíz de un componente, declara `flexGrow: 0` (se añadió
   a `LayerChips`, `MapDays`, `ObservationParts` y `ReportItemsView`). Verificado en el emulador: la
   causa (build publicado). El arreglo: solo por tests y tsc (el build de desarrollo no tenía sesión).
+- **28/11** Auditoría stitch-fidelity de ma01 tras las quejas de José (botones grandes, botones
+  sobre las capas, «Capas y leyenda» abierta y enorme, líneas punteadas fuera de «Editar croquis»).
+  Auditoría: `design/stitch/auditorias/ma01-mapa-capas.md` (16 diferencias del revisor independiente
+  + 2 de Modo Avance). Ahora (web y APK): arriba UNA fila de chips compactos de 40 dp (`LayerChips`,
+  también en Modo Avance) con «Más» (⋮) al lado y, debajo a la derecha, el botón flotante «Capas»;
+  «Hasta hoy», el selector de trabajo, los días y las convenciones viven en «Capas y leyenda»
+  (sección «Ver»), que está CERRADA hasta tocar «Capas» (`shared/src/workMapSheet.ts`:
+  `initialMapSheet`, `toggleLayersSheet`, `sheetForLayerPick`, `expandLayerSheet`). La hoja de la
+  capa abre como vista previa (cifra, barra y UNA acción «Registrar avance de <capa>», 52 dp,
+  `bg-primary`) y «Ver N calles» la amplía a las filas, la leyenda «— Hecho · - - Planificado» y
+  «Último» (sin reloj); el panel de siempre (tarjetas de calle, «Avances», unidades, listas, corte)
+  sigue montado debajo y se ve ampliada (APK: `BoardSheet.tsx`). Nada flota al pie: «Editar croquis»
+  y «Modo avance» pasan a «Más» (`mapMoreItems` con `fieldTools`; «Registrar avance» también, solo
+  si no hay capas). El mapa se dibuja por capa (`shared/src/workLayerLines.ts` › `layerMapLinesOf`):
+  todas las calles en línea fina neutra sólida, lo planificado de la capa elegida punteado y grueso
+  EN SU COLOR con su «NN %» a mitad de la calle, lo hecho sólido; sin la capa no hay punteado gris.
+  Las progresivas «0+000» solo desde zoom 17 (`STATION_MIN_ZOOM`). Modo Avance: pista de 13 px en
+  una línea; el toque elige la calle de la obra más cercana con un alcance de 30 px según el zoom
+  (`tapReachM`, `avanceStreetAtTap`) y la resalta gruesa en el color de la capa; «Marcar a mano»
+  pone «desde» y «hasta» con dos toques sobre el eje (fuera de la calle se pega al extremo), aros
+  arrastrables con su progresiva y «+4 m · 0+002 → 0+006»; «Guardar avance» lo manda por la misma
+  puerta (`runAvanceSave` con `range`); antes del frente solo si ese tramo está libre
+  (`avanceRangeProblem`: nada aprobado ni por aprobar ahí, y dentro del tramo de la capa).
+  Verificado en el emulador: solo la captura ANTES (APK publicado); lo nuevo por tests (web
+  `ServiceMapWeb.test.tsx`, `AvanceMode.test.tsx`; shared `workLayerLines`, `workAvanceManual`,
+  `workMapMenu`) y tsc. Falta la captura DESPUÉS en el APK tras publicar el OTA y revisar ma04.
 - **28/11** «Mapa por capas» como ma01 (web y APK; prototipo aprobado de Portal
   `claude.ai/artifact/L8iULepUHhNJukC7MJkpF9`). Sobre el mapa, primera fila flotante: un chip por capa
   (trabajo) con su punto de color, nombre COMPLETO y % (`LayerChips.tsx`, extraído de la tira de «Modo
@@ -466,7 +492,7 @@ Motores puros, con test, usados por web y APK:
 | o-05 trabajos | Implementado (brocha) | `WorkLayers.tsx`, `LayerActions.tsx` |
 | o-06 registrar avance | Implementado | `ManualProgress.tsx` |
 | av-01 modo avance | Implementado web y APK (27/11) | `AvanceMode.tsx`, `AvancePanel.tsx`, `shared/src/workAvanceMode.ts` |
-| ma01 mapa por capas | Implementado web y APK (28/11) | `LayerChips.tsx`, `LayerSheet.tsx`, `WorkMapBoard.tsx`, `shared/src/workLayerSummary.ts` |
+| ma01 mapa por capas | Implementado web y APK (28/11); auditado 28/11 (`design/stitch/auditorias/ma01-mapa-capas.md`) | `LayerChips.tsx`, `LayerSheet.tsx`, `WorkMapBoard.tsx`, `BoardSheet.tsx` (APK), `shared/src/workLayerSummary.ts`, `shared/src/workLayerLines.ts`, `shared/src/workMapSheet.ts` |
 | ma02 marcar calles del área | Implementado web y APK (28/11) | `WorkStreetBatch.tsx` (web y APK), `WorkStreetBatchParts.tsx` (APK), `shared/src/workStreetBatch.ts`, `shared/src/workStreetBatchScreen.ts` |
 | o-07 avance por unidades | Implementado; falta «Ancho útil» y botón fijo en APK (auditoría 08/11, no verificado si se cerró) | `WorkMapDischarges.tsx` |
 | o-08 avance parcial y enlace | Implementado | `ShareProgress.tsx`, `PdfAction.tsx` |
@@ -484,6 +510,7 @@ usa los filtros del mapa («Sale lo que ves»).
 
 ## 6. Pendientes y deuda conocida
 
+- **ma01 (28/11):** captura DESPUÉS en el APK cuando se publique el OTA; revisión independiente de ma04.
 - **Mapa base de Google:** pendiente de José. Necesita una llave de Google Maps
   Platform con facturación. No hay llave en Lilachat ni en Portal (según spec, 12/11).
 - **OSRM en producción:** no está verificado qué valor tiene `OSRM_BASE_URL` (según spec §8).

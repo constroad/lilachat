@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
-import { ArchiveRestore, Download, ExternalLink, Layers, Maximize2, MoreHorizontal, MoreVertical, Paintbrush, Plus, Route, Share2, type LucideIcon } from 'lucide-react';
+import { ArchiveRestore, Download, ExternalLink, Layers, Maximize2, MoreHorizontal, MoreVertical, Paintbrush, Pencil, PenLine, Plus, Route, Share2, TrendingUp, type LucideIcon } from 'lucide-react';
 import { mapMoreItems, type MapMoreKey, type MapScreenItem } from '@lilachat/shared';
 
-const ICONS: Record<MapMoreKey, LucideIcon> = { share: Share2, screen: Maximize2, area: Route, draw: Plus, stages: Layers, works: Paintbrush, export: Download, open: ExternalLink, deleted: ArchiveRestore };
+const ICONS: Record<MapMoreKey, LucideIcon> = { share: Share2, screen: Maximize2, record: Pencil, avance: TrendingUp, croquis: PenLine, area: Route, draw: Plus, stages: Layers, works: Paintbrush, export: Download, open: ExternalLink, deleted: ArchiveRestore };
 /** The test ids the buttons had before they moved under «Más»: the E2E and the tutorials keep them. */
-const TEST_IDS: Record<MapMoreKey, string> = { share: 'mapa-compartir', screen: 'mapa-pantalla-completa', area: 'mapa-marcar-calles', draw: 'mapa-nueva-calle', stages: 'mapa-etapas-abrir', works: 'mapa-trabajos-abrir', export: 'mapa-exportar', open: 'mapa-abrir', deleted: 'mapa-borrados-abrir' };
+const TEST_IDS: Record<MapMoreKey, string> = { share: 'mapa-compartir', screen: 'mapa-pantalla-completa', record: 'mapa-registrar-avance', avance: 'mapa-modo-avance', croquis: 'mapa-editar-croquis', area: 'mapa-marcar-calles', draw: 'mapa-nueva-calle', stages: 'mapa-etapas-abrir', works: 'mapa-trabajos-abrir', export: 'mapa-exportar', open: 'mapa-abrir', deleted: 'mapa-borrados-abrir' };
 const ITEM = 'flex h-11 w-full items-center gap-3 rounded-lg px-3 text-left text-[14px] font-semibold text-on-surface hover:bg-background';
 
 /** Closes a popover on Escape or a press outside its holder. */
@@ -30,7 +30,7 @@ export function useDismiss(open: boolean, close: () => void) {
   return holder;
 }
 
-export type MoreActions = { pageUrl: string; onPick: (key: Exclude<MapMoreKey, 'open'>) => void; draws: boolean; edits: boolean; admin: boolean; className: string; /** «Compartir avance» first (José 20/11). */ share?: boolean; /** «Pantalla completa», or the way out. */ screen?: MapScreenItem; /** A round ⋮ over the map on a phone (design mapa-v2). */ round?: boolean };
+export type MoreActions = { pageUrl: string; onPick: (key: Exclude<MapMoreKey, 'open'>) => void; draws: boolean; edits: boolean; admin: boolean; className: string; /** «Compartir avance» first (José 20/11). */ share?: boolean; /** «Pantalla completa», or the way out. */ screen?: MapScreenItem; /** A round ⋮ over the map on a phone (design mapa-v2). */ round?: boolean; /** «Modo avance» and «Editar croquis» (José 28/11). */ fieldTools?: boolean; /** «Registrar avance» when no layer sheet carries it. */ record?: boolean };
 
 /** «Más» (José 09/11): everything that is not «Registrar avance», in one list; José 20/11 moved «Compartir avance» and the full screen in. */
 export function MapMoreMenu(props: MoreActions) {

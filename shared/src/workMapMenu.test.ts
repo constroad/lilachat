@@ -35,6 +35,18 @@ describe('«Más» over the map (José 20/11, design mapa-v2)', () => {
   });
 });
 
+describe('«Más» carries what left the foot of the map (José 28/11, ma01)', () => {
+  it('«Modo avance» and «Editar croquis» for who edits; «Registrar avance» only when no layer sheet has it', () => {
+    // Act
+    const withSheet = mapMoreItems({ draws: true, edits: true, admin: false, share: true, fieldTools: true });
+    const noLayers = mapMoreItems({ draws: true, edits: true, admin: false, fieldTools: true, record: true });
+    // Assert
+    expect(withSheet.map((item) => item.key).slice(0, 3)).toEqual(['share', 'avance', 'croquis']);
+    expect(noLayers.map((item) => item.label).slice(0, 3)).toEqual(['Registrar avance', 'Modo avance', 'Editar croquis']);
+    expect(mapMoreItems({ draws: false, edits: false, admin: false, fieldTools: true, record: true }).map((item) => item.key)).toEqual(['export', 'open']);
+  });
+});
+
 describe('the work select', () => {
   it('«Todos los trabajos» first, then each work with its percent', () => {
     expect(workChoicesOf(view)).toEqual([

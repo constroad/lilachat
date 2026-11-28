@@ -1,8 +1,9 @@
 import { useState } from 'react';
-import { CircleCheck, Ruler } from 'lucide-react';
-import { AVANCE_FOOTER, AVANCE_PERCENTS, AVANCE_PICK_STREET, avanceEndFor, avanceKicker, avanceProgressLine, metersLabel, runAvanceSave, stationLabel, type AvanceEntryIds, type ByApproveProgress, type AvancePercent, type AvanceTarget, type MapEditSend, type WorkMap } from '@lilachat/shared';
+import { CircleCheck, MousePointerClick, Ruler } from 'lucide-react';
+import { AVANCE_MANUAL_HINT, AVANCE_MANUAL_LABEL, AVANCE_MANUAL_ONE, manualRangeSummary, type ManualRange, AVANCE_FOOTER, AVANCE_PERCENTS, AVANCE_PICK_STREET, avanceEndFor, avanceKicker, avanceProgressLine, metersLabel, runAvanceSave, stationLabel, type AvanceEntryIds, type ByApproveProgress, type AvancePercent, type AvanceTarget, type MapEditSend, type WorkMap } from '@lilachat/shared';
 import { KICKER } from './WorkMapPanel';
 import { UndoProgress } from './PendingProgress';
+import type { ManualMarks } from './AvanceMode';
 
 const FIELD = 'mt-2 h-11 w-full rounded-xl border border-outline/25 bg-background px-3 font-mono text-[15px] outline-none focus:border-primary';
 const newIds = (): AvanceEntryIds => ({ scope: crypto.randomUUID(), progress: crypto.randomUUID() });
@@ -41,7 +42,7 @@ function StreetHead(props: { target: AvanceTarget }) {
 }
 
 /** The ends the person chose, the stable ids of this save and Portal's answer. */
-function useAvanceSave(map: WorkMap, target: AvanceTarget, send: MapEditSend) {
+function useAvanceSave(map: WorkMap, target: AvanceTarget, send: MapEditSend, range: ManualRange | null) {
   const [picked, setPicked] = useState<AvancePercent | null>(null);
   const [typing, setTyping] = useState(false);
   const [typed, setTyped] = useState('');
@@ -51,7 +52,7 @@ function useAvanceSave(map: WorkMap, target: AvanceTarget, send: MapEditSend) {
   const endM = typing ? metersOrNull(typed) : picked === null ? null : avanceEndFor(target, picked);
   const save = async () => {
     setBusy(true);
-    const result = await runAvanceSave({ map, target, toM: endM, ids, now: new Date(), send });
+    const result = await runAvanceSave({ map, target, toM: endM, range, ids, now: new Date(), send });
     setBusy(false);
     setAnswer(result);
     if (result.ok) setIds(newIds());
@@ -64,21 +65,34 @@ function useAvanceSave(map: WorkMap, target: AvanceTarget, send: MapEditSend) {
 /** «Modo Avance» in the panel (design av-01): street, bar, five buttons, the exact end and «Guardar avance». */
 type UndoProps = { undoable: ByApproveProgress | null; onUndo: (id: string) => Promise<string | null> };
 
-export function AvancePanel(props: { map: WorkMap; target: AvanceTarget | null; send: MapEditSend } & Partial<UndoProps>) {
+export function AvancePanel(props: { map: WorkMap; target: AvanceTarget | null; send: MapEditSend; /** «Marcar a mano» (José 28/11). */ manual?: ManualMarks } & Partial<UndoProps>) {
   if (!props.target) return <p data-testid="avance-panel-vacio" className="p-5 text-[14px] text-on-surface-variant">{AVANCE_PICK_STREET}</p>;
-  return <AvanceStreet key={`${props.target.streetId}|${props.target.workId}`} map={props.map} target={props.target} send={props.send} undoable={props.undoable ?? null} onUndo={props.onUndo} />;
+  return <AvanceStreet key={`${props.target.streetId}|${props.target.workId}`} map={props.map} target={props.target} send={props.send} undoable={props.undoable ?? null} onUndo={props.onUndo} manual={props.manual} />;
 }
 
-function AvanceStreet(props: { map: WorkMap; target: AvanceTarget; send: MapEditSend; undoable: ByApproveProgress | null; onUndo?: (id: string) => Promise<string | null> }) {
-  const save = useAvanceSave(props.map, props.target, props.send);
+/** «Marcar a mano»: the stretch marked with two taps, or what to tap next. */
+function ManualRow(props: { manual: ManualMarks }) {
+  const { manual } = props;
+  return (
+    <div className="space-y-1">
+      <button type="button" data-testid="avance-a-mano" aria-pressed={manual.on} onClick={manual.toggle} className={`flex h-11 w-full items-center justify-center gap-2 rounded-xl border text-[13px] font-semibold text-primary ${manual.on ? 'border-primary bg-primary/10' : 'border-outline/25'}`}><MousePointerClick size={16} />{AVANCE_MANUAL_LABEL}</button>
+      {manual.on ? <p data-testid="avance-a-mano-tramo" className="text-center font-mono text-[13px] text-on-surface">{manual.range ? manualRangeSummary(manual.range) : manual.marks.length ? AVANCE_MANUAL_ONE : AVANCE_MANUAL_HINT}</p> : null}
+    </div>
+  );
+}
+
+function AvanceStreet(props: { map: WorkMap; target: AvanceTarget; send: MapEditSend; undoable: ByApproveProgress | null; onUndo?: (id: string) => Promise<string | null>; manual?: ManualMarks }) {
+  const save = useAvanceSave(props.map, props.target, props.send, props.manual?.range ?? null);
+  const manualOn = Boolean(props.manual?.on);
   return (
     <div data-testid="avance-panel" className="space-y-4 p-4 md:p-5">
       <StreetHead target={props.target} />
-      <PercentButtons picked={save.typing ? null : save.picked} onPick={save.pick} />
-      <div>
+      {manualOn ? null : <PercentButtons picked={save.typing ? null : save.picked} onPick={save.pick} />}
+      <div className={manualOn ? 'hidden' : undefined}>
         <button type="button" data-testid="avance-progresiva" aria-expanded={save.typing} onClick={save.openTyping} className="flex h-11 w-full items-center justify-center gap-2 font-mono text-[13px] text-primary"><Ruler size={16} />Hasta una progresiva exacta · {stationLabel(save.endM ?? 0)}</button>
         {save.typing ? <input data-testid="avance-progresiva-m" type="number" inputMode="decimal" min={0} autoFocus aria-label="Hasta (m)" placeholder="Hasta (m)" value={save.typed} onChange={(event) => save.type(event.target.value)} className={FIELD} /> : null}
       </div>
+      {props.manual ? <ManualRow manual={props.manual} /> : null}
       {save.answer ? <p role="alert" data-testid="avance-respuesta-modo" className={`text-[13px] font-semibold ${save.answer.ok ? 'text-primary' : 'text-error'}`}>{save.answer.message}</p> : null}
       {props.undoable && props.undoable.toM !== null && props.onUndo ? <UndoProgress id={props.undoable.id} toM={props.undoable.toM} onUndo={props.onUndo} /> : null}
       <button type="button" data-testid="avance-guardar" disabled={save.busy} onClick={() => void save.save()} className="flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-primary text-[16px] font-bold text-on-primary disabled:opacity-60"><CircleCheck size={20} />{save.busy ? 'Guardando…' : 'Guardar avance'}</button>

@@ -64,7 +64,7 @@ const staysInPortal = (request: WebViewNavigation) => request.url === 'about:bla
  * Portal's croquis editor of the service on the phone (José 19/11), like a visit's croquis. Its link
  * lives only here (12 h), never in a message or the logs. Closing reads the map again.
  */
-function ServiceCroquisScreen(props: { send: MapEditSend; title: string; onClose: () => void }) {
+export function ServiceCroquisScreen(props: { send: MapEditSend; title: string; onClose: () => void }) {
   const colors = useColores();
   const margins = useMargenes();
   const croquis = useCroquisLink(props.send);

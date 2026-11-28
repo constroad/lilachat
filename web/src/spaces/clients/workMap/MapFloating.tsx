@@ -1,27 +1,24 @@
 import type { ReactNode } from 'react';
-import { Info, Layers, X } from 'lucide-react';
+import { Layers, X } from 'lucide-react';
 import { mapLegendEntries, type WorkMapView } from '@lilachat/shared';
 
 /**
  * What floats over the map (José 20/11, design mapa-v2): on a computer one segmented group
  * «Capas | Editar croquis | Más»; on a phone a column of round buttons and small pills.
  */
-export const MAP_ROUND = 'pointer-events-auto grid h-11 w-11 shrink-0 place-items-center rounded-full border border-outline/15 bg-surface text-on-surface shadow-md hover:bg-background';
+export const MAP_ROUND = 'pointer-events-auto grid h-10 w-10 shrink-0 place-items-center rounded-full border border-outline/15 bg-surface text-on-surface shadow-md hover:bg-background';
 export const MAP_SEGMENT = 'flex h-10 shrink-0 items-center gap-2 px-3 text-[13px] font-semibold text-on-surface hover:bg-background';
 export const MAP_PILL = 'pointer-events-auto flex h-10 shrink-0 items-center gap-2 rounded-full border border-outline/15 bg-surface px-3.5 text-[13px] font-semibold text-on-surface shadow-md hover:bg-background';
-export const MAP_PILL_PRIMARY = 'pointer-events-auto flex h-10 shrink-0 items-center gap-2 rounded-full bg-primary px-3.5 text-[13px] font-semibold text-on-primary shadow-md hover:bg-primary/90';
 const ON = 'border-primary/40 bg-primary/10 text-primary';
 
-/** «Capas»: on a computer a segment of the group, on a phone a round button. */
+/**
+ * «Capas»: on a computer a segment of the group; on a phone a floating pill with its word
+ * (José 28/11: «Capas y leyenda» closed until this is pressed).
+ */
 export function LayersButton(props: { open: boolean; onToggle: () => void; round: boolean }) {
-  if (props.round) return <button type="button" data-testid="mapa-capas-abrir" aria-label="Capas y leyenda" aria-pressed={props.open} onClick={props.onToggle} className={`${MAP_ROUND} ${props.open ? ON : ''}`}><Layers size={18} /></button>;
+  if (props.round) return <button type="button" data-testid="mapa-capas-abrir" aria-label="Capas y leyenda" aria-pressed={props.open} onClick={props.onToggle} className={`${MAP_PILL} ${props.open ? ON : ''}`}><Layers size={16} /> Capas</button>;
   return <button type="button" data-testid="mapa-capas-abrir" aria-pressed={props.open} onClick={props.onToggle} className={`${MAP_SEGMENT} rounded-l-xl ${props.open ? 'bg-primary/10 text-primary' : ''}`}><Layers size={16} /> Capas</button>;
 }
-
-/** «Leyenda» on a phone: the round ⓘ that shows or hides the legend at the foot of the map. */
-export const LegendButton = (props: { open: boolean; onToggle: () => void }) => (
-  <button type="button" data-testid="mapa-leyenda-abrir" aria-label="Leyenda" aria-pressed={props.open} onClick={props.onToggle} className={`${MAP_ROUND} ${props.open ? ON : ''}`}><Info size={18} /></button>
-);
 
 /** One group with dividers (design mapa-v2 desktop): the map's tools, no longer piled in the tab bar. */
 export const MapToolGroup = (props: { children: ReactNode }) => (

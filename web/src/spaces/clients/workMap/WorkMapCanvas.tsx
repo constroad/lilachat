@@ -4,7 +4,7 @@ import workerUrl from 'maplibre-gl/dist/maplibre-gl-csp-worker?url';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { addObservationLayer, useMapCardPopup, useObservationData } from './MapCardPopup';
 import { useDarkClass } from '../../../ui/useDarkClass';
-import { type MapPick, type ViewableFile, type WorkMapObservation, MARK_CHIP_PAINT, MARK_FILL_PAINT, MARK_GLYPH_PAINT, MARK_LINE_PAINT, MARK_TEXT_LAYOUT, MARK_TEXT_PAINT, mapMarkCollection, type WorkMapMark, PLACE_ZOOM, type MapFrame, STATION_DOT_PAINT, STATION_TEXT_LAYOUT, STATION_TEXT_PAINT, stationMarkCollection, type StationMark, NAMED_ROAD_LAYER, ROAD_SOURCE_LAYERS, tapBox, tapTolerancePx, WORK_MAP_PENDING_PAINT, WORK_MAP_PLANNED_COLOR, workMapStyleFor, workMapCollection, type BasemapFeatureLike, type DischargePin, type StreetEnd, type StreetHandle, type TapFeatures, type WorkMapLine, type WorkMapPoint, type WorkMapView } from '@lilachat/shared';
+import { type MapPick, type ViewableFile, type WorkMapObservation, MARK_CHIP_PAINT, MARK_FILL_PAINT, MARK_GLYPH_PAINT, MARK_LINE_PAINT, MARK_TEXT_LAYOUT, MARK_TEXT_PAINT, mapMarkCollection, type WorkMapMark, PLACE_ZOOM, type MapFrame, STATION_DOT_PAINT, STATION_TEXT_LAYOUT, STATION_TEXT_PAINT, stationMarkCollection, type StationMark, NAMED_ROAD_LAYER, ROAD_SOURCE_LAYERS, tapBox, tapTolerancePx, WORK_MAP_PENDING_PAINT, LAYER_BASE_PAINT, LAYER_LABEL_LAYOUT, LAYER_LABEL_PAINT, LAYER_PLANNED_PAINT, STATION_MIN_ZOOM, workMapStyleFor, workMapCollection, type BasemapFeatureLike, type DischargePin, type StreetEnd, type StreetHandle, type TapFeatures, type WorkMapLine, type WorkMapPoint, type WorkMapView } from '@lilachat/shared';
 
 maplibregl.setWorkerUrl(workerUrl);
 
@@ -16,6 +16,7 @@ const STRETCH = 'work-map-stretch';
 const PENDING = 'work-map-pending';
 const STATIONS = 'work-map-stations';
 const BARE = 'work-map-bare';
+const LABELS = 'work-map-layer-labels';
 const MARKS = 'work-map-marks';
 const NO_MARKS: WorkMapMark[] = [];
 const NO_STATIONS: StationMark[] = [];
@@ -36,10 +37,10 @@ function addMarkLayers(map: maplibregl.Map) {
 function addWorkLayers(map: maplibregl.Map) {
   addMarkLayers(map);
   map.addSource(BARE, { type: 'geojson', data: workMapCollection([]) });
-  map.addLayer({ id: BARE, type: 'line', source: BARE, layout: LINE_ROUND, paint: { 'line-color': ['get', 'color'], 'line-width': 4 } });
+  map.addLayer({ id: BARE, type: 'line', source: BARE, layout: LINE_ROUND, paint: LAYER_BASE_PAINT as maplibregl.LineLayerSpecification['paint'] });
   map.addSource(PLANNED, { type: 'geojson', data: workMapCollection([]) });
   map.addSource(DONE, { type: 'geojson', data: workMapCollection([]) });
-  map.addLayer({ id: PLANNED, type: 'line', source: PLANNED, layout: LINE_ROUND, paint: { 'line-color': WORK_MAP_PLANNED_COLOR, 'line-width': 5, 'line-dasharray': [1.2, 1.4] } });
+  map.addLayer({ id: PLANNED, type: 'line', source: PLANNED, layout: LINE_ROUND, paint: LAYER_PLANNED_PAINT as maplibregl.LineLayerSpecification['paint'] });
   // Suggested and waiting stretches under the done line: the chosen work's color stays on top (José 09/11).
   map.addSource(STRETCH, { type: 'geojson', data: workMapCollection([]) });
   map.addLayer({ id: STRETCH, type: 'line', source: STRETCH, layout: LINE_ROUND, paint: { 'line-color': ['get', 'color'], 'line-width': 11, 'line-opacity': 0.55 } });
@@ -48,8 +49,12 @@ function addWorkLayers(map: maplibregl.Map) {
   map.addSource(PENDING, { type: 'geojson', data: workMapCollection([]) });
   map.addLayer({ id: PENDING, type: 'line', source: PENDING, layout: { 'line-join': 'round' }, paint: WORK_MAP_PENDING_PAINT as maplibregl.LineLayerSpecification['paint'] });
   map.addSource(STATIONS, { type: 'geojson', data: stationMarkCollection([]) });
-  map.addLayer({ id: `${STATIONS}-dot`, type: 'circle', source: STATIONS, paint: STATION_DOT_PAINT });
-  map.addLayer({ id: `${STATIONS}-text`, type: 'symbol', source: STATIONS, layout: STATION_TEXT_LAYOUT as maplibregl.SymbolLayerSpecification['layout'], paint: STATION_TEXT_PAINT });
+  // «0+000» only zoomed in (José 28/11: they covered every street).
+  map.addLayer({ id: `${STATIONS}-dot`, type: 'circle', source: STATIONS, minzoom: STATION_MIN_ZOOM, paint: STATION_DOT_PAINT });
+  map.addLayer({ id: `${STATIONS}-text`, type: 'symbol', source: STATIONS, minzoom: STATION_MIN_ZOOM, layout: STATION_TEXT_LAYOUT as maplibregl.SymbolLayerSpecification['layout'], paint: STATION_TEXT_PAINT });
+  // The selected layer's «42 %» beside each street (design ma01).
+  map.addSource(LABELS, { type: 'geojson', data: stationMarkCollection([]) });
+  map.addLayer({ id: LABELS, type: 'symbol', source: LABELS, layout: LAYER_LABEL_LAYOUT as maplibregl.SymbolLayerSpecification['layout'], paint: LAYER_LABEL_PAINT });
   addObservationLayer(map);
 }
 
@@ -189,7 +194,7 @@ function useSourceData<T>(map: maplibregl.Map | null, ready: boolean, source: st
   }, [map, ready, source, input, build]);
 }
 
-export default function WorkMapCanvas(props: { view: WorkMapView; expanded: boolean; pins?: DischargePin[]; stretches?: WorkMapLine[]; /** What waits for approval (José 28/11). */ pending?: WorkMapLine[]; /** «0+100» on the road (audit item 10). */ stations?: StationMark[]; /** The part of a street without a stretch (audit item 15). */ bare?: WorkMapLine[]; onTap?: (point: WorkMapPoint, roads: TapFeatures) => void; /** Draggable ends of a picked street (José 08/11). */ handles?: StreetHandle[]; onHandleDrop?: HandleDrop; /** A tap on a pin (the «Fotos» layer, José 08/11). */ onPin?: (id: string) => void; /** A place found by the search: the map flies there (José 08/11). */ focus?: WorkMapPoint | null; /** A street just picked whole: the map shows both of its ends. */ frame?: MapFrame | null; /** Portal's drawings (José 19/11). */ marks?: readonly WorkMapMark[]; /** Portal's observations, as pins (José 19/11). */ observations?: readonly WorkMapObservation[]; /** The drawing or observation whose card stays open. */ selected?: MapPick | null; onSelect?: (pick: MapPick | null) => void; /** A thumbnail of a card: the photo full size. */ onCardPhoto?: (photo: ViewableFile, all: ViewableFile[]) => void }) {
+export default function WorkMapCanvas(props: { view: WorkMapView; expanded: boolean; /** The selected layer's «42 %» beside each street (design ma01). */ labels?: StationMark[]; pins?: DischargePin[]; stretches?: WorkMapLine[]; /** What waits for approval (José 28/11). */ pending?: WorkMapLine[]; /** «0+100» on the road (audit item 10). */ stations?: StationMark[]; /** The part of a street without a stretch (audit item 15). */ bare?: WorkMapLine[]; onTap?: (point: WorkMapPoint, roads: TapFeatures, zoom?: number) => void; /** Draggable ends of a picked street (José 08/11). */ handles?: StreetHandle[]; onHandleDrop?: HandleDrop; /** A tap on a pin (the «Fotos» layer, José 08/11). */ onPin?: (id: string) => void; /** A place found by the search: the map flies there (José 08/11). */ focus?: WorkMapPoint | null; /** A street just picked whole: the map shows both of its ends. */ frame?: MapFrame | null; /** Portal's drawings (José 19/11). */ marks?: readonly WorkMapMark[]; /** Portal's observations, as pins (José 19/11). */ observations?: readonly WorkMapObservation[]; /** The drawing or observation whose card stays open. */ selected?: MapPick | null; onSelect?: (pick: MapPick | null) => void; /** A thumbnail of a card: the photo full size. */ onCardPhoto?: (photo: ViewableFile, all: ViewableFile[]) => void }) {
   const { view, expanded } = props;
   const holder = useRef<HTMLDivElement>(null);
   const map = useRef<maplibregl.Map | null>(null);
@@ -211,7 +216,7 @@ export default function WorkMapCanvas(props: { view: WorkMapView; expanded: bool
     created.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'bottom-right');
     // «Mi ubicación» on every map (José 20/11, design mapa-v2): the browser asks only when it is pressed.
     created.addControl(new maplibregl.GeolocateControl({ positionOptions: { enableHighAccuracy: true }, fitBoundsOptions: { maxZoom: 17 } }), 'bottom-right');
-    created.on('click', (event) => onTap.current?.({ lat: event.lngLat.lat, lng: event.lngLat.lng }, roadsAt(created, event)));
+    created.on('click', (event) => onTap.current?.({ lat: event.lngLat.lat, lng: event.lngLat.lng }, roadsAt(created, event), created.getZoom()));
     created.on('load', () => {
       addWorkLayers(created);
       setReady(true);
@@ -252,6 +257,7 @@ export default function WorkMapCanvas(props: { view: WorkMapView; expanded: bool
   useSourceData(map.current, ready, BARE, props.bare ?? NO_LINES, workMapCollection);
   useSourceData(map.current, ready, MARKS, props.marks ?? NO_MARKS, mapMarkCollection);
   useSourceData(map.current, ready, STATIONS, props.stations ?? NO_STATIONS, stationMarkCollection);
+  useSourceData(map.current, ready, LABELS, props.labels ?? NO_STATIONS, stationMarkCollection);
   useObservationData(map.current, ready, props.observations);
   const card = useMapCardPopup(map.current, ready, { marks: props.marks ?? NO_MARKS, observations: props.observations, selected: props.selected, onSelect: props.onSelect, onPhoto: props.onCardPhoto, drawing: Boolean(props.onTap) });
   usePins(map.current, ready, props.pins ?? NO_PINS, onPin);

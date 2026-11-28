@@ -13,8 +13,8 @@ const pineStreet = vi.hoisted(() => (named: boolean) => ({ properties: { class: 
 /** A tap on the fake map goes 100 m further east each time, as when a street is drawn (o-02). */
 const taps = vi.hoisted(() => ({ count: 0 }));
 vi.mock('./workMap/WorkMapCanvas', () => ({
-  default: (props: { view: WorkMapView; expanded: boolean; pins?: Array<{ id: string }>; stretches?: unknown[]; marks?: unknown[]; observations?: unknown[]; selected?: { kind: string; id: string } | null; focus?: { lat: number; lng: number } | null; onTap?: (point: { lat: number; lng: number }, roads: unknown) => void; onPin?: (id: string) => void }) => (
-    <div data-testid="mapa-lienzo" data-done={props.view.done.length} data-expanded={props.expanded} data-pins={props.pins?.length ?? 0} data-stretches={props.stretches?.length ?? 0} data-marks={props.marks?.length ?? 0} data-observations={props.observations?.length ?? 0} data-selected={props.selected ? `${props.selected.kind}:${props.selected.id}` : ''} data-focus={props.focus ? `${props.focus.lat},${props.focus.lng}` : ''}>
+  default: (props: { view: WorkMapView; expanded: boolean; labels?: Array<{ label: string }>; bare?: Array<{ color: string }>; pins?: Array<{ id: string }>; stretches?: unknown[]; marks?: unknown[]; observations?: unknown[]; selected?: { kind: string; id: string } | null; focus?: { lat: number; lng: number } | null; onTap?: (point: { lat: number; lng: number }, roads: unknown) => void; onPin?: (id: string) => void }) => (
+    <div data-testid="mapa-lienzo" data-done={props.view.done.length} data-planned={props.view.planned.map((line) => line.color).join(' ')} data-labels={props.labels?.map((one) => one.label).join(' ') ?? ''} data-base={props.bare?.map((line) => line.color).join(' ') ?? ''} data-expanded={props.expanded} data-pins={props.pins?.length ?? 0} data-stretches={props.stretches?.length ?? 0} data-marks={props.marks?.length ?? 0} data-observations={props.observations?.length ?? 0} data-selected={props.selected ? `${props.selected.kind}:${props.selected.id}` : ''} data-focus={props.focus ? `${props.focus.lat},${props.focus.lng}` : ''}>
       {props.onPin ? props.pins?.map((pin) => <button key={pin.id} type="button" data-testid={`lienzo-pin-${pin.id}`} onClick={() => props.onPin?.(pin.id)} />) : null}
       {props.onTap ? <button type="button" data-testid="mapa-tocar" onClick={() => { const point = { lat: -12, lng: -77 + (taps.count++ * 100) / 108_766 }; props.onTap?.(point, { underFinger: [pineStreet(false)], nearby: [pineStreet(true)], tap: point }); }} /> : null}
     </div>
@@ -140,11 +140,14 @@ describe('ServiceMapWeb', () => {
     expect(screen.getByTestId('mapa-panel')).toHaveAttribute('data-open', 'false');
   });
 
-  it('on a phone «Leyenda» shows each work at the foot of the map', async () => {
+  it('on a phone «Capas y leyenda» is closed until its floating button opens it, legend inside (José 28/11)', async () => {
     showMap();
     await screen.findByTestId('mapa-lienzo');
+    expect(screen.queryByTestId('mapa-capas')).toBeNull();
     expect(screen.queryByTestId('mapa-leyenda')).toBeNull();
-    fireEvent.click(screen.getByTestId('mapa-leyenda-abrir'));
+    expect(screen.queryByTestId('mapa-trabajo')).toBeNull();
+    fireEvent.click(screen.getByTestId('mapa-capas-abrir'));
+    expect(screen.getByTestId('mapa-capas')).toBeInTheDocument();
     expect(screen.getByTestId('mapa-leyenda')).toHaveTextContent('Base');
     expect(screen.getByTestId('mapa-leyenda')).toHaveTextContent('Pendiente de ejecución');
   });
@@ -161,7 +164,8 @@ describe('ServiceMapWeb', () => {
     askServer.mockResolvedValue({ ok: true, data: { map: twoDays } });
     showMap();
     // Act
-    fireEvent.click(await screen.findByTestId('mapa-trabajo'));
+    fireEvent.click(await screen.findByTestId('mapa-capas-abrir'));
+    fireEvent.click(screen.getByTestId('mapa-trabajo'));
     fireEvent.click(screen.getByTestId('mapa-trabajo-base'));
     fireEvent.change(screen.getByTestId('mapa-corte'), { target: { value: '2026-11-01' } });
     // Assert
@@ -186,6 +190,28 @@ describe('ServiceMapWeb', () => {
     expect(open).toHaveAttribute('target', '_blank');
   });
 
+  it('ma01 (José 28/11): one row of chips, the layer peek with ONE action, the rest in «Más», the map by layer', async () => {
+    // Arrange
+    const editMap: MapEditSend = vi.fn();
+    showMap(undefined, { editMap });
+    const canvas = await screen.findByTestId('mapa-lienzo');
+    // Assert: no second row of filters, no legend, no pills at the foot
+    for (const gone of ['mapa-corte', 'mapa-trabajo', 'mapa-leyenda', 'mapa-capas', 'mapa-editar-croquis', 'mapa-modo-avance', 'mapa-registrar-avance']) expect(screen.queryByTestId(gone)).toBeNull();
+    expect(screen.getByTestId('capa-registrar')).toHaveTextContent('Registrar avance de Base');
+    expect(screen.queryByTestId('capa-calle-s1')).toBeNull();
+    fireEvent.click(screen.getByTestId('capa-ver-calles'));
+    expect(screen.getByTestId('capa-calle-s1')).toBeInTheDocument();
+    expect(screen.getByTestId('capa-leyenda')).toHaveTextContent(/Hecho.*Planificado/);
+    // The map: the layer planned in ITS colour with its %, every street a neutral base, no grey dashes.
+    expect(canvas.dataset.planned?.split(' ').every((color) => color === '#c08a1e')).toBe(true);
+    expect(canvas.dataset.labels).toContain('%');
+    expect(canvas.dataset.base).toContain('#64748b');
+    // «Más» keeps what left the foot of the map
+    fireEvent.click(screen.getByTestId('mapa-mas'));
+    expect(screen.getByTestId('mapa-modo-avance')).toHaveTextContent('Modo avance');
+    expect(screen.getByTestId('mapa-editar-croquis')).toHaveTextContent('Editar croquis');
+  });
+
   it('lists each street with how far it went', async () => {
     showMap();
     const row = await screen.findByTestId('mapa-calle-s1');
@@ -196,26 +222,32 @@ describe('ServiceMapWeb', () => {
 
   it('the work select narrows the map, and every work stays to pick (José 09/11: a select, not chips)', async () => {
     showMap();
-    fireEvent.click(await screen.findByTestId('mapa-trabajo'));
+    fireEvent.click(await screen.findByTestId('mapa-capas-abrir'));
+    fireEvent.click(screen.getByTestId('mapa-trabajo'));
     fireEvent.click(screen.getByTestId('mapa-trabajo-asfalto'));
-    // The picked work is the active layer too (ma01).
+    // The picked work is the active layer too (ma01): closing «Capas» shows its peek.
+    fireEvent.click(screen.getByTestId('mapa-capas-abrir'));
     expect(screen.getByTestId('mapa-avance')).toHaveTextContent('0 de 400 m');
+    fireEvent.click(screen.getByTestId('mapa-capas-abrir'));
     fireEvent.click(screen.getByTestId('mapa-trabajo'));
     expect(within(screen.getByTestId('mapa-trabajo-lista')).getAllByRole('option')).toHaveLength(3);
     fireEvent.click(screen.getByTestId('mapa-trabajo-todos'));
+    fireEvent.click(screen.getByTestId('mapa-capas-abrir'));
     expect(screen.getByTestId('mapa-avance')).toHaveTextContent('400 de 600 m');
   });
 
   it('a stage narrows the streets', async () => {
     showMap();
-    fireEvent.click(await screen.findByTestId('capas-etapa-e2'));
+    fireEvent.click(await screen.findByTestId('mapa-capas-abrir'));
+    fireEvent.click(screen.getByTestId('capas-etapa-e2'));
     expect(screen.queryByTestId('mapa-calle-s1')).not.toBeInTheDocument();
     expect(screen.getByTestId('mapa-calle-s2')).toBeInTheDocument();
   });
 
   it('a stage that lacks the chosen work does not leave an empty map', async () => {
     showMap();
-    fireEvent.click(await screen.findByTestId('mapa-trabajo'));
+    fireEvent.click(await screen.findByTestId('mapa-capas-abrir'));
+    fireEvent.click(screen.getByTestId('mapa-trabajo'));
     fireEvent.click(screen.getByTestId('mapa-trabajo-asfalto'));
     fireEvent.click(screen.getByTestId('capas-etapa-e2'));
     expect(screen.getByTestId('mapa-calle-s2')).toBeInTheDocument();
@@ -243,6 +275,7 @@ describe('ServiceMapWeb', () => {
     const clicked = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => undefined);
     showMap();
     await screen.findByTestId('mapa-lienzo');
+    if (!screen.queryByTestId('capas-etapa-e1')) fireEvent.click(screen.getByTestId('mapa-capas-abrir'));
     fireEvent.click(screen.getByTestId('capas-etapa-e1'));
     // Act
     fireEvent.click(screen.getByTestId('mapa-mas'));
@@ -281,6 +314,7 @@ describe('ServiceMapWeb', () => {
     const canvas = await screen.findByTestId('mapa-lienzo');
     // Under every work the plates stay off the map (José 09/11); the paving work brings them.
     expect(canvas).toHaveAttribute('data-pins', '0');
+    fireEvent.click(screen.getByTestId('mapa-capas-abrir'));
     fireEvent.click(screen.getByTestId('mapa-trabajo'));
     fireEvent.click(screen.getByTestId('mapa-trabajo-asfalto'));
     expect(screen.getByTestId('avance-listas')).toHaveTextContent('2 de 3 unidades ubicadas');
@@ -459,7 +493,9 @@ describe('ServiceMapWeb', () => {
   it('«Registrar avance» on the map asks which street and opens its form there (design o-01)', async () => {
     const editMap: MapEditSend = vi.fn();
     showMap(undefined, { editMap });
-    fireEvent.click(await screen.findByTestId('mapa-registrar-avance'));
+    // José 28/11 (ma01): ONE «Registrar avance de <capa>» in the layer's sheet; nothing at the foot.
+    expect(screen.queryByTestId('mapa-registrar-avance')).toBeNull();
+    fireEvent.click(await screen.findByTestId('capa-registrar'));
     expect(screen.getByTestId('avance-elegir-calle')).toHaveTextContent('¿En qué calle?');
     fireEvent.click(screen.getByTestId('avance-calle-s2'));
     expect(await screen.findByTestId('avance-manual')).toBeInTheDocument();
@@ -470,6 +506,7 @@ describe('ServiceMapWeb', () => {
     showMap();
     await screen.findByTestId('mapa-servicio');
     expect(screen.queryByTestId('mapa-registrar-avance')).toBeNull();
+    expect(screen.queryByTestId('capa-registrar')).toBeNull();
   });
 
   it('without a sender there is no delete button', async () => {
@@ -526,7 +563,8 @@ describe('ServiceMapWeb', () => {
   it('«Fotos» shows a marker per spot of the street, and a marker opens its photos (José 08/11)', async () => {
     const photo = (id: string, meters: number, plate?: string): MapPhoto => ({ id, ...onStreet(meters), at: '2026-11-07T14:00:00.000Z', kind: 'photo', url: `https://lila.test/${id}.jpg`, thumbnailUrl: `https://lila.test/${id}-t.jpg`, reportType: 'CTL-PIS', ...(plate ? { plate } : {}) });
     showMap(undefined, { mapPhotos: [photo('f1', 40, 'QAP-101'), photo('f2', 45), photo('f3', 300)] });
-    fireEvent.click(await screen.findByTestId('capa-fotos'));
+    fireEvent.click(await screen.findByTestId('mapa-capas-abrir'));
+    fireEvent.click(screen.getByTestId('capa-fotos'));
     expect(screen.getByTestId('capa-fotos')).toHaveAttribute('aria-checked', 'true');
     expect(screen.getByTestId('mapa-lienzo').dataset.pins).toBe('2');
     fireEvent.click(screen.getByTestId('lienzo-pin-fotos-s1-43'));

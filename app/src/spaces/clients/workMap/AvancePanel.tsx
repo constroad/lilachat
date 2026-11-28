@@ -1,12 +1,13 @@
 import { useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { randomUUID } from 'expo-crypto';
-import { CircleCheck, Ruler, X } from 'lucide-react-native';
-import { AVANCE_FOOTER, AVANCE_PERCENTS, avanceEndFor, avanceKicker, avanceProgressLine, metersLabel, runAvanceSave, stationLabel, type AvanceEntryIds, type ByApproveProgress, type AvancePercent, type AvanceTarget, type MapEditSend, type WorkMap } from '@lilachat/shared';
+import { CircleCheck, MousePointerClick, Ruler, X } from 'lucide-react-native';
+import { AVANCE_MANUAL_HINT, AVANCE_MANUAL_LABEL, AVANCE_MANUAL_ONE, manualRangeSummary, type ManualRange, AVANCE_FOOTER, AVANCE_PERCENTS, avanceEndFor, avanceKicker, avanceProgressLine, metersLabel, runAvanceSave, stationLabel, type AvanceEntryIds, type ByApproveProgress, type AvancePercent, type AvanceTarget, type MapEditSend, type WorkMap } from '@lilachat/shared';
 import { DecimalInput } from '../../../ui/DecimalInput';
 import { useColores } from '../../../ui/tema';
 import { KICKER } from './WorkMapPanel';
 import { UndoProgress } from './PendingProgress';
+import type { ManualMarks } from './AvanceMode';
 
 const FIELD = 'mt-2 h-12 rounded-xl border border-outline/25 bg-background px-3 font-mono text-[15px] text-on-surface';
 const newIds = (): AvanceEntryIds => ({ scope: randomUUID(), progress: randomUUID() });
@@ -63,7 +64,7 @@ function StreetHead(props: { target: AvanceTarget }) {
 }
 
 /** The ends the person chose, the stable ids of this save and Portal's answer. */
-function useAvanceSave(map: WorkMap, target: AvanceTarget, send: MapEditSend) {
+function useAvanceSave(map: WorkMap, target: AvanceTarget, send: MapEditSend, range: ManualRange | null) {
   const [picked, setPicked] = useState<AvancePercent | null>(null);
   const [typing, setTyping] = useState(false);
   const [typed, setTyped] = useState<number | null>(null);
@@ -73,7 +74,7 @@ function useAvanceSave(map: WorkMap, target: AvanceTarget, send: MapEditSend) {
   const endM = typing ? typed : picked === null ? null : avanceEndFor(target, picked);
   const save = async () => {
     setBusy(true);
-    const result = await runAvanceSave({ map, target, toM: endM, ids, now: new Date(), send });
+    const result = await runAvanceSave({ map, target, toM: endM, range, ids, now: new Date(), send });
     setBusy(false);
     setAnswer(result);
     if (result.ok) setIds(newIds());
@@ -83,16 +84,33 @@ function useAvanceSave(map: WorkMap, target: AvanceTarget, send: MapEditSend) {
   return { picked, typing, typed, endM, busy, answer, save, pick, type, openTyping: () => { setAnswer(null); setTyping((open) => !open); } };
 }
 
-/** The bottom panel of «Modo Avance» (design av-01): street, bar, five buttons, the exact end and «Guardar avance». */
-export function AvancePanel(props: { map: WorkMap; target: AvanceTarget; send: MapEditSend; undoable: ByApproveProgress | null; onUndo: (id: string) => Promise<string | null>; bottom: number; onClose: () => void }) {
+/** «Marcar a mano» (José 28/11): the stretch marked with two taps, or what to tap next. */
+function ManualRow(props: { manual: ManualMarks }) {
   const colors = useColores();
-  const save = useAvanceSave(props.map, props.target, props.send);
+  const { manual } = props;
+  return (
+    <View className="gap-1">
+      <Pressable testID="avance-a-mano" accessibilityRole="button" accessibilityState={{ selected: manual.on }} onPress={manual.toggle} className={`h-11 flex-row items-center justify-center gap-2 rounded-xl border ${manual.on ? 'border-primary bg-primary/10' : 'border-outline/25'}`}>
+        <MousePointerClick size={18} color={colors.primary} />
+        <Text className="text-[14px] font-semibold text-primary">{AVANCE_MANUAL_LABEL}</Text>
+      </Pressable>
+      {manual.on ? <Text testID="avance-a-mano-tramo" className="text-center font-mono text-[14px] text-on-surface">{manual.range ? manualRangeSummary(manual.range) : manual.marks.length ? AVANCE_MANUAL_ONE : AVANCE_MANUAL_HINT}</Text> : null}
+    </View>
+  );
+}
+
+/** The bottom panel of «Modo Avance» (design av-01): street, bar, five buttons, the exact end, «Marcar a mano» and «Guardar avance». */
+export function AvancePanel(props: { map: WorkMap; target: AvanceTarget; send: MapEditSend; undoable: ByApproveProgress | null; onUndo: (id: string) => Promise<string | null>; bottom: number; manual: ManualMarks; onClose: () => void }) {
+  const colors = useColores();
+  const save = useAvanceSave(props.map, props.target, props.send, props.manual.range);
+  const manualOn = props.manual.on;
   return (
     <View testID="avance-panel" className="absolute inset-x-0 bottom-0 gap-4 rounded-t-3xl bg-surface px-4 pt-5" style={{ paddingBottom: props.bottom + 12, elevation: 12 }}>
       <Pressable accessibilityLabel="Cerrar el panel" onPress={props.onClose} className="absolute right-2 top-1 z-10 h-11 w-11 items-center justify-center rounded-full"><X size={20} color={colors['on-surface-variant']} /></Pressable>
       <StreetHead target={props.target} />
-      <PercentButtons picked={save.typing ? null : save.picked} onPick={save.pick} />
-      <ExactEnd open={save.typing} endM={save.endM} typed={save.typed} onOpen={save.openTyping} onTyped={save.type} />
+      {manualOn ? null : <PercentButtons picked={save.typing ? null : save.picked} onPick={save.pick} />}
+      {manualOn ? null : <ExactEnd open={save.typing} endM={save.endM} typed={save.typed} onOpen={save.openTyping} onTyped={save.type} />}
+      <ManualRow manual={props.manual} />
       {save.answer ? <Text testID="avance-respuesta-modo" accessibilityRole="alert" className={`text-[14px] font-semibold ${save.answer.ok ? 'text-primary' : 'text-error'}`}>{save.answer.message}</Text> : null}
       {props.undoable && props.undoable.toM !== null ? <UndoProgress id={props.undoable.id} toM={props.undoable.toM} onUndo={props.onUndo} /> : null}
       <Pressable testID="avance-guardar" disabled={save.busy} onPress={() => void save.save()} className={`h-14 flex-row items-center justify-center gap-2 rounded-2xl bg-primary ${save.busy ? 'opacity-60' : ''}`}>

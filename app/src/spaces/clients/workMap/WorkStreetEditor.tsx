@@ -115,9 +115,9 @@ export function WorkStreetEditor(props: EditorProps) {
   // overflow-hidden: with the keyboard open the map shrinks and its buttons spilled over the header (E2E 12/11).
   const mapArea = (
     <View className="flex-1 overflow-hidden">
-      {props.open ? <WorkMapSurface view={view} moves pins={handles.length ? NO_PINS : [...streetDraftPins(draft), ...walkPositionPins(gps.walk)]} stretches={streetDraftLines(draft)} onTap={onTap} handles={handles} onHandleDrop={onHandleDrop} focus={focus} frame={frame} near={props.start ?? (current.state === 'ready' ? current.location : null)} /> : null}
+      {props.open ? <WorkMapSurface view={view} moves pins={handles.length ? (draft.mode === 'hand' ? streetDraftPins(draft).slice(1, -1) : NO_PINS) : [...streetDraftPins(draft), ...walkPositionPins(gps.walk)]} stretches={streetDraftLines(draft)} onTap={onTap} handles={handles} onHandleDrop={onHandleDrop} focus={focus} frame={frame} near={props.start ?? (current.state === 'ready' ? current.location : null)} /> : null}
       <EditorLegend />
-      {handles.length ? <EndNudges onNudge={(handle, deltaM) => { setError(null); setDraft((before) => nudgeStreetEnd(before, handle, deltaM)); }} /> : null}
+      {handles.length && draft.mode !== 'hand' ? <EndNudges onNudge={(handle, deltaM) => { setError(null); setDraft((before) => nudgeStreetEnd(before, handle, deltaM)); }} /> : null}
     </View>
   );
   return (

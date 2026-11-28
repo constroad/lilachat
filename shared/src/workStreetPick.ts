@@ -86,7 +86,7 @@ export function undoStreetDraft(draft: StreetDraft): StreetDraft {
 
 /** What the next tap does, in the band over the map. */
 export function streetDraftHint(draft: StreetDraft): string {
-  if (draft.mode === 'hand') return 'Toca el inicio, las curvas y el fin sobre la vía.';
+  if (draft.mode === 'hand') return draft.points.length >= 2 ? 'Arrastra los aros para mover el inicio o el fin; toca el mapa para sumar curvas.' : 'Toca donde empieza y donde termina el trabajo.';
   if (!draft.pick) return 'Toca la calle donde vas a trabajar.';
   const { step } = pickedRange(draft.pick);
   if (step === 'start') return 'Arrastra los extremos para recortar, o toca dónde empieza la obra.';
@@ -139,7 +139,23 @@ const axisSide = (draft: StreetDraft, handle: StreetEnd): 'from' | 'to' => ((han
  * finger left it unless its key changes, and a drop that does not move the end (past the street's
  * end, off the street) left the ring away from the violet line (José 27/11).
  */
+/** By hand the first and the last point are rings too (José 27/11); the bends keep their numbers. */
+function handHandles(draft: StreetDraft, drop: number): StreetHandle[] {
+  const first = draft.points[0];
+  const last = draft.points[draft.points.length - 1];
+  if (draft.points.length < 2 || !first || !last) return [];
+  const ring = (handle: StreetEnd, point: WorkMapPoint, label: string): StreetHandle => ({ handle, point, label, key: `hand-${handle}-${point.lat.toFixed(7)},${point.lng.toFixed(7)}-${drop}` });
+  return [ring('start', first, stationLabel(0)), ring('end', last, stationLabel(streetDraftLengthM(draft)))];
+}
+
+/** A dragged end by hand goes where the finger left it: no street to keep it on. */
+function movedHandEnd(draft: StreetDraft, handle: StreetEnd, point: WorkMapPoint): StreetDraft {
+  const index = handle === 'start' ? 0 : draft.points.length - 1;
+  return { ...draft, points: draft.points.map((one, at) => (at === index ? { lat: point.lat, lng: point.lng } : one)) };
+}
+
 export function streetDraftHandles(draft: StreetDraft, drop = 0): StreetHandle[] {
+  if (draft.mode === 'hand') return handHandles(draft, drop);
   if (draft.mode !== 'street' || !draft.pick) return [];
   const { fromM, toM } = pickedRange(draft.pick);
   const lengthM = Math.round(toM - fromM);
@@ -166,6 +182,7 @@ function moveEnd(draft: StreetDraft, pick: StreetPick, handle: StreetEnd, measur
 
 /** A handle dropped on the map. Off the street, nothing moves and the band says why. */
 export function dragStreetEnd(draft: StreetDraft, handle: StreetEnd, point: WorkMapPoint): { draft: StreetDraft; problem: string | null } {
+  if (draft.mode === 'hand') return { draft: movedHandEnd(draft, handle, point), problem: null };
   if (draft.mode !== 'street' || !draft.pick) return { draft, problem: null };
   const projected = projectToLine(draft.pick.axis, point);
   if (!projected || projected.distanceM > HANDLE_REACH_M) return { draft, problem: HANDLE_OFF_STREET };

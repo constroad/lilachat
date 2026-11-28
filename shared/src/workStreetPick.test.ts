@@ -75,6 +75,25 @@ describe('«A mano» names the street from the map (José 27/11: «cuando se mar
   });
 });
 
+describe('«A mano» ends drag (José 27/11: «que aparezcan los círculos a los extremos para moverlos»)', () => {
+  const drawn = () => [0, 40, 100].reduce((draft, meters) => tapStreetDraft(draft, at(meters)).draft, setDrawMode(EMPTY_STREET, 'hand'));
+
+  it('shows a ring on the first and the last point once there are two', () => {
+    expect(streetDraftHandles(tapStreetDraft(setDrawMode(EMPTY_STREET, 'hand'), at(0)).draft)).toEqual([]);
+    expect(streetDraftHandles(drawn()).map((handle) => `${handle.handle} ${handle.label}`)).toEqual(['start 0+000', 'end 0+100']);
+    expect(streetDraftHint(drawn())).toBe('Arrastra los aros para mover el inicio o el fin; toca el mapa para sumar curvas.');
+    expect(streetDraftHint(setDrawMode(EMPTY_STREET, 'hand'))).toBe('Toca donde empieza y donde termina el trabajo.');
+  });
+
+  it('a dropped ring moves that point where the finger left it, the bends stay', () => {
+    const { draft, problem } = dragStreetEnd(drawn(), 'end', east(70));
+    expect(problem).toBeNull();
+    expect(draft.points).toHaveLength(3);
+    expect(streetDraftLengthM(draft)).toBe(70);
+    expect(dragStreetEnd(drawn(), 'start', east(10)).draft.points[1]).toEqual(east(40));
+  });
+});
+
 describe('what the picked street shows (side-by-side audit 07/11)', () => {
   it('the saved street starts at 0+000: its chainage is its own, not the map road\'s', () => {
     const whole = tapStreetDraft(EMPTY_STREET, at(100)).draft;

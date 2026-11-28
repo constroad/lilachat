@@ -427,3 +427,4 @@ Un Control de imprimación con fotos ubicadas y dos días de avance aprobado (o-
 - **27/11** «A mano» sugiere el nombre de la vía tocada (detalle en `obra-mapa.md`).
 - **27/11** Largo escrito en el editor de calle, paleta de 16 colores y sección de trabajos siempre visible en «Capas» (detalle en `obra-mapa.md`).
 - **27/11** Selector de color libre de trabajos y «Capas» con todos los trabajos (detalle en `obra-mapa.md`).
+- **27/11** «A mano»: aros arrastrables en el inicio y el fin (detalle en `obra-mapa.md`).

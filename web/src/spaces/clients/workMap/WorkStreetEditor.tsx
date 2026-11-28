@@ -85,7 +85,7 @@ export function WorkStreetEditor(props: EditorProps) {
           {draft.mode === 'hand' ? <span data-testid="editor-calle-puntos" className="shrink-0 rounded-md bg-on-primary/15 px-2 py-0.5 font-mono text-[11px]">{handPointsLabel(draft.points.length)}</span> : null}
         </div>
         {draft.mode === 'gps' ? <WalkButton walking={gps.walk.walking} paused={gps.walk.paused} onStart={gps.start} onStop={gps.stop} onPause={gps.pause} onResume={gps.resume} /> : null}
-        {handles.length ? <EndNudges onNudge={(handle, deltaM) => { setError(null); setDraft((before) => nudgeStreetEnd(before, handle, deltaM)); }} /> : null}
+        {handles.length && draft.mode !== 'hand' ? <EndNudges onNudge={(handle, deltaM) => { setError(null); setDraft((before) => nudgeStreetEnd(before, handle, deltaM)); }} /> : null}
         <div className="mt-2 grid grid-cols-2 gap-2">
           <button type="button" data-testid="editor-calle-deshacer" disabled={!draft.points.length} onClick={() => { setError(null); if (draft.mode === 'gps') gps.undo(); else setDraft(undoStreetDraft); }} className="flex h-10 items-center justify-center gap-2 rounded-xl bg-on-primary/15 text-[14px] font-semibold disabled:opacity-50"><Undo2 size={16} />Deshacer</button>
           <button type="button" data-testid="editor-calle-cancelar" onClick={props.onClose} className="flex h-10 items-center justify-center gap-2 rounded-xl bg-on-primary/15 text-[14px] font-semibold"><X size={16} />Cancelar</button>
@@ -93,7 +93,7 @@ export function WorkStreetEditor(props: EditorProps) {
       </div>
       <div className="relative min-h-[320px] flex-1 lg:min-h-0">
         <Suspense fallback={<div className="absolute inset-0 animate-pulse bg-surface-variant" />}>
-          <WorkMapCanvas view={view} expanded={false} focus={focus} frame={frame} pins={handles.length ? NO_PINS : [...streetDraftPins(draft), ...walkPositionPins(gps.walk)]} stretches={streetDraftLines(draft)} onTap={onTap} handles={handles} onHandleDrop={onHandleDrop} />
+          <WorkMapCanvas view={view} expanded={false} focus={focus} frame={frame} pins={handles.length ? (draft.mode === 'hand' ? streetDraftPins(draft).slice(1, -1) : NO_PINS) : [...streetDraftPins(draft), ...walkPositionPins(gps.walk)]} stretches={streetDraftLines(draft)} onTap={onTap} handles={handles} onHandleDrop={onHandleDrop} />
         </Suspense>
         <EditorLegend />
       </div>

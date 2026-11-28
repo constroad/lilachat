@@ -287,6 +287,11 @@ Motores puros, con test, usados por web y APK:
 - **27/11** «Capas»: lista TODOS los trabajos (`layerRowsOf(…, map.works)`), también los que aún no
   tienen calles; esos dicen «Sin calles asignadas» (`WORK_NOT_ASSIGNED`). Antes solo salían los que
   tenían tramos.
+- **27/11** «A mano» con aros (web y APK): con 2 puntos o más, el primero y el último son aros
+  arrastrables (`streetDraftHandles` → `handHandles`; `dragStreetEnd` → `movedHandEnd`). El aro queda
+  donde lo suelta el dedo; las curvas del medio conservan su número. Sin «−10 m / +10 m» en este modo.
+  Ayuda: «Toca donde empieza y donde termina el trabajo.» y, con 2 puntos, «Arrastra los aros…».
+  Editar una calle YA guardada no se hace en Lilachat: es el croquis de Portal.
 - **27/11** Arreglo: la línea violeta no unía los dos aros. Causa: en el APK el aro arrastrado se
   queda donde lo soltó el dedo si su punto no cambia (el aro del inicio tenía la clave fija
   `start-0+000`); pasaba al soltarlo más allá del fin de la calle del mapa (se recorta al extremo) o

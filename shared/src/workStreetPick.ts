@@ -56,9 +56,18 @@ function pickAt(draft: StreetDraft, at: TapFeatures): { draft: StreetDraft; prob
   return { draft: withPick({ ...draft, name: nameFor(draft, pick.name) }, pick), problem: null };
 }
 
+/** By hand a tap is a bend; the road under it names an unnamed street (José 27/11). */
+function handTap(draft: StreetDraft, at: TapFeatures): StreetDraft {
+  const bent = addStreetPoint(draft, at.tap);
+  if (bent.name.trim()) return bent;
+  const street = streetAtTap(at);
+  const mapName = street ? pickStreet(street)?.name : undefined;
+  return mapName ? { ...bent, name: mapName } : bent;
+}
+
 /** One tap on the map: a bend by hand; a street, its start or its end; or another street. */
 export function tapStreetDraft(draft: StreetDraft, at: TapFeatures): { draft: StreetDraft; problem: string | null } {
-  if (draft.mode === 'hand') return { draft: addStreetPoint(draft, at.tap), problem: null };
+  if (draft.mode === 'hand') return { draft: handTap(draft, at), problem: null };
   if (draft.mode === 'gps') return { draft, problem: null };
   if (!draft.pick) return pickAt(draft, at);
   const tapped = tapOnPick(draft.pick, at.tap);

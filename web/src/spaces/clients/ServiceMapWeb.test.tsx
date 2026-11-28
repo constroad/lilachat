@@ -402,6 +402,8 @@ describe('ServiceMapWeb', () => {
     fireEvent.click(screen.getByTestId('editor-calle-guardar'));
     expect(screen.getByTestId('editor-calle-error')).toHaveTextContent('Toca el inicio y el fin');
     fireEvent.click(screen.getByTestId('mapa-tocar'));
+    // «A mano» may take the tapped road's name (José 27/11): an emptied name still stops the save.
+    fireEvent.change(screen.getByTestId('editor-calle-nombre'), { target: { value: '' } });
     fireEvent.click(screen.getByTestId('editor-calle-guardar'));
     expect(screen.getByTestId('editor-calle-error')).toHaveTextContent('Ponle nombre a la calle');
     fireEvent.change(screen.getByTestId('editor-calle-nombre'), { target: { value: 'Jr. Los Pinos' } });

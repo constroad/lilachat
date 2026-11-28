@@ -55,6 +55,26 @@ describe('drawing a street by tapping it', () => {
   });
 });
 
+describe('«A mano» names the street from the map (José 27/11: «cuando se marca a mano no sugiere el nombre de calle»)', () => {
+  it('the first tap on a named road fills an empty name', () => {
+    const hand = setDrawMode(EMPTY_STREET, 'hand');
+    expect(tapStreetDraft(hand, at(0)).draft.name).toBe('Jr. Los Pinos');
+  });
+
+  it('a name the person wrote stays', () => {
+    const hand = setDrawMode({ ...EMPTY_STREET, name: 'Pasaje 2' }, 'hand');
+    expect(tapStreetDraft(hand, at(0)).draft.name).toBe('Pasaje 2');
+  });
+
+  it('a tap off any road adds the bend and leaves the name empty', () => {
+    const hand = setDrawMode(EMPTY_STREET, 'hand');
+    const { draft, problem } = tapStreetDraft(hand, { underFinger: [], nearby: [], tap: east(0) });
+    expect(problem).toBeNull();
+    expect(draft.points).toHaveLength(1);
+    expect(draft.name).toBe('');
+  });
+});
+
 describe('what the picked street shows (side-by-side audit 07/11)', () => {
   it('the saved street starts at 0+000: its chainage is its own, not the map road\'s', () => {
     const whole = tapStreetDraft(EMPTY_STREET, at(100)).draft;

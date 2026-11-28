@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { MIN_BACKGROUND_BEFORE_APPLY_MS, shouldApplyUpdateNow, shouldCheckForUpdate, type ApplyContext } from './applyPolicy';
+import { MIN_BACKGROUND_BEFORE_APPLY_MS, restartDecision, shouldApplyUpdateNow, shouldCheckForUpdate, type ApplyContext } from './applyPolicy';
 
 /** The moment the app comes back to the foreground with a downloaded update waiting. */
 const idleReturn: ApplyContext = {
@@ -68,5 +68,23 @@ describe('shouldCheckForUpdate (a quiet check, never a hammer)', () => {
 
   it('checks when the clock went backwards (a stale last check must not silence the updater forever)', () => {
     expect(shouldCheckForUpdate(2_000_000, 1_000_000)).toBe(true);
+  });
+});
+
+describe('restartDecision («Reiniciar» from the prompt, José 28/11)', () => {
+  const asked = { updatePending: true, callInProgress: false, unsentMessages: 0, unsentFiles: 0 };
+
+  it('restarts at once, with no absence needed', () => {
+    expect(restartDecision(asked)).toBe('apply');
+  });
+
+  it('waits while photos or messages are still going out', () => {
+    expect(restartDecision({ ...asked, unsentFiles: 2 })).toBe('unsent');
+    expect(restartDecision({ ...asked, unsentMessages: 1 })).toBe('unsent');
+  });
+
+  it('never cuts a call, and does nothing without a downloaded update', () => {
+    expect(restartDecision({ ...asked, callInProgress: true })).toBe('in-call');
+    expect(restartDecision({ ...asked, updatePending: false })).toBe('no-update');
   });
 });

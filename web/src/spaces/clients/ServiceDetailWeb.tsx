@@ -195,7 +195,7 @@ function ReportTakeover(props: ServiceDetailProps & { report: ReportOpen; portal
   const reportId = report.reportId ? { reportId: report.reportId } : {};
   if (report.type === AREA_TYPE) return <Takeover><AreasWeb target={props.target} chatId={props.chatId} service={props.service} {...reportId} portalUrl={props.portalUrl} onClose={props.onClose} /></Takeover>;
   if (isObservationType(report.type)) return <Takeover><ObservationsWeb target={props.target} chatId={props.chatId} service={props.service} type={report.type} {...reportId} {...(report.lift ? { lift: report.lift } : {})} portalUrl={props.portalUrl} onClose={props.onClose} /></Takeover>;
-  return <Takeover><ReportDocumentWeb target={props.target} chatId={props.chatId} service={props.service} type={report.type} {...reportId} {...(report.responsible ? { responsible: report.responsible } : {})} portalUrl={props.portalUrl} links={props.links} admin={Boolean(props.admin)} onClose={props.onClose} /></Takeover>;
+  return <Takeover><ReportDocumentWeb target={props.target} chatId={props.chatId} service={props.service} type={report.type} {...reportId} {...(report.responsible ? { responsible: report.responsible } : {})} portalUrl={props.portalUrl} links={props.links} onClose={props.onClose} /></Takeover>;
 }
 
 type BodyProps = ServiceDetailProps & { answer: ServiceAskResult<ServiceDetail> | null; tab: ServiceTabKey; mapOpen: boolean; startOrderId?: string; startReportId?: string; askAgain: () => void; flows: ReturnType<typeof useReportFlows>; reportPanel?: ReactNode };

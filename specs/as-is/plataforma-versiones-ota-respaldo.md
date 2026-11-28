@@ -64,6 +64,13 @@ Fuentes: código, `git log`, `specs/DEPLOY.spec.md` §4 y §4-bis,
   `useActualizacionSilenciosa.ts`. Revisa al abrir, al volver y cada 30 min (5 min entre
   revisiones). **Aplica** solo al volver tras ≥ 10 min fuera, sin llamada y sin cola de
   envío (`applyPolicy.ts`). Nunca recarga en fondo.
+  - `UpdatePromptHost.tsx` + `updatePrompt.ts` (José 28/11): una píldora bajo la cabecera,
+    sobre cualquier pantalla (canales de Espacios incluidos), montada en
+    `NavegacionDeSesion`. Con una OTA ya bajada dice «Hay una actualización · Reiniciar»
+    (`restartDecision`: no durante una llamada; con mensajes o fotos sin enviar avisa y
+    espera). Con un APK nuevo y la banda de la lista tapada (chat o canal abierto, otra
+    pestaña) dice «Lilachat X · Actualizar» y lleva a la banda. Sin revisiones propias: lee
+    `useUpdates()` y el aviso que publica `useActualizacionesDeLaApp`.
   - `runningCode.ts`: Diagnóstico dice «Incluido en el APK» o «Actualización <id>».
   - `updatesLogFile.ts`: vacía el log de expo-updates al arrancar (se comía la memoria).
 - **APK nuevo** (`app/src/settings/`):
@@ -146,6 +153,9 @@ Fuentes: código, `git log`, `specs/DEPLOY.spec.md` §4 y §4-bis,
 - **13/11** · 0.1.183: videollamada en ventana chica.
 - **15/11** · 0.1.184 a 0.1.188: medición AR del IAA.
 - **16/11** · 0.1.189: el aviso se dibuja antes de cualquier red.
+- **28/11** · El aviso de versión y el «Reiniciar» de una OTA bajada salen sobre cualquier
+  pantalla. Antes la banda vivía solo arriba de la lista de Chats: quien trabaja dentro de
+  un canal no la veía, y una OTA bajada esperaba 10 min fuera de la app sin envíos.
 
 ## 5. Diseños de Stitch
 

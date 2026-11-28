@@ -279,13 +279,22 @@ describe('the photo and «Publicar» as forms', () => {
     expect(sent.body.response.text).toBe('Se enviaron 2 fotos al grupo.');
   });
 
-  it('a member of the channel who is not an admin sends the album too (José 19/11: «que sea para todos»)', async () => {
+  it('a member of the channel who is not an admin opens and sends the album (José 28/11: «Debería estar para todos»)', async () => {
+    // Arrange
+    answers['form.submitted'] = { status: 200, body: { response_type: 'ephemeral', text: 'Se enviaron 2 fotos al grupo.' } };
+    // Act
     const opened = await openOf(ana, album).expect(200);
+    const sent = await request(app).post(`/api/chats/${chatId}/commands/${opened.body.commandId}/form`).set(auth(ana)).send({ values: {} }).expect(200);
+    // Assert
     expect(opened.body.response.form).toMatchObject({ id: 'enviar_fotos_de_unidad' });
+    expect(received.find((event) => event.type === 'form.submitted')?.data).toMatchObject({ form_id: 'enviar_fotos_de_unidad', values: { tramoId: 'd1', fotos: album.fotos } });
+    expect(sent.body.response.text).toBe('Se enviaron 2 fotos al grupo.');
   });
 
-  it('nobody outside the channel sends the album', async () => {
+  it('nobody outside the channel sends the album, and nothing reaches Portal', async () => {
     await openOf(outsider, album).expect(404);
+    expect(received.some((event) => event.type === 'form.submitted')).toBe(false);
+    expect(await BotCommandRunModel.countDocuments({})).toBe(0);
   });
 
   it('an album without urls is refused before the door', async () => {

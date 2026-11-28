@@ -11,6 +11,7 @@ import { useActualizador, type InfoActualizacion } from './useActualizador';
 import { infoParaActualizar } from './actualizacionInfo';
 import { guardarActualizacionDescartada, leerActualizacionDescartada } from './preferencias';
 import { newerAudiences, type Novedad } from './novedades';
+import { publishApkNotice } from '../updates/updatePrompt';
 
 const SIN_INFO: InfoActualizacion = { downloadUrl: '', releaseId: '', sha256: '', size: 0 };
 
@@ -115,6 +116,18 @@ export function useActualizacionesDeLaApp(usage: { spaces: boolean; personal: bo
     void guardarActualizacionDescartada(notice.version);
     setPublished((before) => (before ? { ...before, descartada: notice.version } : before));
   };
+
+  // José 28/11: the same notice over any screen (`UpdatePromptHost`), so a channel does not hide it.
+  const latestActions = useRef({ requestUpdate, descartarAviso });
+  latestActions.current = { requestUpdate, descartarAviso };
+  const noticeVersion = notice.tipo === 'ninguno' ? null : notice.version;
+  const noticeMandatory = notice.tipo === 'obligatoria';
+  useEffect(() => {
+    publishApkNotice(noticeVersion ? { version: noticeVersion, mandatory: noticeMandatory, update: () => latestActions.current.requestUpdate(), dismiss: () => latestActions.current.descartarAviso() } : null);
+    return () => {
+      publishApkNotice(null);
+    };
+  }, [noticeVersion, noticeMandatory]);
 
   return {
     aviso: notice,

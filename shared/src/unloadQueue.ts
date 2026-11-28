@@ -22,7 +22,6 @@ export type UnitsQueueViewProps = {
   onView: (photo: PhotoToView) => void;
   /** «Terminar unidad» (José 19/11): anyone reviews the unit's photos before they go to the group. */
   onAlbum?: (item: RepeatItem) => void;
-  admin?: boolean;
   /** José 20/11: the order the channel set; missing, Portal's order of arrival. */
   order?: readonly string[];
   /** The new order of the open units; missing (a published report), nothing moves. */

@@ -234,7 +234,7 @@ function ServiceRecordsDetail(props: ServiceDetailProps) {
   // José 11/11: the registry and the lifting of observations have their own screens (designs ob-01…ob-03).
   if (report && isObservationType(report.type)) return <ObservationsScreen target={props.target} chatId={props.chatId} serviceId={props.service.id} service={props.service} type={report.type} {...(report.reportId ? { reportId: report.reportId } : {})} {...(report.lift ? { lift: report.lift } : {})} portalUrl={portalUrl} onClose={closeReport} />;
   if (report?.type === AREA_TYPE) return <AreasScreen to={{ target: props.target, chatId: props.chatId, serviceId: props.service.id }} service={props.service} links={props.links} {...(report.reportId ? { reportId: report.reportId } : {})} onClose={closeReport} />;
-  if (report) return <ReportDocumentScreen target={props.target} chatId={props.chatId} service={props.service} type={report.type} {...(report.reportId ? { reportId: report.reportId } : {})} {...(report.responsible ? { responsible: report.responsible } : {})} portalUrl={portalUrl} links={props.links} admin={Boolean(props.admin)} onClose={closeReport} />;
+  if (report) return <ReportDocumentScreen target={props.target} chatId={props.chatId} service={props.service} type={report.type} {...(report.reportId ? { reportId: report.reportId } : {})} {...(report.responsible ? { responsible: report.responsible } : {})} portalUrl={portalUrl} links={props.links} onClose={closeReport} />;
   const tabs = answer?.ok ? serviceTabs(answer.value, Boolean(props.seesDrive), Boolean(props.links)) : [];
   // José 20/11 (design mapa-v2): the map takes the rest of the screen and moves, outside the scroll.
   const mapOpen = tab === 'map' && Boolean(props.links) && Boolean(answer?.ok);

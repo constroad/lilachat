@@ -165,10 +165,12 @@ La casilla `enviarAlGrupo` de CTL-IMP y CTL-PIS llega solo a un admin del espaci
 El server la quita del documento de un miembro (`withoutGroupSend`).
 
 En CTL-PIS, desde el 19/11 las fotos de una unidad salen al grupo solo con «Terminar unidad».
-Antes, un admin las revisa (`UnitAlbumDialog.tsx` en la web, `UnitAlbumSheet.tsx` en el APK).
+Antes, cualquier miembro del canal las revisa (`UnitAlbumDialog.tsx` en la web, `UnitAlbumSheet.tsx` en el APK).
 La revisión va en 2 columnas en el teléfono (3–4 en tablet), con el dato encima de cada foto
 (tipo · hora). Una adicional con el pie automático («… llegada n.º 2 …») se rotula «Adicional».
-Portal ya no las manda al subir la foto de unidad vacía. La puerta del server pide `need: 'admin'`.
+Portal ya no las manda al subir la foto de unidad vacía. La puerta del server pide `need: 'services'`
+(miembro del canal y del espacio), no admin. El documento del informe ya no recibe la marca `admin`
+(28/11): las etapas del servicio, que leen plata, la siguen usando en `ServiceDetail*`.
 
 ### Web/PWA
 
@@ -276,7 +278,10 @@ Portal ya no las manda al subir la foto de unidad vacía. La puerta del server p
   Textos que se cortaban (390/1024 px) pasan a dos líneas: filas de la cola, etiquetas de foto,
   pies de foto de la revisión; «+ Agregar foto» fuera del scroll; banner de ejemplo con el botón
   abajo a todo el ancho. En el mapa del teléfono el pie sube para dejar ver la atribución.
-- **19/11** CTL-PIS: «Terminar unidad» (solo admins). Revisión de las fotos con casillas,
+- **28/11** «Terminar unidad» para todos, otra vez (José: «Debería estar para todos»). El código ya no lo
+  restringía desde el 19/11 (2ba491e2); lo más probable es que Jeremy corriera código anterior. Se quitó la marca `admin` muerta del
+  documento del informe y el test del server prueba que un miembro sin admin envía y un ajeno no.
+- **19/11** CTL-PIS: «Terminar unidad» (al principio solo admins; esa noche, para todos). Revisión de las fotos con casillas,
   miniatura rota fuera sola, envío por `enviar_fotos_de_unidad` (spec §24).
 - **16/11** Hojas de bloques en la web ancha. «Reintentar» del editor. Portal arregló
   el retraso de 60 s de su service worker (ec9a18f0).

@@ -24,7 +24,7 @@ import { PdfLabel } from '../RecordSheetWeb';
 import { FloatingNotice, useFloatingNotice } from '../../../ui/FloatingNotice';
 import { useConfirm } from '../../../ui/useConfirm';
 
-type Props = { /** Who the person named before creating it (José 06/11). */ responsible?: string; target: ServiceAskTarget; chatId: string; service: SpaceClientService; type: string; /** The draft a row asked to continue. */ reportId?: string; portalUrl?: string; /** The channel's links: the work map's streets for a form that picks one. */ links?: ChannelLinks; /** A space admin: «Terminar unidad» sends the unit's photos to the client's group (José 19/11). */ admin?: boolean; onClose: (changed: boolean) => void };
+type Props = { /** Who the person named before creating it (José 06/11). */ responsible?: string; target: ServiceAskTarget; chatId: string; service: SpaceClientService; type: string; /** The draft a row asked to continue. */ reportId?: string; portalUrl?: string; /** The channel's links: the work map's streets for a form that picks one. */ links?: ChannelLinks; onClose: (changed: boolean) => void };
 
 /** Kicker, title and state (design j-02 desktop): the type over the service, the pill at the right. */
 function ReportHeader({ kicker, title, report, onBack }: { kicker: string; title: string; report: FieldDocument | null; onBack: () => void }) {
@@ -95,10 +95,10 @@ function ReportFooter({ report, blocker, pdf, onPublish, onDone }: { report: Fie
 }
 
 /** What the page shows under the header: the loading block, the failure, the tramos or the hub. */
-function ReportBody({ draft, report, items, portalUrl, onOpen, onOpenItems, onRetry, onView, admin, onAlbum, queue }: { admin: boolean; onAlbum: (item: RepeatItem) => void; queue: UnitsQueue; onRetry: () => void; onView: (photo: PhotoToView) => void; draft: ReportDraftResult | null; report: FieldDocument | null; items: DocumentSection | undefined; portalUrl?: string; onOpen: (path: SectionPath) => void; onOpenItems: (sectionId: string) => void }) {
+function ReportBody({ draft, report, items, portalUrl, onOpen, onOpenItems, onRetry, onView, onAlbum, queue }: { /** «Terminar unidad» for every member of the channel (José 19/11, again 28/11): no admin flag reaches it. */ onAlbum: (item: RepeatItem) => void; queue: UnitsQueue; onRetry: () => void; onView: (photo: PhotoToView) => void; draft: ReportDraftResult | null; report: FieldDocument | null; items: DocumentSection | undefined; portalUrl?: string; onOpen: (path: SectionPath) => void; onOpenItems: (sectionId: string) => void }) {
   if (draft === null) return <div data-testid="informe-cargando" className="h-40 animate-pulse rounded-xl bg-surface" />;
   if (!draft.ok || !report) return <DraftFailure message={draft.ok ? 'No se pudo abrir el informe' : draft.message} portalUrl={portalUrl} onRetry={onRetry} />;
-  if (items?.kind === 'repeat') return isUnitsRepeat(items) ? <ReportUnitsWeb section={items} onOpen={onOpen} onView={onView} admin={admin} onAlbum={onAlbum} order={report.unloadOrder} onReorder={report.status === 'published' || !report.id ? undefined : queue.reorder} selectedId={queue.selectedId} onSelect={queue.select} /> : <ReportItemsWeb section={items} onOpen={onOpen} onView={onView} />;
+  if (items?.kind === 'repeat') return isUnitsRepeat(items) ? <ReportUnitsWeb section={items} onOpen={onOpen} onView={onView} onAlbum={onAlbum} order={report.unloadOrder} onReorder={report.status === 'published' || !report.id ? undefined : queue.reorder} selectedId={queue.selectedId} onSelect={queue.select} /> : <ReportItemsWeb section={items} onOpen={onOpen} onView={onView} />;
   return (
     <>
       <ProgressCard report={report} />
@@ -188,7 +188,7 @@ export function ReportDocumentWeb(props: Props) {
       <QueueCard saves={saves} offline={offline} onFix={(save) => actions.openSection(save.path)} onDiscard={(save) => void actions.discard(save.clientKey)} />
       <EphemeralAnswers answers={forms.answers.answers} onDismiss={forms.answers.dismiss} onOpenForm={forms.answers.showForm} chatId={props.chatId} jwt={props.target.jwt} />
       {report && !items ? <ExampleBannerWeb report={report} serviceId={props.service.id} type={props.type} onFill={actions.fillExamples} /> : null}
-      <ReportBody draft={document.draft} report={report} items={items} portalUrl={props.portalUrl} onOpen={actions.openSection} onOpenItems={page.setItemsOf} onRetry={actions.refresh} onView={viewPhoto} admin={Boolean(props.admin)} onAlbum={album.open} queue={queue} />
+      <ReportBody draft={document.draft} report={report} items={items} portalUrl={props.portalUrl} onOpen={actions.openSection} onOpenItems={page.setItemsOf} onRetry={actions.refresh} onView={viewPhoto} onAlbum={album.open} queue={queue} />
       {album.item ? <UnitAlbumDialog key={album.item.id} item={album.item} onSend={(urls) => actions.sendUnitAlbum(album.item!.id, urls)} onSent={album.sent} onClose={album.close} onView={(url) => viewAlbumPhoto(album.item!, url)} block={block} onGo={goTo} /> : null}
       {/* Over the review, the viewer goes to the end of the body like the Overlay, or it could sit under it. */}
       {album.item ? createPortal(files.viewer, window.document.body) : files.viewer}

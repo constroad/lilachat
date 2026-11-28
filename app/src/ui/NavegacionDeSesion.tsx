@@ -36,6 +36,7 @@ import { ReminderAlarmHost } from '../agenda/ReminderAlarmHost';
 import { AppLockGate } from '../settings/AppLockGate';
 import { WhatsNewHost } from '../settings/WhatsNewHost';
 import { SilentUpdateHost } from '../updates/SilentUpdateHost';
+import { UpdatePromptHost } from '../updates/UpdatePromptHost';
 
 /**
  * Where the person lands when the chat is opened from outside (general search FL9d, a notice, «Menciones y actividad»).
@@ -75,6 +76,8 @@ export function NavegacionDeSesion(props: {
   const { dosPaneles } = useDisposicion();
   const [enPanel, setEnPanel] = useState<({ chat: ChatSummary } & ChatEntry) | null>(null);
   const pestana = useRef<Tab>('chats');
+  /** The tab on screen, for the update prompt: the list's band only shows on Chats. */
+  const [tabOnScreen, setTabOnScreen] = useState<Tab>('chats');
   const enPanelRef = useRef(enPanel);
   enPanelRef.current = enPanel;
   const announceOpenChat = useCallback(() => {
@@ -103,10 +106,15 @@ export function NavegacionDeSesion(props: {
   const alCambiarPestana = useCallback(
     (tab: Tab) => {
       pestana.current = tab;
+      setTabOnScreen(tab);
       announceOpenChat();
     },
     [announceOpenChat]
   );
+
+  const goToList = useCallback(() => {
+    if (navegacion.isReady() && chatAbiertoDe(navegacion.getRootState())) navegacion.dispatch(StackActions.popToTop());
+  }, []);
 
   // The store key and base in hand before the first chat opens (plan 1, F5a).
   useEffect(() => {
@@ -244,6 +252,8 @@ export function NavegacionDeSesion(props: {
         </Stack.Screen>
       </Stack.Navigator>
     </NavigationContainer>
+    {/* José 28/11: the update prompt over any screen, Spaces channels included. */}
+    <UpdatePromptHost bandOnScreen={tabOnScreen === 'chats' && (dosPaneles || props.chatAbierto === null)} onGoToList={goToList} />
     {/* Pending 9: the app lock covers the chats; the call screens above stay reachable. */}
     <AppLockGate />
     <FullScreenCallsPrompt />

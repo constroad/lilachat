@@ -37,3 +37,8 @@ export function shouldCheckForUpdate(lastCheckAt: number | null, now: number): b
   if (lastCheckAt === null || now < lastCheckAt) return true;
   return now - lastCheckAt >= MIN_GAP_BETWEEN_CHECKS_MS;
 }
+
+/** The person asked to restart now («Reiniciar»): the absence does not count, a call or anything unsent still does. */
+export function restartDecision(context: Omit<ApplyContext, 'backgroundMs'>): ApplyDecision {
+  return shouldApplyUpdateNow({ ...context, backgroundMs: MIN_BACKGROUND_BEFORE_APPLY_MS });
+}

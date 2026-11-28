@@ -18,7 +18,7 @@ describe('WorkLayers', () => {
   it('shows each stage with its figures, the streets without one, and arms the brush', () => {
     // Arrange
     const onBrush = vi.fn();
-    render(<WorkLayers map={map} kind="stages" send={ok} brush={null} onBrush={onBrush} onClose={vi.fn()} />);
+    render(<WorkLayers map={map} kind="stages" send={ok} brush={null} onBrush={onBrush} onNewLayer={vi.fn()} onClose={vi.fn()} />);
     // Assert
     expect(screen.getByTestId('etapa-e1')).toHaveTextContent('Etapa 1');
     expect(screen.getByTestId('etapa-e1')).toHaveTextContent('50 %');
@@ -33,7 +33,7 @@ describe('WorkLayers', () => {
 
   it('numbers the works and paints one with the brush', () => {
     const onBrush = vi.fn();
-    render(<WorkLayers map={map} kind="works" send={ok} brush={{ kind: 'work', id: 'base' }} onBrush={onBrush} onClose={vi.fn()} />);
+    render(<WorkLayers map={map} kind="works" send={ok} brush={{ kind: 'work', id: 'base' }} onBrush={onBrush} onNewLayer={vi.fn()} onClose={vi.fn()} />);
     expect(screen.getByTestId('trabajo-fila-base')).toHaveTextContent('1');
     expect(screen.getByTestId('trabajo-fila-base')).toHaveTextContent('1 calle · 218 m');
     expect(screen.getByText('Una calle sin un trabajo no cuenta como pendiente.')).toBeTruthy();
@@ -44,7 +44,7 @@ describe('WorkLayers', () => {
   it('renames a stage and deletes a work after asking; Portal\'s refusal stays under it (Portal c1c35c58)', async () => {
     // Arrange
     const send = vi.fn<MapEditSend>(async (request) => (request.kind === 'work_tag_delete' ? { ok: false, message: 'Ese trabajo tiene avance registrado.' } : { ok: true, message: 'ok' }));
-    const { unmount } = render(<WorkLayers map={map} kind="stages" send={send} brush={null} onBrush={vi.fn()} onClose={vi.fn()} />);
+    const { unmount } = render(<WorkLayers map={map} kind="stages" send={send} brush={null} onBrush={vi.fn()} onNewLayer={vi.fn()} onClose={vi.fn()} />);
     // Act
     fireEvent.click(screen.getByTestId('renombrar-etapa-e1'));
     fireEvent.change(screen.getByTestId('nombre-etapa-e1'), { target: { value: 'Frente Norte' } });
@@ -53,7 +53,7 @@ describe('WorkLayers', () => {
     await waitFor(() => expect(send).toHaveBeenCalledWith({ kind: 'work_stage_edit', stage_id: 'e1', name: 'Frente Norte', forms: expect.any(Number) }, expect.any(Function)));
     await waitFor(() => expect(screen.queryByTestId('nombre-etapa-e1')).toBeNull());
     unmount();
-    render(<WorkLayers map={map} kind="works" send={send} brush={null} onBrush={vi.fn()} onClose={vi.fn()} />);
+    render(<WorkLayers map={map} kind="works" send={send} brush={null} onBrush={vi.fn()} onNewLayer={vi.fn()} onClose={vi.fn()} />);
     fireEvent.click(screen.getByTestId('borrar-trabajo-base'));
     expect(screen.getByTestId('trabajo-fila-base')).toHaveTextContent('¿Borrar el trabajo «Base»?');
     fireEvent.click(screen.getByTestId('borrar-si-trabajo-base'));
@@ -62,14 +62,14 @@ describe('WorkLayers', () => {
 
   it('a contract item is not renamed nor deleted from the map', () => {
     const withItem: WorkMap = { ...map, works: [...map.works, { id: 'p1', name: 'Bacheo', color: '#0d9488', partida: true }] };
-    render(<WorkLayers map={withItem} kind="works" send={ok} brush={null} onBrush={vi.fn()} onClose={vi.fn()} />);
+    render(<WorkLayers map={withItem} kind="works" send={ok} brush={null} onBrush={vi.fn()} onNewLayer={vi.fn()} onClose={vi.fn()} />);
     expect(screen.getByTestId('renombrar-trabajo-base')).toBeTruthy();
     expect(screen.queryByTestId('renombrar-trabajo-p1')).toBeNull();
   });
 
   it('creates a stage right there', async () => {
     const send = vi.fn<MapEditSend>(ok);
-    render(<WorkLayers map={map} kind="stages" send={send} brush={null} onBrush={vi.fn()} onClose={vi.fn()} />);
+    render(<WorkLayers map={map} kind="stages" send={send} brush={null} onBrush={vi.fn()} onNewLayer={vi.fn()} onClose={vi.fn()} />);
     fireEvent.click(screen.getByTestId('etapa-nueva'));
     fireEvent.change(screen.getByTestId('etapa-nombre'), { target: { value: 'Etapa 2' } });
     fireEvent.click(screen.getByTestId('etapa-crear'));

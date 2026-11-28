@@ -1,12 +1,17 @@
 import { useRef, useState, type ReactNode } from 'react';
-import { Paintbrush, X } from 'lucide-react';
-import { BRUSH_NO_EDIT as NO_EDIT, createdOrRefusal, paintAt, percentLabel, sendWorkScope, sendWorkStage, sendWorkTag, stageCardsOf, undoStroke, WORK_TAG_COLORS, workRowsOf, workStageRequest, workTagRequest, type Brush, type BrushStroke, type MapEditSend, type StageCard, type WorkMap, type WorkMapPoint, type WorkRow } from '@lilachat/shared';
+import { Paintbrush, Plus, X } from 'lucide-react';
+import { BRUSH_NO_EDIT as NO_EDIT, createdOrRefusal, paintAt, percentLabel, sendWorkScope, sendWorkStage, stageCardsOf, undoStroke, workRowsOf, workStageRequest, type Brush, type BrushStroke, type MapEditSend, type StageCard, type WorkMap, type WorkMapPoint, type WorkRow } from '@lilachat/shared';
 import { NewLabel } from './ScopeForm';
 import { LayerActions } from './LayerActions';
 import { KICKER } from './WorkMapPanel';
 
 export type LayersKind = 'stages' | 'works';
-type Props = { map: WorkMap; kind: LayersKind; send: MapEditSend; brush: Brush | null; onBrush: (brush: Brush | null) => void; onClose: () => void };
+type Props = { map: WorkMap; kind: LayersKind; send: MapEditSend; brush: Brush | null; onBrush: (brush: Brush | null) => void; /** «Agregar trabajo» opens «Nueva capa» (ma03). */ onNewLayer: () => void; onClose: () => void };
+
+/** «Agregar trabajo»: «Nueva capa» (design ma03) instead of a name field. */
+export const NewLayerButton = (props: { testId: string; label: string; onClick: () => void }) => (
+  <button type="button" data-testid={props.testId} onClick={props.onClick} className="flex h-9 items-center gap-1.5 rounded-full border border-dashed border-primary/40 px-3 text-[13px] font-semibold text-primary"><Plus size={14} />{props.label}</button>
+);
 
 const BRUSH_BUTTON = 'flex h-9 shrink-0 items-center gap-1.5 rounded-xl border px-3 text-[12px] font-semibold';
 const brushClass = (on: boolean) => `${BRUSH_BUTTON} ${on ? 'border-primary bg-primary text-on-primary' : 'border-primary/30 text-primary'}`;
@@ -67,7 +72,7 @@ function Works(props: Omit<Props, 'kind' | 'onClose'>) {
   return (
     <>
       <ul className="mt-4 space-y-2">{workRowsOf(props.map).map((row) => <WorkRowView key={row.id} row={row} on={same(props.brush, 'work', row.id)} onBrush={() => props.onBrush(same(props.brush, 'work', row.id) ? null : { kind: 'work', id: row.id })} actions={row.editable ? <LayerActions kind="works" id={row.id} name={row.name} layers={props.map.works} send={props.send} /> : null} />)}</ul>
-      <div className="mt-3"><NewLabel testId="trabajo" placeholder="Agregar trabajo" colors={WORK_TAG_COLORS} onCreate={(name, color) => createdOrRefusal(props.send(workTagRequest(name, color), sendWorkTag))} /></div>
+      <div className="mt-3"><NewLayerButton testId="trabajo-nueva" label="Agregar trabajo" onClick={props.onNewLayer} /></div>
       <p className="mt-4 text-[12px] text-on-surface-variant">Una calle sin un trabajo no cuenta como pendiente.</p>
     </>
   );

@@ -362,6 +362,26 @@ Motores puros, con test, usados por web y APK:
   sin escala ni «Configuración de trazado»; la miniatura es un ícono de cámara (ninguna de las dos
   listas trae la URL de la foto); la hora no sale (las fechas llegan sin hora); la progresiva del aro
   se actualiza al soltarlo, no durante el arrastre.
+- **28/11** «Nueva capa» como ma03 (web y APK; prototipo aprobado de Portal
+  `claude.ai/artifact/L8iULepUHhNJukC7MJkpF9`). La abren «Agregar trabajo» de «Trabajos» y el chip
+  «+ Trabajo» de «Modo Avance» (también su estado sin trabajos); reemplaza el campo de nombre. Motor
+  puro `shared/src/workLayerCatalog.ts`: catálogo `LAYER_CATALOG` con color fijo por capa
+  (Imprimación, Riego de liga, Carpeta asfáltica 2"/3", Base granular, Sello asfáltico); las que el
+  servicio ya tiene salen deshabilitadas con «Ya está» (`foldLayerName`: sin mayúsculas, tildes,
+  espacios ni estilo de comillas). «Otra…» es lo único que se escribe: nombre + paleta de 16 y «Otro
+  color» (`LabelColors`, extraído de `NewLabel`). Interruptor «Todas las calles de la obra»
+  encendido por defecto, con el metrado «N calles · L m · A m²» (largo × ancho de cada calle; m² solo
+  con ancho; «sin ancho en K calles») y una fila por calle. «Crear capa <nombre>»: `work_tag`, y
+  encendido, un `work_scope` por calle en orden y de a uno con el camino de la brocha
+  (`brushRequests`: la capa se suma a cada tramo existente; calle sin tramos, tramo de calle entera);
+  el primer rechazo corta y se muestra. El id del trabajo nuevo sale de la respuesta si la trae
+  (`tagIdOfAnswer`) o del mapa recargado por nombre (`createMapWaiter`, hasta 15 s). Apagado: solo
+  crea la capa y abre la brocha «Pintar» para esa capa. Al terminar vuelve al mapa con la capa
+  filtrada (o elegida en «Modo Avance» si se abrió desde ahí; en el APK la brocha vuelve a «Modo
+  Avance»). APK `NewLayer.tsx` (hoja), web `NewLayer.tsx` (panel del mapa). Diferencias con el
+  diseño: sin «Campo / Oficina», escala ni «Configuración de trazado»; las calles no se destildan
+  una a una (todas o la brocha); en el APK «Crear capa» va al final de la hoja, no fijo; una calle
+  con tramos parciales recibe la capa en sus tramos, no en los huecos.
 - **20/11** Rediseño aprobado `mapa-v2` (web y APK): cabecera de una fila en Mapa, mapa a pantalla,
   días y corte flotando, «Compartir avance» y «Pantalla completa» dentro de «Más», panel como hoja
   en el teléfono. Auditorías: `design/stitch/auditorias/mapa-v2-movil.md` y `mapa-v2-escritorio.md`.

@@ -30,6 +30,7 @@ import { WorkMapItems, type LiftRow } from './WorkMapItems';
 import { useFileViewer } from '../useFileViewer';
 import { ServiceCroquisButton } from './ServiceCroquis';
 import { AvanceMode } from './AvanceMode';
+import { NewLayerSheet } from './NewLayer';
 
 type PhotoLayer = ReturnType<typeof usePhotoLayer>;
 const NO_MARKS: NonNullable<WorkMap['marks']> = [];
@@ -191,10 +192,12 @@ export function WorkMapBoard(props: BoardProps) {
   // «Registrar avance» (ma04): the street it opens on, or null for the GPS to pick it.
   const [recording, setRecording] = useState<{ streetId: string | null } | null>(null);
   const [layers, setLayers] = useState<LayersKind | null>(null);
-  const [brush, setBrush] = useState<{ brush: Brush; from: LayersKind } | null>(null);
+  // «Nueva capa» (ma03) brushes from the map or from «Modo Avance»: the brush returns there.
+  const [brush, setBrush] = useState<{ brush: Brush; from: LayersKind | 'map' | 'avance' } | null>(null);
+  const [newLayer, setNewLayer] = useState(false);
   const [sheet, setSheet] = useState(false);
   const [legendOpen, setLegendOpen] = useState(false);
-  const [avance, setAvance] = useState(false);
+  const [avance, setAvance] = useState<{ workId: string | null } | null>(null);
   const target = useMemo(() => progressTargetOf(map), [map]);
   const openStreet = (id: string | null, record = false, draft?: ManualProgressDraft) => { setRecordingStart(record); setRecordDraft(draft); setStreetId(id); };
   // No street to frame: the map frames the photos and the units (Portal via José 09/11).
@@ -238,6 +241,19 @@ export function WorkMapBoard(props: BoardProps) {
     mapLayers.setOpen(opening);
   };
   const record = props.editMap && target.kind !== 'none' ? () => setRecording({ streetId: target.kind === 'street' ? target.streetId : null }) : undefined;
+  // After «Nueva capa» the map shows the new layer alone (ma03); off, the brush paints it first.
+  const layerCreated = (id: string, paint: boolean) => {
+    setNewLayer(false);
+    if (paint) setBrush({ brush: { kind: 'work', id }, from: 'map' });
+    else setFilter({ workId: id });
+  };
+  const brushDone = () => {
+    const from = brush?.from;
+    setBrush(null);
+    if (from === 'avance') setAvance({ workId: brush?.brush.id ?? null });
+    else if (from === 'map') setFilter({ workId: brush?.brush.id });
+    else if (from) setLayers(from);
+  };
   const croquis = props.editMap ? <ServiceCroquisButton send={props.editMap} title={props.title} onDone={() => props.reload?.()} pill /> : null;
   return (
     <View testID="mapa-servicio" className="flex-1">
@@ -250,7 +266,7 @@ export function WorkMapBoard(props: BoardProps) {
           </View>
         ) : null}
         <MapTop map={map} view={view} filter={filter} onFilter={setFilter} days={mapDays} notice={props.notice} layersOpen={sheet && mapLayers.open} onLayers={toggleSheet} legendOpen={legendOpen} onLegend={() => setLegendOpen(!legendOpen)} onMore={more} draws={Boolean(props.onDraw)} edits={Boolean(props.editMap)} admin={Boolean(props.admin)} />
-        <MapFoot legend={legendOpen ? <WorkMapLegend view={view} waiting={waiting} /> : null} croquis={croquis} onRecord={record} onAvance={props.editMap ? () => setAvance(true) : undefined} />
+        <MapFoot legend={legendOpen ? <WorkMapLegend view={view} waiting={waiting} /> : null} croquis={croquis} onRecord={record} onAvance={props.editMap ? () => setAvance({ workId: null }) : undefined} />
         <PanelOverlay open={sheet} onClose={() => setSheet(false)}>
           <WorkMapPanel view={view} groups={groups} filter={filter} badge={props.badge} top={top} items={picks.items} layers={layersNode} deleteStreet={props.deleteStreet} onOpenStreet={(id) => openStreet(id)} />
         </PanelOverlay>
@@ -260,9 +276,10 @@ export function WorkMapBoard(props: BoardProps) {
       <StreetScopes map={map} streetId={streetId} send={props.editMap} uploadPhoto={props.uploadPhoto} startRecording={recordingStart} recordDraft={recordDraft} onClose={() => openStreet(null)} />
       {props.editMap && recording ? <ManualProgress map={map} streetId={recording.streetId} send={props.editMap} uploadPhoto={props.uploadPhoto} onDone={() => { setRecording(null); byApprove.reload(); }} /> : null}
       <WorkMapExport open={side === 'export'} map={map} filter={filter} onFilter={setFilter} title={props.title} pageUrl={pageUrl} send={props.editMap} uploadTrace={props.uploadTrace} onClose={() => setSide(null)} />
-      {props.editMap ? <WorkLayersSheet kind={layers} map={map} send={props.editMap} onBrush={(picked) => { setBrush({ brush: picked, from: layers ?? 'stages' }); setLayers(null); }} onClose={() => setLayers(null)} /> : null}
-      {props.editMap && brush ? <BrushMap map={map} send={props.editMap} brush={brush.brush} onDone={() => { setLayers(brush.from); setBrush(null); }} /> : null}
-      {props.editMap && avance ? <AvanceMode map={map} title={props.title} send={props.editMap} byApprove={byApprove.list} onUndo={byApprove.undo} onExit={() => setAvance(false)} /> : null}
+      {props.editMap ? <WorkLayersSheet kind={layers} map={map} send={props.editMap} onBrush={(picked) => { setBrush({ brush: picked, from: layers ?? 'stages' }); setLayers(null); }} onNewLayer={() => { setLayers(null); setNewLayer(true); }} onClose={() => setLayers(null)} /> : null}
+      {props.editMap ? <NewLayerSheet open={newLayer} map={map} send={props.editMap} onCreated={layerCreated} onClose={() => setNewLayer(false)} /> : null}
+      {props.editMap && brush ? <BrushMap map={map} send={props.editMap} brush={brush.brush} onDone={brushDone} /> : null}
+      {props.editMap && avance ? <AvanceMode map={map} title={props.title} send={props.editMap} byApprove={byApprove.list} onUndo={byApprove.undo} initialWorkId={avance.workId} onPaint={(id) => { setAvance(null); setBrush({ brush: { kind: 'work', id }, from: 'avance' }); }} onExit={() => setAvance(null)} /> : null}
       <ShareProgress open={side === 'share'} map={map} filter={filter} onFilter={setFilter} send={props.editMap} mapInReport={props.mapInReport} onClose={() => setSide(null)} />
     </View>
   );

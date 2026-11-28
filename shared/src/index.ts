@@ -267,6 +267,7 @@ export * from './fileNames.js';
 export * from './botUploads.js';
 export * from './workMapBrush.js';
 export * from './workAvanceMode.js';
+export * from './workLayerCatalog.js';
 export * from './workMapStations.js';
 export * from './workMapPhotos.js';
 export * from './reportPhotoLayers.js';

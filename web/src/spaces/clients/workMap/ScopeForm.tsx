@@ -7,6 +7,19 @@ const FIELD = 'h-11 w-full rounded-xl border border-outline/25 bg-background px-
 const CHIP = 'flex h-9 items-center gap-1.5 rounded-full border px-3 text-[13px] font-semibold';
 const numberOrNull = (text: string): number | null => (text.trim() === '' ? null : Number(text.replace(',', '.')));
 
+/** The palette of a work and «Otro color»: «Nuevo trabajo» and «Otra…» of «Nueva capa» (ma03). */
+export function LabelColors(props: { testId: string; colors: readonly string[]; value: string; onPick: (color: string) => void }) {
+  return (
+    <div role="radiogroup" aria-label="Color" className="mt-2 flex flex-wrap gap-2">
+      {props.colors.map((one) => <button key={one} type="button" role="radio" aria-checked={props.value === one} aria-label={`Color ${one}`} data-testid={`${props.testId}-color-${one.slice(1)}`} onClick={() => props.onPick(one)} className="grid h-8 w-8 place-items-center rounded-full border-2 border-outline/40 ring-offset-2 ring-offset-background aria-checked:ring-2 aria-checked:ring-primary" style={{ backgroundColor: one }}>{props.value === one ? <Check size={14} className="text-white" /> : null}</button>)}
+      <label title="Otro color" className="relative grid h-8 w-8 cursor-pointer place-items-center rounded-full border-2 border-dashed border-outline/60 text-primary">
+        <Pipette size={14} aria-hidden />
+        <input data-testid={`${props.testId}-color-otro`} type="color" aria-label="Otro color" value={props.value} onChange={(event) => props.onPick(event.target.value)} className="absolute inset-0 h-full w-full cursor-pointer opacity-0" />
+      </label>
+    </div>
+  );
+}
+
 type NewLabelProps = { testId: string; placeholder: string; colors?: readonly string[]; onCreate: (name: string, color: string) => Promise<string | null> };
 
 /** «Nueva etapa» / «Nuevo trabajo» right where they are picked (o-04, o-05): a name, and a color for a work. */
@@ -18,15 +31,7 @@ export function NewLabel(props: NewLabelProps) {
   return (
     <div className="basis-full rounded-xl border border-outline/15 bg-background p-3">
       <input data-testid={`${props.testId}-nombre`} autoFocus value={name} maxLength={60} placeholder={props.placeholder} onChange={(event) => set({ error: null, name: event.target.value })} className={FIELD} />
-      {props.colors ? (
-        <div role="radiogroup" aria-label="Color" className="mt-2 flex flex-wrap gap-2">
-          {props.colors.map((one) => <button key={one} type="button" role="radio" aria-checked={color === one} aria-label={`Color ${one}`} data-testid={`${props.testId}-color-${one.slice(1)}`} onClick={() => set({ color: one })} className="grid h-8 w-8 place-items-center rounded-full border-2 border-outline/40 ring-offset-2 ring-offset-background aria-checked:ring-2 aria-checked:ring-primary" style={{ backgroundColor: one }}>{color === one ? <Check size={14} className="text-white" /> : null}</button>)}
-          <label title="Otro color" className="relative grid h-8 w-8 cursor-pointer place-items-center rounded-full border-2 border-dashed border-outline/60 text-primary">
-            <Pipette size={14} aria-hidden />
-            <input data-testid={`${props.testId}-color-otro`} type="color" aria-label="Otro color" value={color} onChange={(event) => set({ color: event.target.value })} className="absolute inset-0 h-full w-full cursor-pointer opacity-0" />
-          </label>
-        </div>
-      ) : null}
+      {props.colors ? <LabelColors testId={props.testId} colors={props.colors} value={color} onPick={(one) => set({ color: one })} /> : null}
       {error ? <p role="alert" className="mt-2 text-[13px] font-semibold text-error">{error}</p> : null}
       <div className="mt-2 flex gap-2">
         <button type="button" onClick={() => setForm(labelFormIdle(color))} className="h-10 flex-1 rounded-xl border border-outline/20 text-[13px] font-semibold"><X size={14} className="mr-1 inline" />Cancelar</button>

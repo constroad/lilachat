@@ -24,6 +24,7 @@ import { usePortalFileViewer } from '../PortalFileViewer';
 import { WorkMapItems, type LiftRow } from './WorkMapItems';
 import { MapCardView } from './MapCardView';
 import { AvanceTop, useAvanceMode } from './AvanceMode';
+import { NewLayer } from './NewLayer';
 import { AvancePanel } from './AvancePanel';
 import { ServiceCroquisButton } from './ServiceCroquis';
 
@@ -212,6 +213,8 @@ export function WorkMapBoard(props: BoardProps) {
   const brushLines = useMemo(() => linesFor(map, brushing.brush), [map, brushing.brush]);
   const closeLayers = () => { setLayers(null); brushing.setBrush(null); };
   const avance = useAvanceMode(map);
+  // «Nueva capa» (ma03): opened from «Trabajos» or from «Modo Avance», where the new layer is picked.
+  const [newLayer, setNewLayer] = useState<'map' | 'avance' | null>(null);
   const [recordingStart, setRecordingStart] = useState(false);
   const [recordDraft, setRecordDraft] = useState<ManualProgressDraft | undefined>(undefined);
   // «Registrar avance» (ma04): the street it opens on, or null for the GPS to pick it.
@@ -249,12 +252,20 @@ export function WorkMapBoard(props: BoardProps) {
   const sidePanel = side === 'export'
     ? <WorkMapExport map={map} filter={filter} onFilter={setFilter} title={props.title} pageUrl={pageUrl} send={props.editMap} uploadTrace={props.uploadTrace} onClose={() => setSide(null)} />
     : side === 'share' ? <ShareProgress map={map} filter={filter} onFilter={setFilter} send={props.editMap} mapInReport={props.mapInReport} onClose={() => setSide(null)} /> : null;
-  const layersPanel = layers && props.editMap ? <WorkLayers map={map} kind={layers} send={props.editMap} brush={brushing.brush} onBrush={brushing.setBrush} onClose={closeLayers} /> : null;
+  const layersPanel = layers && props.editMap ? <WorkLayers map={map} kind={layers} send={props.editMap} brush={brushing.brush} onBrush={brushing.setBrush} onNewLayer={() => { closeLayers(); setNewLayer('map'); }} onClose={closeLayers} /> : null;
   const mapLayers = useMapLayers();
   const drawn = useMemo(() => ({ view: viewWithLayers(view, mapLayers.layers), marks: visibleMarks(map.marks ?? NO_MARKS, mapLayers.layers), observations: visibleObservations(map.observations ?? NO_OBSERVATIONS, mapLayers.layers) }), [view, map, mapLayers.layers]);
   const layersNode = mapLayers.open ? <MapLayersPanel map={map} view={view} filter={filter} onFilter={setFilter} layers={mapLayers.layers} onToggle={mapLayers.toggle} photos={photoLayer.available ? { count: photoLayer.count, shown: photoLayer.shown, onToggle: photoLayer.toggle, reports: photoLayer.reports, onToggleReport: photoLayer.toggleReport } : undefined} /> : null;
   const avancePanel = avance.on && props.editMap && (wide || avance.target) ? <AvancePanel map={map} target={avance.target} send={props.editMap} undoable={avance.target ? undoableOf(byApprove.list, avance.target.streetId, avance.target.workId) : null} onUndo={byApprove.undo} /> : null;
-  const other = avancePanel ?? deletedPanel ?? layersPanel ?? sidePanel ?? streetPanel;
+  const layerCreated = (id: string, paint: boolean) => {
+    const from = newLayer;
+    setNewLayer(null);
+    if (paint) { avance.exit(); setLayers('works'); brushing.setBrush({ kind: 'work', id }); }
+    else if (from === 'avance') avance.pick(id);
+    else setFilter({ workId: id });
+  };
+  const newLayerPanel = newLayer && props.editMap ? <NewLayer map={map} send={props.editMap} onCreated={layerCreated} onClose={() => setNewLayer(null)} /> : null;
+  const other = newLayerPanel ?? avancePanel ?? deletedPanel ?? layersPanel ?? sidePanel ?? streetPanel;
   const panel = other ?? <WorkMapPanel view={view} groups={groups} filter={filter} badge={props.badge} top={top} items={picks.items} layers={layersNode} scrolls={wide} deleteStreet={props.deleteStreet} onOpenStreet={(id) => openStreet(id)} />;
   // A phone: the map takes the screen and the panel is a sheet over it, open on demand (José 20/11).
   const [sheet, setSheet] = useState(false);
@@ -267,7 +278,7 @@ export function WorkMapBoard(props: BoardProps) {
     setSheet(opening);
     mapLayers.setOpen(opening);
   };
-  const closeSheet = () => { avance.closeStreet(); setSheet(false); setSide(null); closeLayers(); setStreetId(null); setSeeingDeleted(false); };
+  const closeSheet = () => { setNewLayer(null); avance.closeStreet(); setSheet(false); setSide(null); closeLayers(); setStreetId(null); setSeeingDeleted(false); };
   const pick = (key: Exclude<MapMoreKey, 'open'>) => {
     if (key === 'share' || key === 'export') toggleSide(key);
     else if (key === 'screen') (expanded ? close : open)();
@@ -291,7 +302,7 @@ export function WorkMapBoard(props: BoardProps) {
             <WorkMapCanvas view={drawn.view} expanded={expanded} stations={stations} bare={bare} marks={drawn.marks} observations={drawn.observations} selected={picks.selected} onSelect={picks.setSelected} onCardPhoto={(photo, all) => picks.openPhoto(photo, all)} focus={picks.focus} pins={photoLayer.shown ? photoLayer.pins : unitPins} onPin={photoLayer.shown ? photoLayer.openPin : undefined} stretches={brushing.brush ? brushLines : avance.on ? avance.lines : stretches} pending={avance.on ? pendingLines.filter((line) => line.workId === avance.workId) : pendingLines} onTap={brushing.brush ? (place) => void brushing.tap(place) : avance.on ? avance.tap : undefined} />
           </Suspense>
           {brushing.brush ? <BrushBand title={brushTitle(map, brushing.brush)} error={brushing.error} busy={brushing.busy} canUndo={brushing.canUndo} onUndo={() => void brushing.undo()} onDone={() => brushing.setBrush(null)} /> : null}
-          {avance.on && editMap ? <AvanceTop mode={avance} title={props.title} send={editMap} /> : null}
+          {avance.on && editMap ? <AvanceTop mode={avance} title={props.title} onNewLayer={() => setNewLayer('avance')} /> : null}
           {brushing.brush || avance.on ? null : wide ? (
             <>
               <div data-testid="mapa-flotante" className="pointer-events-none absolute inset-x-4 top-4 z-10 flex flex-col items-start gap-2">

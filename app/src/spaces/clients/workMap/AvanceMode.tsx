@@ -1,23 +1,24 @@
 import { useMemo, useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
-import { ArrowLeft, Check, Pointer } from 'lucide-react-native';
-import { AVANCE_NO_WORKS, AVANCE_PICK_STREET, AVANCE_TITLE, avanceChipsOf, avanceHint, avancePickedWork, avanceTargetOf, brushLinesOf, byApproveLinesOf, undoableOf, type ByApproveList, createdOrRefusal, sendWorkTag, stretchLineOf, streetAtTap, WORK_TAG_COLORS, workMapView, workTagRequest, type AvanceChip, type MapEditSend, type WorkMap, type WorkMapLine, type WorkMapPoint } from '@lilachat/shared';
+import { ArrowLeft, Check, Plus, Pointer } from 'lucide-react-native';
+import { AVANCE_NO_WORKS, AVANCE_PICK_STREET, AVANCE_TITLE, avanceChipsOf, avanceHint, avancePickedWork, avanceTargetOf, brushLinesOf, byApproveLinesOf, undoableOf, type ByApproveList, stretchLineOf, streetAtTap, workMapView, type AvanceChip, type MapEditSend, type WorkMap, type WorkMapLine, type WorkMapPoint } from '@lilachat/shared';
 import { Modal } from '../../../ui/Modal';
 import { useColores } from '../../../ui/tema';
 import { useMargenes } from '../../../ui/useMargenes';
-import { NewLabel } from './ScopeForm';
+import { NewLayerSheet } from './NewLayer';
+import { NewLayerButton } from './WorkLayers';
 import { MAP_SHADOW } from './MapFloating';
 import { AvancePanel } from './AvancePanel';
 import { WorkMapSurface } from './WorkMapSurface';
 
 /** The strip of works (design av-01): 56 dp chips, the picked one with its check. */
-function WorkChips(props: { chips: AvanceChip[]; onPick: (id: string) => void; send: MapEditSend }) {
+function WorkChips(props: { chips: AvanceChip[]; onPick: (id: string) => void; onNewLayer: () => void }) {
   const colors = useColores();
   if (!props.chips.length) {
     return (
       <View testID="avance-sin-trabajos" className="mx-3 gap-2 rounded-2xl bg-surface p-3" style={MAP_SHADOW}>
         <Text className="text-[14px] text-on-surface">{AVANCE_NO_WORKS}</Text>
-        <NewLabel testID="trabajo" placeholder="Agregar trabajo" colors={WORK_TAG_COLORS} onCreate={(name, color) => createdOrRefusal(props.send(workTagRequest(name, color), sendWorkTag))} />
+        <NewLayerButton testID="trabajo-nueva" label="Agregar trabajo" onPress={props.onNewLayer} />
       </View>
     );
   }
@@ -30,6 +31,9 @@ function WorkChips(props: { chips: AvanceChip[]; onPick: (id: string) => void; s
           {chip.selected ? <Check size={18} color={colors.primary} /> : null}
         </Pressable>
       ))}
+      <Pressable testID="avance-trabajo-nuevo" accessibilityRole="button" onPress={props.onNewLayer} className="h-14 flex-row items-center gap-2 rounded-full border border-dashed border-primary/50 bg-surface px-5" style={MAP_SHADOW}>
+        <Plus size={18} color={colors.primary} /><Text className="text-[16px] font-semibold text-primary">Trabajo</Text>
+      </Pressable>
     </ScrollView>
   );
 }
@@ -71,12 +75,19 @@ function linesOf(map: WorkMap, workId: string | null, streetId: string | null): 
  * «Modo Avance» on the phone (design av-01, José 27/11): the strip of works on top, a tap on a
  * street opens its panel, and «Guardar avance» sends it to wait for an admin's approval.
  */
-export function AvanceMode(props: { map: WorkMap; title: string; send: MapEditSend; byApprove: ByApproveList | null; onUndo: (id: string) => Promise<string | null>; onExit: () => void }) {
+export function AvanceMode(props: { map: WorkMap; title: string; send: MapEditSend; byApprove: ByApproveList | null; onUndo: (id: string) => Promise<string | null>; onExit: () => void; /** The work picked on entering: the layer just created (ma03). */ initialWorkId?: string | null; /** «Nueva capa» with the switch off: the brush, outside this mode. */ onPaint: (workId: string) => void }) {
   const { map } = props;
   const margins = useMargenes();
-  const [chosen, setChosen] = useState<string | null>(null);
+  const [chosen, setChosen] = useState<string | null>(props.initialWorkId ?? null);
   const [streetId, setStreetId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [newLayer, setNewLayer] = useState(false);
+  const created = (id: string, paint: boolean) => {
+    setNewLayer(false);
+    if (paint) return props.onPaint(id);
+    setChosen(id);
+    setStreetId(null);
+  };
   const workId = avancePickedWork(map, chosen);
   const chips = useMemo(() => avanceChipsOf(map, workId), [map, workId]);
   const view = useMemo(() => workMapView(map), [map]);
@@ -94,11 +105,12 @@ export function AvanceMode(props: { map: WorkMap; title: string; send: MapEditSe
         <WorkMapSurface view={view} moves controlsInset={margins.pie} stretches={linesOf(map, workId, streetId)} pending={pending} onTap={workId ? tap : undefined} />
         <View pointerEvents="box-none" className="absolute inset-x-0 gap-3" style={{ top: margins.cabecera + 8 }}>
           <Head title={props.title} onExit={props.onExit} />
-          <WorkChips chips={chips} onPick={(id) => { setChosen(id); setError(null); }} send={props.send} />
+          <WorkChips chips={chips} onPick={(id) => { setChosen(id); setError(null); }} onNewLayer={() => setNewLayer(true)} />
           {workId ? <Hint text={avanceHint(workName)} error={error} /> : null}
         </View>
         {target ? <AvancePanel key={`${target.streetId}|${target.workId}`} map={map} target={target} send={props.send} undoable={undoableOf(props.byApprove, target.streetId, target.workId)} onUndo={props.onUndo} bottom={margins.pie} onClose={() => setStreetId(null)} /> : null}
       </View>
+      <NewLayerSheet open={newLayer} map={map} send={props.send} onCreated={created} onClose={() => setNewLayer(false)} />
     </Modal>
   );
 }

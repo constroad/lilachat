@@ -12,6 +12,27 @@ const FIELD = 'mt-1 h-12 rounded-xl border border-outline/25 bg-background px-3 
 const LABEL = 'text-[12px] font-semibold uppercase text-on-surface-variant';
 const CHIP = 'h-10 flex-row items-center gap-1.5 rounded-full border px-3';
 
+/** The palette of a work and «Otro color» (José 27/11): «Nuevo trabajo» and «Otra…» of «Nueva capa». */
+export function LabelColors(props: { testID: string; colors: readonly string[]; value: string; onPick: (color: string) => void }) {
+  const palette = useColores();
+  const [picking, setPicking] = useState(false);
+  return (
+    <>
+      <View accessibilityRole="radiogroup" className="mt-2 flex-row flex-wrap gap-2">
+        {props.colors.map((one) => (
+          <Pressable key={one} testID={`${props.testID}-color-${one.slice(1)}`} accessibilityRole="radio" accessibilityState={{ checked: props.value === one }} onPress={() => props.onPick(one)} className={`h-10 w-10 items-center justify-center rounded-full border-2 ${props.value === one ? 'border-on-surface' : 'border-outline/40'}`} style={{ backgroundColor: one }}>
+            {props.value === one ? <Check size={16} color="#ffffff" /> : null}
+          </Pressable>
+        ))}
+        <Pressable testID={`${props.testID}-color-otro`} accessibilityRole="radio" accessibilityLabel="Otro color" accessibilityState={{ checked: picking }} onPress={() => setPicking((open) => !open)} className={`h-10 w-10 items-center justify-center rounded-full border-2 border-dashed ${picking ? 'border-primary' : 'border-outline/60'}`}>
+          <Pipette size={16} color={palette.primary} />
+        </Pressable>
+      </View>
+      {picking ? <ColorPicker testID={`${props.testID}-selector`} value={props.value} onChange={props.onPick} /> : null}
+    </>
+  );
+}
+
 type NewLabelProps = { testID: string; placeholder: string; colors?: readonly string[]; onCreate: (name: string, color: string) => Promise<string | null> };
 
 /** «Nueva etapa» / «Nuevo trabajo» right where they are picked (o-04, o-05): a name, and a color for a work. */
@@ -20,7 +41,6 @@ export function NewLabel(props: NewLabelProps) {
   const [form, setForm] = useState<LabelForm>(() => labelFormIdle(props.colors?.[0]));
   const set = (next: Partial<LabelForm>) => setForm((before) => ({ ...before, ...next }));
   const { open, name, color, error, busy } = form;
-  const [picking, setPicking] = useState(false);
   if (!open) {
     return (
       <Pressable testID={`${props.testID}-nueva`} onPress={() => set({ open: true })} className={`${CHIP} border-dashed border-primary/40`}>
@@ -31,19 +51,7 @@ export function NewLabel(props: NewLabelProps) {
   return (
     <View className="w-full rounded-xl border border-outline/15 bg-background p-3">
       <TextInput testID={`${props.testID}-nombre`} autoFocus value={name} maxLength={60} placeholder={props.placeholder} onChangeText={(text) => set({ error: null, name: text })} className={FIELD} />
-      {props.colors ? (
-        <View accessibilityRole="radiogroup" className="mt-2 flex-row flex-wrap gap-2">
-          {props.colors.map((one) => (
-            <Pressable key={one} testID={`${props.testID}-color-${one.slice(1)}`} accessibilityRole="radio" accessibilityState={{ checked: color === one }} onPress={() => set({ color: one })} className={`h-10 w-10 items-center justify-center rounded-full border-2 ${color === one ? 'border-on-surface' : 'border-outline/40'}`} style={{ backgroundColor: one }}>
-              {color === one ? <Check size={16} color="#ffffff" /> : null}
-            </Pressable>
-          ))}
-          <Pressable testID={`${props.testID}-color-otro`} accessibilityRole="radio" accessibilityLabel="Otro color" accessibilityState={{ checked: picking }} onPress={() => setPicking((open) => !open)} className={`h-10 w-10 items-center justify-center rounded-full border-2 border-dashed ${picking ? 'border-primary' : 'border-outline/60'}`}>
-            <Pipette size={16} color={palette.primary} />
-          </Pressable>
-        </View>
-      ) : null}
-      {props.colors && picking ? <ColorPicker testID={`${props.testID}-selector`} value={color} onChange={(hex) => set({ color: hex })} /> : null}
+      {props.colors ? <LabelColors testID={props.testID} colors={props.colors} value={color} onPick={(one) => set({ color: one })} /> : null}
       {error ? <Text className="mt-2 text-[13px] font-semibold text-error">{error}</Text> : null}
       <View className="mt-2 flex-row gap-2">
         <Pressable onPress={() => setForm(labelFormIdle(color))} className="h-11 flex-1 items-center justify-center rounded-xl border border-outline/20"><Text className="text-[14px] font-semibold text-on-surface">Cancelar</Text></Pressable>

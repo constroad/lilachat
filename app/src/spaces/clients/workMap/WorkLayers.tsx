@@ -1,8 +1,8 @@
 import { randomUUID } from 'expo-crypto';
 import { useRef, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
-import { Paintbrush, Undo2 } from 'lucide-react-native';
-import { BRUSH_NO_EDIT, brushLinesOf, brushTitle, createdOrRefusal, paintAt, percentLabel, sendWorkScope, sendWorkStage, sendWorkTag, stageCardsOf, undoStroke, WORK_TAG_COLORS, workMapView, workRowsOf, workStageRequest, workTagRequest, type Brush, type BrushStroke, type MapEditSend, type StageCard, type WorkMap, type WorkMapPoint, type WorkRow } from '@lilachat/shared';
+import { Paintbrush, Plus, Undo2 } from 'lucide-react-native';
+import { BRUSH_NO_EDIT, brushLinesOf, brushTitle, createdOrRefusal, paintAt, percentLabel, sendWorkScope, sendWorkStage, stageCardsOf, undoStroke, workMapView, workRowsOf, workStageRequest, type Brush, type BrushStroke, type MapEditSend, type StageCard, type WorkMap, type WorkMapPoint, type WorkRow } from '@lilachat/shared';
 import { Modal } from '../../../ui/Modal';
 import { useColores } from '../../../ui/tema';
 import { useMargenes } from '../../../ui/useMargenes';
@@ -62,7 +62,17 @@ function WorkRowView(props: { row: WorkRow; map: WorkMap; send: MapEditSend; onB
   );
 }
 
-type SheetProps = { kind: LayersKind | null; map: WorkMap; send: MapEditSend; onBrush: (brush: Brush) => void; onClose: () => void };
+type SheetProps = { kind: LayersKind | null; map: WorkMap; send: MapEditSend; onBrush: (brush: Brush) => void; /** «Agregar trabajo» opens «Nueva capa» (ma03). */ onNewLayer: () => void; onClose: () => void };
+
+/** «Agregar trabajo»: «Nueva capa» (design ma03) instead of a name field. */
+export function NewLayerButton(props: { testID: string; label: string; onPress: () => void }) {
+  const colors = useColores();
+  return (
+    <Pressable testID={props.testID} onPress={props.onPress} className="h-11 flex-row items-center gap-1.5 self-start rounded-full border border-dashed border-primary/40 px-4">
+      <Plus size={16} color={colors.primary} /><Text className="text-[15px] font-semibold text-primary">{props.label}</Text>
+    </Pressable>
+  );
+}
 
 /** «Etapas» (o-04) and «Trabajos» (o-05) on the phone: the cards, and the brush that opens the map. */
 export function WorkLayersSheet(props: SheetProps) {
@@ -77,7 +87,7 @@ export function WorkLayersSheet(props: SheetProps) {
       {stages ? cards.map((card) => <StageCardView key={card.id} card={card} map={props.map} send={props.send} onBrush={() => props.onBrush({ kind: 'stage', id: card.id })} />) : workRowsOf(props.map).map((row) => <WorkRowView key={row.id} row={row} map={props.map} send={props.send} onBrush={() => props.onBrush({ kind: 'work', id: row.id })} />)}
       {stages
         ? <NewLabel testID="etapa" placeholder="Nueva etapa" onCreate={(name) => createdOrRefusal(props.send(workStageRequest(name), sendWorkStage))} />
-        : <NewLabel testID="trabajo" placeholder="Agregar trabajo" colors={WORK_TAG_COLORS} onCreate={(name, color) => createdOrRefusal(props.send(workTagRequest(name, color), sendWorkTag))} />}
+        : <NewLayerButton testID="trabajo-nueva" label="Agregar trabajo" onPress={props.onNewLayer} />}
       {stages && loose.length ? (
         <View testID="etapas-sin-etapa" className="rounded-2xl border border-dashed border-outline/30 p-3">
           <Text className={SHEET_LABEL}>Sin etapa · {loose.length} {loose.length === 1 ? 'calle' : 'calles'}</Text>

@@ -16,12 +16,12 @@ const MAP: WorkMap = {
 const ON_STREET = { lat: -12, lng: -76.9995 };
 const OFF_STREET = { lat: -12.01, lng: -76.9995 };
 
-function Harness(props: { map: WorkMap; send: MapEditSend; onUndo?: (id: string) => Promise<string | null>; undoable?: ReturnType<typeof byApproveOf>['items'][number] }) {
+function Harness(props: { map: WorkMap; send: MapEditSend; onUndo?: (id: string) => Promise<string | null>; undoable?: ReturnType<typeof byApproveOf>['items'][number]; onNewLayer?: () => void }) {
   const mode = useAvanceMode(props.map);
   return (
     <>
       <button type="button" data-testid="mapa-modo-avance" onClick={mode.open} />
-      {mode.on ? <AvanceTop mode={mode} title="Pachacamac" send={props.send} /> : null}
+      {mode.on ? <AvanceTop mode={mode} title="Pachacamac" onNewLayer={props.onNewLayer ?? (() => undefined)} /> : null}
       <button type="button" data-testid="toque-calle" onClick={() => mode.tap(ON_STREET)} />
       <button type="button" data-testid="toque-fuera" onClick={() => mode.tap(OFF_STREET)} />
       {mode.target ? <AvancePanel map={props.map} target={mode.target} send={props.send} undoable={props.undoable ?? null} onUndo={props.onUndo} /> : null}
@@ -101,6 +101,17 @@ describe('Modo Avance (web)', () => {
     expect(screen.getByTestId('avance-sin-trabajos')).toHaveTextContent('Aún no hay trabajos');
     expect(screen.getByTestId('trabajo-nueva')).toBeTruthy();
     expect(screen.queryByTestId('avance-pista')).toBeNull();
+  });
+
+  it('«+ Trabajo» and «Agregar trabajo» open «Nueva capa» (ma03)', () => {
+    // Arrange
+    const onNewLayer = vi.fn();
+    render(<Harness map={MAP} send={okSend()} onNewLayer={onNewLayer} />);
+    // Act
+    fireEvent.click(screen.getByTestId('mapa-modo-avance'));
+    fireEvent.click(screen.getByTestId('avance-trabajo-nuevo'));
+    // Assert
+    expect(onNewLayer).toHaveBeenCalledTimes(1);
   });
 });
 

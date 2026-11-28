@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
-import { ArrowLeft, Check, Pointer } from 'lucide-react';
-import { AVANCE_NO_WORKS, AVANCE_PICK_STREET, AVANCE_TITLE, avanceChipsOf, avanceHint, avancePickedWork, avanceTargetOf, brushLinesOf, createdOrRefusal, sendWorkTag, stretchLineOf, streetAtTap, WORK_TAG_COLORS, workTagRequest, type AvanceChip, type MapEditSend, type WorkMap, type WorkMapLine, type WorkMapPoint } from '@lilachat/shared';
-import { NewLabel } from './ScopeForm';
+import { ArrowLeft, Check, Plus, Pointer } from 'lucide-react';
+import { AVANCE_NO_WORKS, AVANCE_PICK_STREET, AVANCE_TITLE, avanceChipsOf, avanceHint, avancePickedWork, avanceTargetOf, brushLinesOf, stretchLineOf, streetAtTap, type AvanceChip, type WorkMap, type WorkMapLine, type WorkMapPoint } from '@lilachat/shared';
+import { NewLayerButton } from './WorkLayers';
 
 /** The work's stretches in its colour and the tapped street on top, in the stretch colour. */
 function linesOf(map: WorkMap, workId: string | null, streetId: string | null): WorkMapLine[] {
@@ -33,12 +33,12 @@ export function useAvanceMode(map: WorkMap) {
 
 export type AvanceModeState = ReturnType<typeof useAvanceMode>;
 
-function WorkChips(props: { chips: AvanceChip[]; onPick: (id: string) => void; send: MapEditSend }) {
+function WorkChips(props: { chips: AvanceChip[]; onPick: (id: string) => void; onNewLayer: () => void }) {
   if (!props.chips.length) {
     return (
       <div data-testid="avance-sin-trabajos" className="pointer-events-auto space-y-2 rounded-2xl bg-surface p-3 shadow-md">
         <p className="text-[13px] text-on-surface">{AVANCE_NO_WORKS}</p>
-        <NewLabel testId="trabajo" placeholder="Agregar trabajo" colors={WORK_TAG_COLORS} onCreate={(name, color) => createdOrRefusal(props.send(workTagRequest(name, color), sendWorkTag))} />
+        <NewLayerButton testId="trabajo-nueva" label="Agregar trabajo" onClick={props.onNewLayer} />
       </div>
     );
   }
@@ -51,12 +51,13 @@ function WorkChips(props: { chips: AvanceChip[]; onPick: (id: string) => void; s
           {chip.selected ? <Check size={16} className="text-primary" /> : null}
         </button>
       ))}
+      <button type="button" data-testid="avance-trabajo-nuevo" onClick={props.onNewLayer} className="flex h-14 shrink-0 items-center gap-2 rounded-full border border-dashed border-primary/50 bg-surface px-5 text-[15px] font-semibold text-primary shadow-md hover:bg-background"><Plus size={16} />Trabajo</button>
     </div>
   );
 }
 
 /** Over the map in «Modo Avance»: «Salir», the strip of works and what to tap. */
-export function AvanceTop(props: { mode: AvanceModeState; title: string; send: MapEditSend }) {
+export function AvanceTop(props: { mode: AvanceModeState; title: string; /** «+ Trabajo» opens «Nueva capa» (ma03). */ onNewLayer: () => void }) {
   const { mode } = props;
   const workName = mode.chips.find((chip) => chip.selected)?.name ?? '';
   return (
@@ -68,7 +69,7 @@ export function AvanceTop(props: { mode: AvanceModeState; title: string; send: M
           <p className="text-lg font-extrabold text-on-surface">{AVANCE_TITLE}</p>
         </div>
       </div>
-      <WorkChips chips={mode.chips} onPick={mode.pick} send={props.send} />
+      <WorkChips chips={mode.chips} onPick={mode.pick} onNewLayer={props.onNewLayer} />
       {mode.workId ? (
         <p data-testid="avance-pista" role={mode.error ? 'alert' : undefined} className={`pointer-events-auto flex items-center gap-3 self-start rounded-full bg-surface/95 px-4 py-2.5 text-[13px] font-semibold shadow-md backdrop-blur ${mode.error ? 'text-error' : 'text-on-surface'}`}>
           <Pointer size={18} className="shrink-0 text-primary" />{mode.error ?? avanceHint(workName)}

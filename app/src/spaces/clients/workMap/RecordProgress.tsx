@@ -3,7 +3,7 @@ import { Pressable, ScrollView, Text, TextInput, useWindowDimensions, View } fro
 import { randomUUID } from 'expo-crypto';
 import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
 import { Camera, Crosshair, Hand, Map as MapIcon, X } from 'lucide-react-native';
-import { GPS_UNAVAILABLE, MANUAL_NOTE_MAX, recordedProgressIdOf, RECORD_ADD_NOTE, RECORD_NOTE_PLACEHOLDER, layerDraftFor, manualEndFromGps, pickManualWork, progressPreviewOf, RECORD_CHANGE, RECORD_PHOTO_AND_SEND, RECORD_SEND, RECORD_TO_ME, RECORD_WHOLE, RECORD_WITHOUT_PHOTO, recordAtPercent, streetPercentOf, recordDropAt, recordHint, recordTitle, recordMapOf, recordProblem, recordSummary, recordWholeStreet, runManualProgress, youAreOn, type GpsStreet, type ManualPhotoUpload, type ManualProgressDraft, type MapEditSend, type StreetEnd, type WorkManualProgressRequest, type WorkMap, type WorkMapPoint, type WorkMapWork } from '@lilachat/shared';
+import { GPS_UNAVAILABLE, MANUAL_NOTE_MAX, recordedProgressIdOf, RECORD_ADD_NOTE, RECORD_NOTE_PLACEHOLDER, layerDraftFor, manualEndFromGps, pickManualWork, progressPreviewOf, RECORD_CHANGE, RECORD_TO_ME, RECORD_WHOLE, recordAtPercent, recordButtonLabels, streetPercentOf, recordDropAt, recordHint, recordTitle, recordMapOf, recordProblem, recordSummary, recordWholeStreet, runManualProgress, youAreOn, type GpsStreet, type ManualPhotoUpload, type ManualProgressDraft, type MapEditSend, type RecordBusy, type StreetEnd, type WorkManualProgressRequest, type WorkMap, type WorkMapPoint, type WorkMapWork } from '@lilachat/shared';
 import type { CapturedShot } from '../../../chat/camara/cameraRequests';
 import { useColores } from '../../../ui/tema';
 import { useDisposicion } from '../../../ui/useDisposicion';
@@ -111,7 +111,7 @@ function useRecord(props: RecordScreenProps) {
   const [drops, setDrops] = useState(0);
   const [entryId] = useState(() => randomUUID());
   const [answer, setAnswer] = useState<Answer>(null);
-  const [busy, setBusy] = useState<'gps' | 'send' | null>(null);
+  const [busy, setBusy] = useState<RecordBusy>(null);
   const queued = useQueuedSend(draft.note);
   const change = (next: ManualProgressDraft) => { setAnswer(null); setDraft(next); };
   const drop = (_end: StreetEnd, point: WorkMapPoint) => { setDrops((count) => count + 1); change(recordDropAt(draft, street?.line ?? [], lengthM, point)); };
@@ -128,10 +128,10 @@ function useRecord(props: RecordScreenProps) {
     if (sent.ok) props.onAnswer({ ok: true, message: sent.message, progressId: recordedProgressIdOf(sent), withPhoto: draft.photoIds.length + evidence.photoIds.length + evidence.shots.length > 0 });
     else setAnswer(sent);
   };
-  const submit = async (withPhoto: boolean) => {
+  const submit = async (withPhoto: boolean, pressed: 'main' | 'plain') => {
     const problem = recordProblem(props.map, props.streetId, lengthM, draft);
     if (problem) return setAnswer({ ok: false, message: problem });
-    setBusy('send');
+    setBusy(pressed);
     const evidence = withPhoto ? await evidenceOf(queued ? undefined : props.uploadPhoto) : NO_EVIDENCE;
     if (evidence && 'message' in evidence) setAnswer({ ok: false, message: evidence.message });
     else if (evidence) await send(evidence);
@@ -152,7 +152,7 @@ function NoteField(props: { note: string; onNote: (note: string) => void }) {
 function RecordFoot(props: { record: ReturnType<typeof useRecord>; map: WorkMap; streetId: string }) {
   const colors = useColores();
   const { record } = props;
-  const sending = record.busy === 'send';
+  const labels = recordButtonLabels(record.busy, record.canPhoto);
   return (
     <View className="gap-2">
       <Summary draft={record.draft} lengthM={record.lengthM} widthM={record.street?.widthM} />
@@ -167,11 +167,11 @@ function RecordFoot(props: { record: ReturnType<typeof useRecord>; map: WorkMap;
         </Pressable>
       </View>
       {record.answer ? <Text testID="avance-manual-error" accessibilityRole="alert" className="text-[14px] font-semibold text-error">{record.answer.message}</Text> : null}
-      <Pressable testID="avance-manual-enviar" disabled={record.busy !== null} onPress={() => void record.submit(record.canPhoto)} className={`h-[52px] flex-row items-center justify-center gap-2 rounded-xl bg-primary ${sending ? 'opacity-60' : ''}`}>
+      <Pressable testID="avance-manual-enviar" disabled={record.busy !== null} onPress={() => void record.submit(record.canPhoto, 'main')} className={`h-[52px] flex-row items-center justify-center gap-2 rounded-xl bg-primary ${record.busy === 'main' ? 'opacity-60' : ''}`}>
         {record.canPhoto ? <Camera size={20} color={colors['on-primary']} /> : null}
-        <Text className="text-[16px] font-bold text-on-primary">{sending ? 'Enviando…' : record.canPhoto ? RECORD_PHOTO_AND_SEND : RECORD_SEND}</Text>
+        <Text className="text-[16px] font-bold text-on-primary">{labels.main}</Text>
       </Pressable>
-      {record.canPhoto ? <Pressable testID="avance-sin-foto" disabled={record.busy !== null} onPress={() => void record.submit(false)} className="h-9 items-center justify-center"><Text className="text-[13px] font-semibold text-on-surface-variant underline">{RECORD_WITHOUT_PHOTO}</Text></Pressable> : null}
+      {record.canPhoto ? <Pressable testID="avance-sin-foto" disabled={record.busy !== null} onPress={() => void record.submit(false, 'plain')} className="h-9 items-center justify-center"><Text className="text-[13px] font-semibold text-on-surface-variant underline">{labels.plain}</Text></Pressable> : null}
     </View>
   );
 }

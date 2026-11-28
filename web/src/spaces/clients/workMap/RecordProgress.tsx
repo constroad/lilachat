@@ -1,6 +1,6 @@
 import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { Camera, Crosshair, Hand, Map as MapIcon, X } from 'lucide-react';
-import { GPS_UNAVAILABLE, MANUAL_NOTE_MAX, recordedProgressIdOf, RECORD_ADD_NOTE, RECORD_NOTE_PLACEHOLDER, layerDraftFor, manualEndFromGps, pickManualWork, progressPreviewOf, RECORD_CHANGE, RECORD_PHOTO_AND_SEND, RECORD_SEND, RECORD_TO_ME, RECORD_WHOLE, RECORD_WITHOUT_PHOTO, RECORD_PERCENT_LABEL, cleanDecimalText, decimalOf, decimalTextFollows, recordAtPercent, streetPercentOf, recordDropAt, recordHint, recordMapOf, recordProblem, recordSummary, recordTitle, recordWholeStreet, runManualProgress, youAreOn, type GpsStreet, type ManualPhotoUpload, type ManualProgressDraft, type MapEditSend, type StreetEnd, type WorkMap, type WorkMapPoint, type WorkMapWork } from '@lilachat/shared';
+import { GPS_UNAVAILABLE, MANUAL_NOTE_MAX, recordedProgressIdOf, RECORD_ADD_NOTE, RECORD_NOTE_PLACEHOLDER, layerDraftFor, manualEndFromGps, pickManualWork, progressPreviewOf, RECORD_CHANGE, RECORD_TO_ME, RECORD_WHOLE, RECORD_PERCENT_LABEL, cleanDecimalText, decimalOf, decimalTextFollows, recordAtPercent, recordButtonLabels, streetPercentOf, recordDropAt, recordHint, recordMapOf, recordProblem, recordSummary, recordTitle, recordWholeStreet, runManualProgress, youAreOn, type GpsStreet, type ManualPhotoUpload, type ManualProgressDraft, type MapEditSend, type RecordBusy, type StreetEnd, type WorkMap, type WorkMapPoint, type WorkMapWork } from '@lilachat/shared';
 import { DrivePhotoInput } from '../ServiceDriveWeb';
 import type { PickerHandle } from '../../../chat/camera/cameraRequests';
 import { lazyChunk } from '../../../ui/lazyChunk';
@@ -94,7 +94,7 @@ function useRecord(props: RecordScreenProps) {
   const [drops, setDrops] = useState(0);
   const [entryId] = useState(() => crypto.randomUUID());
   const [answer, setAnswer] = useState<Answer>(null);
-  const [busy, setBusy] = useState<'gps' | 'send' | null>(null);
+  const [busy, setBusy] = useState<RecordBusy>(null);
   const change = (next: ManualProgressDraft) => { setAnswer(null); setDraft(next); };
   const drop = (_end: StreetEnd, point: WorkMapPoint) => { setDrops((count) => count + 1); change(recordDropAt(draft, street?.line ?? [], lengthM, point)); };
   const toMe = async () => {
@@ -109,8 +109,8 @@ function useRecord(props: RecordScreenProps) {
     if (found) setAnswer({ ok: false, message: found });
     return found;
   };
-  const send = async (photoIds: string[]) => {
-    setBusy('send');
+  const send = async (photoIds: string[], pressed: 'main' | 'plain') => {
+    setBusy(pressed);
     const sent = await runManualProgress({ map: props.map, streetId: props.streetId, lengthM, draft: { ...draft, photoIds: [...draft.photoIds, ...photoIds] }, entryId, send: props.send, now: new Date() });
     setBusy(null);
     if (sent.ok) props.onAnswer({ ok: true, message: sent.message, progressId: recordedProgressIdOf(sent), withPhoto: draft.photoIds.length + photoIds.length > 0 });
@@ -119,9 +119,9 @@ function useRecord(props: RecordScreenProps) {
   /** The photo taken: to the service's Drive first, then the progress with its id. */
   const withPhoto = async (file: File | undefined) => {
     if (!file || !props.uploadPhoto) return;
-    setBusy('send');
+    setBusy('main');
     const uploaded = await props.uploadPhoto(file);
-    if (uploaded.ok) return send([uploaded.mediaId]);
+    if (uploaded.ok) return send([uploaded.mediaId], 'main');
     setBusy(null);
     return setAnswer(uploaded);
   };
@@ -143,8 +143,9 @@ function RecordFoot(props: { record: ReturnType<typeof useRecord>; map: WorkMap;
   const primary = () => {
     if (record.problem()) return;
     if (props.canPhoto) camera.current?.click();
-    else void record.send([]);
+    else void record.send([], 'main');
   };
+  const labels = recordButtonLabels(record.busy, props.canPhoto);
   return (
     <div className="space-y-2">
       <Summary draft={record.draft} lengthM={record.lengthM} widthM={record.street?.widthM} />
@@ -157,9 +158,9 @@ function RecordFoot(props: { record: ReturnType<typeof useRecord>; map: WorkMap;
       {record.answer ? <p role="alert" data-testid="avance-manual-error" className="text-[14px] font-semibold text-error">{record.answer.message}</p> : null}
       {props.canPhoto ? <DrivePhotoInput ref={camera} testId="avance-foto-archivo" onFile={(file) => void record.withPhoto(file)} /> : null}
       <button type="button" data-testid="avance-manual-enviar" disabled={record.busy !== null} onClick={primary} className="flex h-[52px] w-full items-center justify-center gap-2 rounded-xl bg-primary text-[16px] font-bold text-on-primary disabled:opacity-60">
-        {props.canPhoto ? <Camera size={20} /> : null}{record.busy === 'send' ? 'Enviando…' : props.canPhoto ? RECORD_PHOTO_AND_SEND : RECORD_SEND}
+        {props.canPhoto ? <Camera size={20} /> : null}{labels.main}
       </button>
-      {props.canPhoto ? <button type="button" data-testid="avance-sin-foto" disabled={record.busy !== null} onClick={() => { if (!record.problem()) void record.send([]); }} className="h-9 w-full text-[13px] font-semibold text-on-surface-variant underline">{RECORD_WITHOUT_PHOTO}</button> : null}
+      {props.canPhoto ? <button type="button" data-testid="avance-sin-foto" disabled={record.busy !== null} onClick={() => { if (!record.problem()) void record.send([], 'plain'); }} className="h-9 w-full text-[13px] font-semibold text-on-surface-variant underline">{labels.plain}</button> : null}
     </div>
   );
 }

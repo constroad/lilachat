@@ -28,6 +28,14 @@ export const RECORD_LOCATING = 'Buscando tu calle…';
 export const RECORD_WHICH_STREET = '¿En qué calle?';
 export const RECORD_ADD_NOTE = 'Agregar nota';
 export const RECORD_NOTE_PLACEHOLDER = 'Nota (opcional)';
+export const RECORD_SENDING = 'Enviando…';
+/** What is busy on the foot: the GPS, the main button, or «Registrar sin foto». */
+export type RecordBusy = 'gps' | 'main' | 'plain' | null;
+/** Only the pressed button says «Enviando…» (QA 28/11: «Registrar sin foto» lit the main one). */
+export const recordButtonLabels = (busy: RecordBusy, canPhoto: boolean): { main: string; plain: string } => ({
+  main: busy === 'main' ? RECORD_SENDING : canPhoto ? RECORD_PHOTO_AND_SEND : RECORD_SEND,
+  plain: busy === 'plain' ? RECORD_SENDING : RECORD_WITHOUT_PHOTO,
+});
 export const recordTitle = (workName: string | null) => (workName ? `Registrar avance de ${workName}` : 'Registrar avance');
 export const recordHint = (workName: string) => `Arrastra el círculo hasta donde llegó ${workName}`;
 export const youAreOn = (located: Pick<GpsStreet, 'name' | 'accuracyM'>) => `Estás en ${located.name} · ±${Math.round(located.accuracyM)} m`;

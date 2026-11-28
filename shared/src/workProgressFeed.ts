@@ -105,11 +105,34 @@ function undoableOf(bases: CardBase[], list: ByApproveList | null, admin: boolea
   return new Set([...own, ...bases.filter((base) => base.state !== 'rechazado' && !base.id.startsWith(UNNAMED_PREFIX)).map((base) => base.id)]);
 }
 
+/** Portal rounds a stretch to the centimetre on both sides; a hair of float noise is the same stretch. */
+const SAME_STRETCH_M = 0.01;
+const sameStretch = (record: WorkMapProgress, one: ByApproveProgress): boolean =>
+  record.streetId === one.streetId && record.workId === one.workId && dayKey(record.date) === dayKey(one.date) &&
+  one.fromM !== null && one.toM !== null && Math.abs(record.fromM - one.fromM) <= SAME_STRETCH_M && Math.abs(record.toM - one.toM) <= SAME_STRETCH_M;
+
+/**
+ * The map's records the history does not already list. One with an id goes by its id; Portal's client
+ * map sends the approved ones WITHOUT `_id` (QA 28/11: one submit listed twice, the copy with no author),
+ * so an unnamed one is the history row with its street, work, day and stretch. Each row takes one copy.
+ */
+function unlistedOf(map: Pick<WorkMap, 'progress'>, list: ByApproveList | null): CardBase[] {
+  const items = list?.items ?? [];
+  const listed = new Set(items.map((one) => one.id));
+  const unmatched = items.filter((one) => one.state !== 'rechazado' && !map.progress.some((record) => record.id === one.id));
+  return map.progress.flatMap((record, index) => {
+    if (record.id) return listed.has(record.id) ? [] : [fromApproved(record, index)];
+    const twin = unmatched.findIndex((one) => sameStretch(record, one));
+    if (twin < 0) return [fromApproved(record, index)];
+    unmatched.splice(twin, 1);
+    return [];
+  });
+}
+
 /** Newest first; on the same day what Portal keeps pending or was undone goes before the rest. */
 export function progressFeedOf(map: Pick<WorkMap, 'streets' | 'works' | 'progress'>, list: ByApproveList | null, today: string, admin = false): FeedCard[] {
-  const listed = new Set((list?.items ?? []).map((one) => one.id));
   // The boards fold what Portal keeps pending into the map: each record is listed once.
-  const done = map.progress.flatMap((one, index) => (one.id && listed.has(one.id) ? [] : [fromApproved(one, index)]));
+  const done = unlistedOf(map, list);
   const bases = [...(list?.items ?? []).map(fromByApprove), ...done];
   const undoable = undoableOf(bases, list, admin);
   const cards = bases.map((base) => cardOf(map, base, today, undoable));

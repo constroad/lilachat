@@ -1,5 +1,5 @@
 import { mergeIntervals } from '@constroad/shared/obra';
-import type { WorkMap, WorkMapFilter, WorkMapStreet } from './workMap.js';
+import type { WorkMap, WorkMapFilter, WorkMapScope, WorkMapStreet } from './workMap.js';
 import type { ByApproveList, ByApproveProgress } from './workByApprove.js';
 
 /**
@@ -81,6 +81,27 @@ export const shareOf = (part: number, whole: number) => (whole > 0 ? Math.min(FU
 
 type LayerMap = Pick<WorkMap, 'streets' | 'scopes' | 'progress'>;
 
+/** A stretch ending this close to its street's end is taken to end there: 10 m, or a tenth of a long street. */
+export const STREET_END_SNAP_M = 10;
+export const STREET_END_SNAP_SHARE = 0.1;
+
+/** Up to the street's end when the stretch nearly gets there; a stretch planned short on purpose keeps its length. */
+function onStreet(scope: WorkMapScope, lengthM: number): WorkMapScope {
+  const gapM = lengthM - scope.toM;
+  if (scope.toM <= scope.fromM || gapM <= 0) return scope;
+  return gapM <= Math.max(STREET_END_SNAP_M, lengthM * STREET_END_SNAP_SHARE) ? { ...scope, toM: lengthM } : scope;
+}
+
+/**
+ * The layer figures measure a stretch that nearly reaches its street's end up to `lengthM` (QA 28/11,
+ * Av. El Sol: the form said «Total calle: 276 m», the sheet «55 de 260 m · 21 %»). Portal's stretch
+ * stays as is for the map's work percent (`workMapView`, parity with `workMapOverview`).
+ */
+export function streetLengthScopesOf<Shown extends LayerMap>(map: Shown): Shown {
+  const lengths = new Map(map.streets.map((street) => [street.id, street.lengthM]));
+  return { ...map, scopes: map.scopes.map((scope) => onStreet(scope, lengths.get(scope.streetId) ?? 0)) };
+}
+
 /**
  * The map as the board's filter in force counts it («Capas y leyenda»: the figures stay those of the
  * filter): only the stage's stretches, only the progress up to the cut day. The filter's work does
@@ -96,7 +117,7 @@ export function layerScopeOf<Shown extends LayerMap>(map: Shown, filter: WorkMap
 
 /** THE percent of a layer under the board's filter, rounded: the same number in every place that shows it. */
 export function layerPercentOf(map: LayerMap, workId: string, filter: WorkMapFilter = {}): number {
-  const measures = layerMeasuresOf(layerScopeOf(map, filter), workId, null);
+  const measures = layerMeasuresOf(layerScopeOf(streetLengthScopesOf(map), filter), workId, null);
   const { unit } = layerUnitOf(measures);
   const totals = measures.map((measure) => streetQuantitiesOf(measure, unit));
   return Math.round(shareOf(totals.reduce((sum, one) => sum + one.done, 0), totals.reduce((sum, one) => sum + one.total, 0)));

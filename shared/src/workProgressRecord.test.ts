@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { WORK_MAP_MIN_FRAME_DEG, workMapOf, type WorkMap } from './workMap.js';
 import { GPS_OFF_STREET, GPS_WEAK, progressPreviewOf } from './workManualProgress.js';
-import { gpsStreetOf, locateRecordStreet, recordStageOf, recordStreetChoices, recordDropAt, recordHandleOf, recordHint, recordMapOf, recordProblem, recordStreetOf, recordSummary, recordTitle, recordWholeStreet, youAreOn, chainageAtPercent, recordAtPercent, streetPercentOf } from './workProgressRecord.js';
+import { gpsStreetOf, locateRecordStreet, recordStageOf, recordStreetChoices, recordDropAt, recordHandleOf, recordHint, recordMapOf, recordProblem, recordStreetOf, recordSummary, recordTitle, recordWholeStreet, youAreOn, chainageAtPercent, recordAtPercent, recordButtonLabels, streetPercentOf } from './workProgressRecord.js';
 
 /** Design ma04 (José 28/11): the street by GPS, a ring dragged along its axis, a photo and send. */
 const progreso = [{ lat: -12, lng: -77 }, { lat: -12, lng: -76.997 }];
@@ -195,5 +195,21 @@ describe('the % of the street (José 28/11: slider or typed %)', () => {
   it('round-trips: the % typed is the % shown', () => {
     const typed = 37.5;
     expect(streetPercentOf(chainageAtPercent(typed, 44.28), 44.28)).toBe(typed);
+  });
+});
+
+describe('only the pressed button says «Enviando…» (emulator QA of OTA c327bc0f)', () => {
+  it('«Registrar sin foto» pressed: the main button keeps its label', () => {
+    expect(recordButtonLabels('plain', true)).toEqual({ main: 'Tomar foto y registrar', plain: 'Enviando…' });
+  });
+
+  it('«Tomar foto y registrar» pressed: only it is busy', () => {
+    expect(recordButtonLabels('main', true)).toEqual({ main: 'Enviando…', plain: 'Registrar sin foto' });
+  });
+
+  it('without a camera the main button is «Registrar avance», busy when pressed; GPS busy changes neither', () => {
+    expect(recordButtonLabels('main', false).main).toBe('Enviando…');
+    expect(recordButtonLabels(null, false).main).toBe('Registrar avance');
+    expect(recordButtonLabels('gps', true)).toEqual({ main: 'Tomar foto y registrar', plain: 'Registrar sin foto' });
   });
 });

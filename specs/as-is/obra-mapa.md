@@ -382,7 +382,8 @@ Motores puros, con test, usados por web y APK:
   200 como máximo, lo más nuevo primero, con `estado` aprobado/pendiente/deshecho, `autor`, `propio`,
   `fotos` y `puedeDeshacer`. `byApproveOf` lee los tres estados («deshecho» queda como `rechazado`: no
   suma, píldora DESHECHO). Solo lo pendiente se suma al mapa (`withPendingOf`); lo aprobado ya viene en
-  `progress[]` y se lista una vez por id. «Deshacer» sigue `puedeDeshacer` (el autor, por `work_undo`);
+  `progress[]` y se lista una vez: por id, o, como Portal lo manda sin `_id`, por calle, trabajo, día y
+  tramo (ver QA del OTA c327bc0f). «Deshacer» sigue `puedeDeshacer` (el autor, por `work_undo`);
   un admin deshace cualquiera con `resolver_avance_de_obra` «rechazar». «N fotos» sale de `fotos`. Si la
   herramienta falla o no responde datos, la lista muestra «No se pudo cargar el historial» con
   «Reintentar» (`byApproveActions` guarda `{ list, failed }` y conserva la última lista); una obra sin
@@ -402,9 +403,35 @@ Motores puros, con test, usados por web y APK:
     de Portal). El tramo 0+000 → 0+239 no llega al final de una calle de 373 m: o la calle se volvió a
     trazar o se unió después de crear el tramo, o Portal guarda los tramos en la escala del largo medido
     y al mapa solo manda el largo del trazo. Llevar el tramo al `lengthM` rompe la paridad con Portal
-    (`workMapPortalParity.test.ts` y 6 pruebas más), así que no se cambió. **Pendiente de decisión
-    (José/Portal):** corregir el tramo en Portal, o medir el trabajo sobre `lengthM` y perder la paridad.
-    `workStreetLength.test.ts` fija las dos fuentes.
+    (`workMapPortalParity.test.ts` y 6 pruebas más), así que no se cambió. Resuelto en parte el 28/11
+    (QA del OTA c327bc0f, abajo): un tramo que casi llega al final se mide hasta `lengthM`.
+    `workStreetLength.test.ts` fija las fuentes.
+- **28/11** QA del emulador del OTA c327bc0f (commit 7474486), «Registrar avance» y «Avances» (web y APK):
+  - **Un registro salía dos veces** («HOY · 2 AVANCES · 110 m» por un solo «Registrar sin foto» de 55 m;
+    la copia sin autor ni botones; un «Deshacer» quitaba los dos). Causa: Portal manda el avance aprobado
+    del mapa SIN `_id` (`loadClientWorkStreets`, `Portal/src/server/work-streets/clientStreets.ts:103-115`
+    no copia `record._id`), y `progressFeedOf` solo descartaba la copia del mapa por id. No había copia
+    local ni optimista: la cola del teléfono no entra en la lista. Ahora `unlistedOf` empareja cada
+    registro del mapa sin id con una fila del historial (no deshecha) de la misma calle, trabajo, día y
+    tramo (±1 cm), una fila por copia. Dos registros iguales siguen siendo dos. El mapa y el total ya
+    estaban bien (los tramos se unen).
+  - **«Enviando…» en el botón equivocado.** `recordButtonLabels(busy, canPhoto)` (shared): el estado
+    `RecordBusy` dice qué botón se tocó (`main` / `plain` / `gps`); solo ese dice «Enviando…».
+  - **Miniatura de «Agregar foto»:** sigue el ícono de cámara con «1 foto». Ni el historial (`fotos`, un
+    número) ni la respuesta de `agregar_foto_a_avance_de_obra` (`{ avanceId, fotos }`) traen id ni URL
+    de la foto; la subida a Drive solo da `mediaId`. Hace falta que Portal mande la miniatura.
+  - **«· 0 %» en la cabecera del servicio:** es `service.progress` de Portal (`serviceSlimLine`), que
+    Portal calcula con los informes del servicio (`getProgressPercentage`,
+    `Portal/src/server/agentes/clientNotices.ts:134`), no con el mapa. No es un valor viejo del cliente:
+    no se tocó.
+  - **Largo de Av. El Sol** («Total calle: 276 m» contra «55 de 260 m · 21 %»): las cifras del trabajo
+    (`layerPercentOf`, la hoja, los chips, «Modo Avance» y las etiquetas % del mapa) miden un tramo que
+    termina a 10 m o a un décimo del largo de la calle hasta `lengthM` (`streetLengthScopesOf`,
+    `STREET_END_SNAP_M`, `STREET_END_SNAP_SHARE`). Ahora dice «55 de 276 m · 20 %». Un tramo planeado
+    corto (0+000 → 0+200 de 276 m, o 0+239 de 373 m) conserva su largo. La regla «único tramo del trabajo
+    en la calle = toda la calle» no se aplicó: volvía de toda la calle cualquier tramo parcial a propósito
+    (lo fijan dos pruebas de `workLayerSummary.test.ts`). El % del trabajo en el mapa (`workMapView`) sigue
+    los tramos de Portal (`workMapPortalParity.test.ts`): 21,2 % en ese caso.
 - **28/11** «Nueva capa» como ma03 (web y APK; prototipo aprobado de Portal
   `claude.ai/artifact/L8iULepUHhNJukC7MJkpF9`). La abren «Agregar trabajo» de «Trabajos» y el chip
   «+ Trabajo» de «Modo Avance» (también su estado sin trabajos); reemplaza el campo de nombre. Motor
@@ -686,6 +713,15 @@ usa los filtros del mapa («Sale lo que ves»).
 - **Decisiones abiertas** (según spec §8): qué tipo de foto marca el tramo de una
   unidad (propuesta: de `ingreso` a `vacia`). Si el avance del ingeniero entra `pending` o
   `approved` lo decidió José el 28/11: aprobado.
+- **Portal, del QA del OTA c327bc0f (28/11):**
+  - `src/server/work-streets/clientStreets.ts:107-115`: copiar `_id: String(record._id)` en cada avance;
+    Lilachat empareja por tramo mientras tanto.
+  - `src/pages/api/work-streets/[id].ts:37-39`: al retrazar una calle se recalcula `lengthM` pero los
+    tramos siguen con el largo viejo. Llevar al nuevo `lengthM` el `toM` de los tramos que terminaban en
+    el largo anterior (así el tramo guarda el largo entero de la calle).
+  - `src/server/agentes/portalFieldProgressTool.ts:136-142` (`historyRowOf`, commit 176da142d de Portal) y la respuesta de
+    `agregar_foto_a_avance_de_obra`: mandar la miniatura (o los `fotoIds` con su URL) para que «Avances»
+    muestre la foto en vez del ícono.
 - **Portal, sin aprobación (José 28/11):** el avance de un MIEMBRO sigue `pending` en Portal y no
   sale en el enlace del cliente hasta que Portal lo cree `approved`:
   - `src/server/agentes/portalManualWorkProgressTool.ts:86` y `portalWorkProgressTool.ts:178`:

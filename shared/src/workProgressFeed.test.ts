@@ -157,3 +157,52 @@ describe('progress history (historial_de_avances_de_obra, 28/11)', () => {
     expect(progressFeedOf(mapOf(), history, TODAY, true)[0]?.undoable).toBe(true);
   });
 });
+
+describe('one record listed once (emulator QA of OTA c327bc0f, Av. El Sol)', () => {
+  // Portal's client map (`loadClientWorkStreets`) sends the approved progress WITHOUT `_id`; the history names it.
+  const elSol = (progress: Array<Record<string, unknown>>): WorkMap => {
+    const map = workMapOf({
+      workStreets: {
+        streets: [{ _id: 'sol', name: 'Av. El Sol', geometry: line, lengthM: 276, widthM: 6 }],
+        scopes: [{ _id: 'c1', streetId: 'sol', fromM: 0, toM: 260, tagIds: ['imp'], partidaIds: [] }],
+        progress,
+        tags: [{ _id: 'imp', name: 'Imprimación', color: '#d97706', order: 1 }],
+        stages: [],
+      },
+    });
+    if (!map) throw new Error('expected a map');
+    return map;
+  };
+  const record = { streetId: 'sol', tagId: 'imp', fromM: 0, toM: 55, date: TODAY };
+  const history = (ids: string[]): ByApproveList => ({
+    total: ids.length,
+    items: ids.map((id) => ({ id, state: 'aprobado' as const, date: TODAY, streetId: 'sol', fromM: 0, toM: 55, workId: 'imp', quantity: 55, author: 'J zamora', own: true, rejectNote: null, canUndo: true })),
+  });
+
+  it('one server record plus its unnamed copy on the map gives one row and 55 m', () => {
+    // Arrange
+    const map = elSol([record]);
+    // Act
+    const cards = progressFeedOf(map, history(['av1']), TODAY);
+    const summary = feedSummaryOf(feedInRange(cards, 'hoy', TODAY));
+    // Assert
+    expect(cards.map((card) => [card.id, card.author, card.undoable])).toEqual([['av1', 'J zamora', true]]);
+    expect(summary).toEqual({ meters: '55', area: '330', count: '1 avance' });
+  });
+
+  it('two equal records stay two; each history row takes one map copy', () => {
+    const cards = progressFeedOf(elSol([record, record]), history(['av1', 'av2']), TODAY);
+    expect(cards.map((card) => card.id)).toEqual(['av1', 'av2']);
+  });
+
+  it('an older map record the history does not name is still listed', () => {
+    const cards = progressFeedOf(elSol([record, { ...record, toM: 30, date: '2026-10-01' }]), history(['av1']), TODAY);
+    expect(cards.map((card) => card.id)).toEqual(['av1', 'aprobado-sol-imp-1']);
+  });
+
+  it('an undone history row never hides a map record', () => {
+    const undone: ByApproveList = { total: 1, items: [{ ...history(['r1']).items[0]!, state: 'rechazado' }] };
+    const cards = progressFeedOf(elSol([record]), undone, TODAY);
+    expect(cards).toHaveLength(2);
+  });
+});

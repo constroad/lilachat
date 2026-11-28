@@ -1,4 +1,4 @@
-import { FULL_PCT, layerMeasuresOf, layerPercentOf, layerScopeOf, layerUnitOf, pendingOfLayer, shareOf, streetQuantitiesOf, type LayerUnit, type StreetMeasure } from './workLayerPercent.js';
+import { FULL_PCT, layerMeasuresOf, layerPercentOf, layerScopeOf, streetLengthScopesOf, layerUnitOf, pendingOfLayer, shareOf, streetQuantitiesOf, type LayerUnit, type StreetMeasure } from './workLayerPercent.js';
 import { metersLabel, percentLabel, type WorkMap, type WorkMapFilter } from './workMap.js';
 import { WORK_NOT_ASSIGNED } from './workMapLayers.js';
 import { feedWhen } from './workProgressFeed.js';
@@ -65,7 +65,7 @@ function streetSummaryOf(measure: StreetMeasure, unit: LayerUnit): LayerStreetSu
 export function layerSummaryOf(map: Pick<WorkMap, 'streets' | 'scopes' | 'progress' | 'works'>, workId: string, list: ByApproveList | null, filter: WorkMapFilter = {}): LayerSummary | null {
   const work = map.works.find((one) => one.id === workId);
   if (!work) return null;
-  const measures = layerMeasuresOf(layerScopeOf(map, filter), workId, list);
+  const measures = layerMeasuresOf(layerScopeOf(streetLengthScopesOf(map), filter), workId, list);
   const { unit, widthless } = layerUnitOf(measures);
   const streets = measures.map((measure) => streetSummaryOf(measure, unit));
   const sum = (pick: (row: LayerStreetSummary) => number) => streets.reduce((total, row) => total + pick(row), 0);

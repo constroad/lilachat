@@ -130,7 +130,9 @@ Plan» (`channelTabsFor`, `checklistHoldsPending`); quien no tiene Checklist con
 - **Mapa: «Avances» y hoja** (28/11, detalle en `obra-mapa.md`). La lista «Avances» lee el historial de
   Portal (`historial_de_avances_de_obra`): aprobado, pendiente y deshecho de 30 días, con autor, fotos y
   «Deshacer» según `puedeDeshacer`; si no carga dice «No se pudo cargar el historial» con «Reintentar».
-  La X de la hoja del mapa va en su propia barra y ya no tapa la insignia de estado.
+  La X de la hoja del mapa va en su propia barra y ya no tapa la insignia de estado. Cada registro sale
+  una vez aunque Portal mande el avance del mapa sin id (QA del OTA c327bc0f). El «· N %» de la cabecera
+  del servicio es el avance de Portal por informes, no el del mapa.
 - **Mapa de la obra: dibujos y observaciones** (19/11). Lee `workMapMarks` y `workObservations`
   del detalle de Portal (`shared/src/workMapMarks.ts`, `workMapObservations.ts`: lista blanca,
   solo fotos https, tope 200). Con dibujos u observaciones y sin calles igual hay mapa.
@@ -453,5 +455,6 @@ Un Control de imprimación con fotos ubicadas y dos días de avance aprobado (o-
 - **28/11** Mapa: líneas sólidas del ancho real de la calle, bajo los nombres de las calles; brocha que nunca se pasa del largo de la calle; «Registrar avance» con % por deslizador o escrito (detalle en `obra-mapa.md`).
 - **28/11** Informes: un solo «Crear informe» al tope de la lista; «Informe de servicio» es el primer tipo del selector (quien ve montos). Servicios: sin cabecera, un ⋮ junto a «Buscar servicio» con «Enlace del cliente», «Accesos del canal» y «Drive del cliente».
 - **28/11** QA del OTA 6744343: en «Registrar avance» el teclado ya no tapa el % (`KeyboardAvoidingView` de keyboard-controller, el mapa cede) y el pie suma el margen del sistema (`useMargenes().pie`; web `env(safe-area-inset-bottom)`), así «Queda pendiente hasta que un admin lo apruebe.» no queda bajo la barra de Android. «Etapas · N de M» sin margen ni borde arriba (quedaba una banda vacía al tope de Informes y Pedidos).
+- **28/11** QA del OTA c327bc0f: «Avances» ya no lista dos veces un registro, solo el botón tocado dice «Enviando…», y la hoja del trabajo mide hasta el final de la calle un tramo que casi llega («55 de 276 m · 20 %») (detalle y cambios pendientes de Portal en `obra-mapa.md`).
 - **28/11** Mapa sin aprobación del avance de campo (cuenta al registrarlo; un admin lo deshace en «Avances»), «capa» pasa a «Trabajo» y «Capas» a «Ver», calles definidas en naranja, brocha sin esperas y las partidas del servicio como trabajos sin paso manual (detalle y cambio pendiente de Portal en `obra-mapa.md`).
 - **28/11** QA del OTA d0fbdca7: lo definido y aún no ejecutado (calle o sección) se pinta naranja chillón, opaco y del ancho de la calle, con «Pendiente de ejecución» naranja en la leyenda; el nombre del trabajo usa el ancho de la fila y los miles no se parten; el % de «Registrar avance» se selecciona al enfocarlo. «Agregar foto» a un avance ya registrado, en «Avances» y tras «Registrar sin foto», vía `agregar_foto_a_avance_de_obra` (pendiente de aprobación de José en Agentes; detalle en `obra-mapa.md`).

@@ -170,7 +170,11 @@ describe('Modo Avance with what waits for approval (web)', () => {
     const send = okSend();
     render(<Harness map={MAP} send={send} />);
     fireEvent.click(screen.getByTestId('mapa-modo-avance'));
+    expect(screen.queryByTestId('avance-a-mano')).toBeNull();
     fireEvent.click(screen.getByTestId('toque-calle'));
+    // «Marcar a mano» is in the panel as soon as a street is tapped (José 28/11).
+    expect(screen.getByTestId('avance-panel')).toContainElement(screen.getByTestId('avance-a-mano'));
+    expect(screen.getByTestId('avance-a-mano')).toHaveTextContent('Marcar a mano');
     // Act
     fireEvent.click(screen.getByTestId('avance-a-mano'));
     expect(screen.queryByTestId('avance-pct-75')).toBeNull();

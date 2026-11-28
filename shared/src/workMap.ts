@@ -340,8 +340,31 @@ export function workMapView(map: WorkMap, filter: WorkMapFilter = {}): WorkMapVi
 /** The lines as MapLibre reads them, on the web and in the app. */
 export const workMapCollection = (lines: WorkMapLine[]) => ({
   type: 'FeatureCollection' as const,
-  features: lines.map((line) => ({ type: 'Feature' as const, properties: { color: line.color }, geometry: { type: 'LineString' as const, coordinates: line.coordinates } })),
+  features: lines.map((line) => ({ type: 'Feature' as const, properties: { color: line.color, halo: lineHaloOf(line.color) }, geometry: { type: 'LineString' as const, coordinates: line.coordinates } })),
 });
+
+/** A light rim for a near-black line (José 28/11: «Carpeta asfáltica» vanished on the dark map); none for the rest. MapLibre paints hex. */
+export const LINE_HALO_COLOR = '#e2e8f0';
+const NO_HALO = 'rgba(0,0,0,0)';
+const HEX_RGB = /^#([0-9a-f]{6})$/i;
+const DARK_LUMINANCE = 0.12;
+const CHANNEL_MAX = 255;
+const RGB_WEIGHTS = [0.2126, 0.7152, 0.0722] as const;
+const HEX_PAIR = 2;
+const HEX_RADIX = 16;
+
+/** The perceived lightness of `#rrggbb`, 0 (black) to 1 (white); unreadable colors count as light. */
+export function colorLuminance(color: string): number {
+  const match = HEX_RGB.exec(color);
+  if (!match) return 1;
+  const hex = match[1]!;
+  return RGB_WEIGHTS.reduce((sum, weight, index) => sum + weight * (parseInt(hex.slice(index * HEX_PAIR, index * HEX_PAIR + HEX_PAIR), HEX_RADIX) / CHANNEL_MAX), 0);
+}
+
+export const lineHaloOf = (color: string): string => (colorLuminance(color) < DARK_LUMINANCE ? LINE_HALO_COLOR : NO_HALO);
+
+/** The rim drawn under a line of `widthPx` (MapLibre `line-gap-width`): it outlines the line on both sides. */
+export const lineCasingPaint = (widthPx: number) => ({ 'line-color': ['get', 'halo'], 'line-gap-width': widthPx, 'line-width': 1.5 });
 
 /** A stage may not have the chosen work: the filter drops it instead of showing an empty map. */
 type FilterChange = { stageId?: string | undefined; workId?: string | undefined; untilDay?: string | undefined };

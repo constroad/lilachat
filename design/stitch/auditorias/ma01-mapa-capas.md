@@ -31,6 +31,18 @@ Las justificaciones son del auditor y citan su fuente; ninguna es una exención 
 | J1 | Modo Avance: chips «grandazos» y pista en dos líneas | corregida: mismo `LayerChips` compacto; pista de 13 px en una línea donde cabe |
 | J2 | Modo Avance: no deja marcar a mano desde/hasta (parches de una calle) | corregida: «Marcar a mano» con dos toques y aros arrastrables con progresiva, resumen «+N m · 0+002 → 0+006»; toque con alcance de 30 px según el zoom (`shared/src/workAvanceManual.ts`) |
 
+## Ronda 2 (28/11, capturas DESPUÉS del OTA 77c08e56 en el emulador)
+
+Capturas del coordinador: `scratchpad/e2e-ma01/01-mapa.png`, `02-capas.png`, `03-mas.png`, `04-avance.png`, `04b-avance-chips.png`.
+
+| # | Diferencia | Estado |
+| --- | --- | --- |
+| R1 | La fila de chips pasa por debajo de «⋮»: el 3.er chip no se ve y «55 %» queda cortado | corregida: la fila ocupa solo el ancho a la izquierda de «Más» y recorta ahí (`STRIP_BESIDE_MORE`), con aire al final para que el último chip quede entero al deslizar |
+| R2 | La hoja de la capa abre grande y tapa el zoom y «Mi ubicación» | corregida: la vista previa trae solo nombre, cifra, barra y la acción (~25 % de la pantalla); el asa la agranda; la X la pliega a la acción sola (`collapseSheet`, estado `min`); el zoom y «Mi ubicación» suben sobre el borde de la hoja (APK `controlsInset` medido con `onLayout`; web `useHeight` + `.maplibregl-ctrl-bottom-right`) |
+| R3 | Modo Avance: lo planificado sale gris punteado | corregida: Modo Avance dibuja con `layerMapLinesOf` del trabajo elegido (punteado en su color, hecho sólido, el resto fino neutro) |
+| R4 | Una capa casi negra (Carpeta asfáltica) no se ve en oscuro | corregida: puntos con aro de 1,5 px (`border-on-surface/40` / `ring-[1.5px]`) en chips, «Capas» y selector; en el mapa, borde claro bajo las líneas casi negras (`lineHaloOf`, `lineCasingPaint` con `line-gap-width`) |
+| R5 | ¿«Marcar a mano» aparece al tocar una calle? | corregida/confirmada: test `AvanceMode.test.tsx` comprueba que está en el panel tras el toque |
+
 Inventos de Stitch que no van: «Campo / Oficina», «Esc. 1:1500», «Configuración de trazado», «En línea», barra inferior «Mapa / Capas / Avances» (José 28/11: botón flotante «Capas»).
 
 ma04 (Registrar avance): no se revisó en esta ronda (no se abrió en el emulador); queda pendiente su revisión independiente.

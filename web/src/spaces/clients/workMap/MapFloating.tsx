@@ -42,10 +42,12 @@ export function MapLegendCard(props: { view: WorkMapView; waiting: number }) {
   );
 }
 
-/** The top of the phone's sheet: its handle and the way to close it, back to the map alone. */
-export const SheetTop = (props: { onClose: () => void }) => (
-  <div className="sticky top-0 z-10 flex items-center justify-between bg-surface px-4 pt-2">
-    <span aria-hidden className="mx-auto h-1 w-10 rounded-full bg-outline/30" />
-    <button type="button" data-testid="mapa-hoja-cerrar" aria-label="Cerrar el panel" onClick={props.onClose} className="absolute right-3 top-2 grid h-9 w-9 place-items-center rounded-full text-on-surface-variant hover:bg-background"><X size={16} /></button>
+/** The top of the phone's sheet: its handle (it grows the layer's sheet one step) and the X that folds it. */
+export const SheetTop = (props: { onClose?: () => void; onGrow?: () => void }) => (
+  <div className="sticky top-0 z-10 flex min-h-6 items-center justify-between bg-surface px-4 pt-2">
+    {props.onGrow
+      ? <button type="button" data-testid="mapa-hoja-asa" aria-label="Ver más de la capa" onClick={props.onGrow} className="mx-auto grid h-6 w-16 place-items-center"><span aria-hidden className="h-1 w-10 rounded-full bg-outline/30" /></button>
+      : <span aria-hidden className="mx-auto h-1 w-10 rounded-full bg-outline/30" />}
+    {props.onClose ? <button type="button" data-testid="mapa-hoja-cerrar" aria-label="Plegar el panel" onClick={props.onClose} className="absolute right-3 top-2 grid h-9 w-9 place-items-center rounded-full text-on-surface-variant hover:bg-background"><X size={16} /></button> : null}
   </div>
 );

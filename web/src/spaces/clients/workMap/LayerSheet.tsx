@@ -1,8 +1,11 @@
 import type { ReactNode } from 'react';
-import { ChevronDown, ChevronUp, Pencil } from 'lucide-react';
+import { ChevronUp, Pencil } from 'lucide-react';
 import { LAYER_LEGEND, layerBarOf, layerStreetsToggle, type LayerLatest, type LayerStreetSummary, type LayerSummary } from '@lilachat/shared';
 
 /** What waits for approval, hatched in the layer's colour (the colour is data, as on the map). */
+/** A colour dot ringed so a near-black layer still reads on the dark theme (José 28/11). */
+export const LAYER_DOT = 'h-2.5 w-2.5 shrink-0 rounded-full ring-[1.5px] ring-on-surface/40';
+
 const hatchOf = (color: string) => `repeating-linear-gradient(135deg, ${color} 0 3px, transparent 3px 7px)`;
 
 /** Approved solid from the left, what waits hatched right after it (design ma01). */
@@ -60,34 +63,37 @@ export function LayerSheet(props: SheetProps) {
   const { summary } = props;
   const expanded = props.expanded ?? true;
   return (
-    <div data-testid="mapa-capa-hoja" className="space-y-4">
+    <div data-testid="mapa-capa-hoja" className={expanded ? 'space-y-4' : 'space-y-2.5'}>
       <div className="flex items-center justify-between gap-2">
-        <p className="flex min-w-0 items-center gap-2 text-[12px] font-bold uppercase tracking-[0.16em] text-on-surface-variant">
-          <span aria-hidden className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: summary.color }} />{summary.kicker}
+        <p className="flex min-w-0 items-center gap-2 truncate text-[12px] font-bold uppercase tracking-[0.16em] text-on-surface-variant">
+          <span aria-hidden className={LAYER_DOT} style={{ backgroundColor: summary.color }} />{summary.kicker}
         </p>
-        {props.badge}
+        {expanded ? props.badge : null}
       </div>
-      <div data-testid="mapa-avance" className="space-y-3">
+      <div data-testid="mapa-avance" className="space-y-2">
         <p className="flex flex-wrap items-baseline justify-between gap-x-3">
-          <span className="text-[22px] font-extrabold tabular-nums tracking-tight text-on-surface">{summary.headline}</span>
-          {summary.streets.length ? <span className="text-[30px] font-extrabold tabular-nums text-on-surface">{summary.percentText}</span> : null}
+          <span className={`${expanded ? 'text-[22px]' : 'text-[18px]'} font-extrabold tabular-nums tracking-tight text-on-surface`}>{summary.headline}</span>
+          {summary.streets.length ? <span className={`${expanded ? 'text-[30px]' : 'text-[22px]'} font-extrabold tabular-nums text-on-surface`}>{summary.percentText}</span> : null}
         </p>
-        <LayerBar row={summary} color={summary.color} tall />
-        {summary.widthNote ? <p data-testid="capa-sin-ancho" className="text-[12px] text-on-surface-variant">{summary.widthNote}</p> : null}
+        <LayerBar row={summary} color={summary.color} tall={expanded} />
+        {expanded && summary.widthNote ? <p data-testid="capa-sin-ancho" className="text-[12px] text-on-surface-variant">{summary.widthNote}</p> : null}
       </div>
-      {props.onExpand && summary.streets.length ? (
-        <button type="button" data-testid="capa-ver-calles" aria-expanded={expanded} onClick={props.onExpand} className="flex h-9 items-center gap-1 text-[14px] font-semibold text-primary">
-          {layerStreetsToggle(summary.streets.length, expanded)}{expanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+      {expanded && props.onExpand && summary.streets.length ? (
+        <button type="button" data-testid="capa-ver-calles" aria-expanded onClick={props.onExpand} className="flex h-9 items-center gap-1 text-[14px] font-semibold text-primary">
+          {layerStreetsToggle(summary.streets.length, true)}<ChevronUp size={16} />
         </button>
       ) : null}
       {expanded && summary.streets.length ? <ul className="space-y-2">{summary.streets.map((row) => <StreetRow key={row.streetId} row={row} color={summary.color} />)}</ul> : null}
       {expanded ? <Legend color={summary.color} /> : null}
       {expanded && props.latest ? <Latest latest={props.latest} /> : null}
-      {props.onRecord ? (
-        <button type="button" data-testid="capa-registrar" onClick={props.onRecord} className="flex h-[52px] w-full items-center justify-center gap-3 rounded-2xl bg-primary px-5 text-[16px] font-bold text-on-primary hover:opacity-90">
-          <Pencil size={18} className="shrink-0" />{summary.recordLabel}
-        </button>
-      ) : null}
+      {props.onRecord ? <RecordLayerButton label={summary.recordLabel} onClick={props.onRecord} /> : null}
     </div>
   );
 }
+
+/** «Registrar avance de <capa>»: the sheet's ONE action (52 px, primary); alone when the sheet is folded. */
+export const RecordLayerButton = (props: { label: string; onClick: () => void }) => (
+  <button type="button" data-testid="capa-registrar" onClick={props.onClick} className="flex h-[52px] w-full items-center justify-center gap-3 rounded-2xl bg-primary px-5 text-[16px] font-bold text-on-primary hover:opacity-90">
+    <Pencil size={18} className="shrink-0" />{props.label}
+  </button>
+);

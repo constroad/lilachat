@@ -125,17 +125,30 @@ describe('ServiceMapWeb', () => {
 
   it('on a phone the map takes the board and «Capas» opens the panel as a sheet over it', async () => {
     // Arrange
-    showMap();
+    showMap(undefined, { editMap: vi.fn<MapEditSend>() });
     await screen.findByTestId('mapa-lienzo');
-    // Design ma01: with layers the sheet opens with the map; its ✕ closes it.
-    expect(screen.getByTestId('mapa-panel')).toHaveAttribute('data-open', 'true');
+    // Design ma01: with layers the peek opens with the map; its ✕ folds it to the one action (José 28/11).
+    expect(screen.getByTestId('mapa-avance')).toBeInTheDocument();
     fireEvent.click(screen.getByTestId('mapa-hoja-cerrar'));
-    expect(screen.getByTestId('mapa-panel')).toHaveAttribute('data-open', 'false');
+    expect(screen.queryByTestId('mapa-avance')).toBeNull();
+    expect(screen.queryByTestId('mapa-hoja-cerrar')).toBeNull();
+    expect(screen.getByTestId('capa-registrar')).toHaveTextContent('Registrar avance de Base');
+    // The grip grows it back to the peek
+    fireEvent.click(screen.getByTestId('mapa-hoja-asa'));
+    expect(screen.getByTestId('mapa-avance')).toBeInTheDocument();
     // Act
     fireEvent.click(screen.getByTestId('mapa-capas-abrir'));
     // Assert
-    expect(screen.getByTestId('mapa-panel')).toHaveAttribute('data-open', 'true');
+    expect(screen.getByTestId('mapa-capas')).toBeInTheDocument();
     expect(screen.getByTestId('mapa-capas-abrir')).toHaveAttribute('aria-pressed', 'true');
+    fireEvent.click(screen.getByTestId('mapa-hoja-cerrar'));
+    expect(screen.queryByTestId('mapa-capas')).toBeNull();
+    expect(screen.getByTestId('capa-registrar')).toBeInTheDocument();
+  });
+
+  it('who only looks: the X closes the peek, there is no action to keep', async () => {
+    showMap();
+    await screen.findByTestId('mapa-lienzo');
     fireEvent.click(screen.getByTestId('mapa-hoja-cerrar'));
     expect(screen.getByTestId('mapa-panel')).toHaveAttribute('data-open', 'false');
   });
@@ -198,8 +211,10 @@ describe('ServiceMapWeb', () => {
     // Assert: no second row of filters, no legend, no pills at the foot
     for (const gone of ['mapa-corte', 'mapa-trabajo', 'mapa-leyenda', 'mapa-capas', 'mapa-editar-croquis', 'mapa-modo-avance', 'mapa-registrar-avance']) expect(screen.queryByTestId(gone)).toBeNull();
     expect(screen.getByTestId('capa-registrar')).toHaveTextContent('Registrar avance de Base');
+    // The peek: figure, bar and the action only; the grip grows it to the streets.
     expect(screen.queryByTestId('capa-calle-s1')).toBeNull();
-    fireEvent.click(screen.getByTestId('capa-ver-calles'));
+    expect(screen.queryByTestId('capa-ver-calles')).toBeNull();
+    fireEvent.click(screen.getByTestId('mapa-hoja-asa'));
     expect(screen.getByTestId('capa-calle-s1')).toBeInTheDocument();
     expect(screen.getByTestId('capa-leyenda')).toHaveTextContent(/Hecho.*Planificado/);
     // The map: the layer planned in ITS colour with its %, every street a neutral base, no grey dashes.
@@ -225,14 +240,14 @@ describe('ServiceMapWeb', () => {
     fireEvent.click(await screen.findByTestId('mapa-capas-abrir'));
     fireEvent.click(screen.getByTestId('mapa-trabajo'));
     fireEvent.click(screen.getByTestId('mapa-trabajo-asfalto'));
-    // The picked work is the active layer too (ma01): closing «Capas» shows its peek.
-    fireEvent.click(screen.getByTestId('mapa-capas-abrir'));
+    // The picked work is the active layer too (ma01): a chip shows its peek.
+    fireEvent.click(screen.getByTestId('mapa-capa-asfalto'));
     expect(screen.getByTestId('mapa-avance')).toHaveTextContent('0 de 400 m');
     fireEvent.click(screen.getByTestId('mapa-capas-abrir'));
     fireEvent.click(screen.getByTestId('mapa-trabajo'));
     expect(within(screen.getByTestId('mapa-trabajo-lista')).getAllByRole('option')).toHaveLength(3);
     fireEvent.click(screen.getByTestId('mapa-trabajo-todos'));
-    fireEvent.click(screen.getByTestId('mapa-capas-abrir'));
+    fireEvent.click(screen.getByTestId('mapa-capa-base'));
     expect(screen.getByTestId('mapa-avance')).toHaveTextContent('400 de 600 m');
   });
 

@@ -84,7 +84,7 @@ export function MapLayersPanel(props: PanelProps) {
         <Section title={`Partidas (trabajos) · ${rows.works.length}`} aside="Avance">
           {rows.works.map((work) => (
             <View key={work.id} className={ROW}>
-              <View className="h-3.5 w-3.5 rounded-full" style={{ backgroundColor: work.color }} />
+              <View className="h-3.5 w-3.5 rounded-full border-[1.5px] border-on-surface/40" style={{ backgroundColor: work.color }} />
               <View className="min-w-0 flex-1">
                 <Text className="text-[15px] font-semibold text-on-surface" numberOfLines={1}>{work.name}</Text>
                 <Text className="text-[12px] text-on-surface-variant">{work.assigned ? `${work.percent} % de avance` : WORK_NOT_ASSIGNED}</Text>

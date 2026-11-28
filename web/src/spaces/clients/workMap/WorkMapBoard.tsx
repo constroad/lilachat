@@ -1,7 +1,7 @@
 import { Suspense, useEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from 'react';
 import { lazyChunk } from '../../../ui/lazyChunk';
 import { Paintbrush, Undo2 } from 'lucide-react';
-import { expandLayerSheet, initialMapSheet, layerMapLinesOf, sheetForLayerPick, toggleLayersSheet, type LayerStreetSummary, type MapSheet, activeLayerOf, limaDayKey, workMapWorkFilter, viewWithLayers, visibleMarks, visibleObservations, mapCardOf, mapPickAnchor, type MapPick, type WorkMapPoint, visibleStationMarks, brushLinesOf, brushTitle, progressTargetOf, type Brush, type ManualPhotoUpload, type MapEditSend, type TraceUpload, type ServiceMapInReport, unitPinsOfDay, withMediaBounds, pendingLinesOf, byApproveLinesOf, pendingCountOf, undoableOf, withPendingOf, showsUnitPins, type DischargePin, type PendingProgress, type MapMoreKey, stretchLinesOf, suggestDischarges, workMapStageGroups, workMapView, type UnitDischarge, type WorkMap, type WorkMapFilter, type StretchRange, type MapPhoto, type ManualProgressDraft } from '@lilachat/shared';
+import { collapseSheet, expandLayerSheet, initialMapSheet, layerMapLinesOf, sheetForLayerPick, toggleLayersSheet, type LayerStreetSummary, type MapSheet, activeLayerOf, limaDayKey, workMapWorkFilter, viewWithLayers, visibleMarks, visibleObservations, mapCardOf, mapPickAnchor, type MapPick, type WorkMapPoint, visibleStationMarks, brushLinesOf, brushTitle, progressTargetOf, type Brush, type ManualPhotoUpload, type MapEditSend, type TraceUpload, type ServiceMapInReport, unitPinsOfDay, withMediaBounds, pendingLinesOf, byApproveLinesOf, pendingCountOf, undoableOf, withPendingOf, showsUnitPins, type DischargePin, type PendingProgress, type MapMoreKey, stretchLinesOf, suggestDischarges, workMapStageGroups, workMapView, type UnitDischarge, type WorkMap, type WorkMapFilter, type StretchRange, type MapPhoto, type ManualProgressDraft } from '@lilachat/shared';
 import { WorkMapDischarges, type ProgressSend } from './WorkMapDischarges';
 import { WorkMapExport } from './WorkMapExport';
 import { ShareProgress } from './ShareProgress';
@@ -28,7 +28,7 @@ import { NewLayer } from './NewLayer';
 import { AvancePanel } from './AvancePanel';
 import { ServiceCroquisFrame } from './ServiceCroquis';
 import { LayerChips } from './LayerChips';
-import { LayerSheet } from './LayerSheet';
+import { LayerSheet, RecordLayerButton } from './LayerSheet';
 
 const WorkMapCanvas = lazyChunk(() => import('./WorkMapCanvas'));
 
@@ -48,6 +48,19 @@ function useWide(holder: RefObject<HTMLElement | null>): boolean {
     return () => observer.disconnect();
   }, [holder]);
   return wide;
+}
+
+/** How tall an element stands, kept current as it resizes; 0 while hidden. */
+function useHeight(element: RefObject<HTMLElement | null>): number {
+  const [height, setHeight] = useState(0);
+  useEffect(() => {
+    const target = element.current;
+    if (!target || typeof ResizeObserver === 'undefined') return undefined;
+    const observer = new ResizeObserver(([entry]) => setHeight(entry?.contentRect.height ?? 0));
+    observer.observe(target);
+    return () => observer.disconnect();
+  }, [element]);
+  return height;
 }
 
 /** The browser's full screen when it allows it; the layer over the page stands either way. */
@@ -241,7 +254,9 @@ export function WorkMapBoard(props: BoardProps) {
   const layersPanel = layers && props.editMap ? <WorkLayers map={map} kind={layers} send={props.editMap} brush={brushing.brush} onBrush={brushing.setBrush} onNewLayer={() => { closeLayers(); setNewLayer('map'); }} onClose={closeLayers} /> : null;
   const mapLayers = useMapLayers();
   const drawn = useMemo(() => ({ view: viewWithLayers(view, mapLayers.layers), marks: visibleMarks(map.marks ?? NO_MARKS, mapLayers.layers), observations: visibleObservations(map.observations ?? NO_OBSERVATIONS, mapLayers.layers) }), [view, map, mapLayers.layers]);
-  const lines = useMemo(() => layerMapLinesOf({ map, view: drawn.view, filter, workId: layer.workId, rows: layer.summary?.streets ?? NO_ROWS, hidden: Boolean(layer.workId && mapLayers.layers.works.includes(layer.workId)) }), [map, drawn.view, filter, layer, mapLayers.layers]);
+  // Modo Avance draws its picked work the same way (José 28/11: no grey dashes there either).
+  const linesWork = avance.on ? avance.workId : layer.workId;
+  const lines = useMemo(() => layerMapLinesOf({ map, view: drawn.view, filter, workId: linesWork, rows: avance.on ? NO_ROWS : layer.summary?.streets ?? NO_ROWS, hidden: !avance.on && Boolean(linesWork && mapLayers.layers.works.includes(linesWork)) }), [map, drawn.view, filter, linesWork, avance.on, layer.summary, mapLayers.layers]);
   const layered = useMemo(() => ({ ...drawn.view, planned: lines.planned, done: lines.done }), [drawn.view, lines]);
   // «Hasta hoy», the work and the days moved here from the top of the map (José 28/11), with the legend.
   const controls = <><MapFilters map={map} view={view} filter={filter} onFilter={setFilter} /><MapDayChips options={mapDays.options} day={mapDays.day} onDay={mapDays.setDay} /><MapLegendCard view={view} waiting={waiting} /></>;
@@ -260,24 +275,30 @@ export function WorkMapBoard(props: BoardProps) {
   // A phone (design ma01, José 28/11): the layer's peek opens with the map; «Capas y leyenda» only from its button.
   const [sheet, setSheet] = useState<MapSheet>(() => initialMapSheet(props.map.works.length));
   const [croquisOpen, setCroquisOpen] = useState(false);
+  // The zoom and «Mi ubicación» rise over the phone's sheet instead of hiding under it (José 28/11).
+  const sheetRef = useRef<HTMLElement>(null);
+  const sheetHeight = useHeight(sheetRef);
   const { summary } = layer;
   const layerHead = (expanded: boolean) => (summary ? <LayerSheet summary={summary} latest={layer.latest} badge={props.badge} onRecord={onLayerRecord} expanded={expanded} onExpand={wide ? undefined : () => setSheet(expandLayerSheet)} /> : undefined);
   const peek = !wide && !other && sheet === 'peek' && summary;
+  // José 28/11: the X folds the peek down to its one action, which keeps floating over the map.
+  const folded = !wide && !other && sheet === 'min' && summary;
   const narrowLayers = !wide && sheet === 'layers' ? layersNode : null;
   // The panel stays mounted under the peek, so what waits approval is still drawn (José 20/11).
-  const detailHidden = Boolean(peek || (narrowLayers && summary));
+  const detailHidden = Boolean(peek || folded || (narrowLayers && summary));
   const detail = <div className={detailHidden ? 'hidden' : 'contents'}><WorkMapPanel head={detailHidden ? HEAD_UNDER_PEEK : layerHead(true)} view={view} groups={groups} filter={filter} badge={props.badge} top={top} items={picks.items} layers={wide ? layersNode : summary ? null : narrowLayers} scrolls={wide} deleteStreet={props.deleteStreet} onOpenStreet={(id) => openStreet(id)} /></div>;
-  const panel = other ?? <>{peek ? <div className="p-4">{layerHead(false)}</div> : null}{narrowLayers && summary ? narrowLayers : null}{detail}</>;
+  const action = summary && onLayerRecord ? <div className="p-4 pt-1"><RecordLayerButton label={summary.recordLabel} onClick={onLayerRecord} /></div> : null;
+  const panel = other ?? <>{peek ? <div className="p-4 pt-1">{layerHead(false)}</div> : null}{folded ? action : null}{narrowLayers && summary ? narrowLayers : null}{detail}</>;
   const pickLayer = (id: string) => { setChosenLayer(id); setSheet(sheetForLayerPick); if (filter.workId) setFilter(workMapWorkFilter(filter, id)); };
   const sheetShown = wide || sheet !== null || Boolean(other);
   const showLayers = () => {
     setSide(null); setLayers(null); setStreetId(null);
     if (wide) { mapLayers.setOpen((shown) => !shown); return; }
-    const next = toggleLayersSheet(sheet);
+    const next = toggleLayersSheet(sheet, Boolean(action));
     setSheet(next);
     mapLayers.setOpen(next === 'layers');
   };
-  const closeSheet = () => { setNewLayer(null); avance.closeStreet(); setSheet(null); setSide(null); closeLayers(); setStreetId(null); setSeeingDeleted(false); };
+  const closeSheet = () => { setNewLayer(null); avance.closeStreet(); setSheet(other ? sheet : collapseSheet(sheet, Boolean(action))); setSide(null); closeLayers(); setStreetId(null); setSeeingDeleted(false); };
   const pick = (key: Exclude<MapMoreKey, 'open'>) => {
     if (key === 'share' || key === 'export') toggleSide(key);
     else if (key === 'screen') (expanded ? close : open)();
@@ -300,14 +321,14 @@ export function WorkMapBoard(props: BoardProps) {
       <div className={wide ? 'flex min-h-0 flex-1' : 'relative flex min-h-0 flex-1 flex-col'}>
         <div className={`relative min-h-[320px] overflow-hidden bg-surface-variant ${wide ? 'min-w-0 flex-1' : 'flex-1'}`}>
           <Suspense fallback={<div data-testid="mapa-cargando-lienzo" className="absolute inset-0 animate-pulse bg-surface-variant" />}>
-            <WorkMapCanvas view={layered} labels={lines.labels} expanded={expanded} stations={stations} bare={lines.base} marks={drawn.marks} observations={drawn.observations} selected={picks.selected} onSelect={picks.setSelected} onCardPhoto={(photo, all) => picks.openPhoto(photo, all)} focus={picks.focus} pins={photoLayer.shown ? photoLayer.pins : unitPins} onPin={photoLayer.shown ? photoLayer.openPin : undefined} stretches={brushing.brush ? brushLines : avance.on ? avance.lines : stretches} pending={avance.on ? pendingLines.filter((line) => line.workId === avance.workId) : pendingLines} onTap={brushing.brush ? (place) => void brushing.tap(place) : avance.on ? avance.tap : undefined} handles={avance.on ? avance.manual.handles : undefined} onHandleDrop={avance.on ? avance.manual.drop : undefined} />
+            <WorkMapCanvas controlsInset={wide ? 0 : sheetHeight} view={layered} labels={lines.labels} expanded={expanded} stations={stations} bare={lines.base} marks={drawn.marks} observations={drawn.observations} selected={picks.selected} onSelect={picks.setSelected} onCardPhoto={(photo, all) => picks.openPhoto(photo, all)} focus={picks.focus} pins={photoLayer.shown ? photoLayer.pins : unitPins} onPin={photoLayer.shown ? photoLayer.openPin : undefined} stretches={brushing.brush ? brushLines : avance.on ? avance.lines : stretches} pending={avance.on ? pendingLines.filter((line) => line.workId === avance.workId) : pendingLines} onTap={brushing.brush ? (place) => void brushing.tap(place) : avance.on ? avance.tap : undefined} handles={avance.on ? avance.manual.handles : undefined} onHandleDrop={avance.on ? avance.manual.drop : undefined} />
           </Suspense>
           {brushing.brush ? <BrushBand title={brushTitle(map, brushing.brush)} error={brushing.error} busy={brushing.busy} canUndo={brushing.canUndo} onUndo={() => void brushing.undo()} onDone={() => brushing.setBrush(null)} /> : null}
           {avance.on && editMap ? <AvanceTop mode={avance} title={props.title} onNewLayer={() => setNewLayer('avance')} /> : null}
           {brushing.brush || avance.on ? null : <MapTop tools={tools} wide={wide} chips={layerChips} notice={notice} />}
         </div>
-        <aside data-testid="mapa-panel" data-open={sheetShown} className={wide ? 'm-3 ml-0 flex w-[380px] shrink-0 flex-col overflow-hidden rounded-2xl border border-outline/15 bg-surface shadow-lg xl:w-[400px]' : `absolute inset-x-0 bottom-0 z-30 flex flex-col overflow-y-auto rounded-t-3xl border-t border-outline/15 bg-surface shadow-[0_-8px_24px_rgb(0_0_0/0.12)] ${brushing.brush ? 'max-h-[40%]' : 'max-h-[72%]'} ${sheetShown ? '' : 'hidden'}`}>
-          {wide ? null : <SheetTop onClose={closeSheet} />}
+        <aside ref={sheetRef} data-testid="mapa-panel" data-open={sheetShown} className={wide ? 'm-3 ml-0 flex w-[380px] shrink-0 flex-col overflow-hidden rounded-2xl border border-outline/15 bg-surface shadow-lg xl:w-[400px]' : `absolute inset-x-0 bottom-0 z-30 flex flex-col overflow-y-auto rounded-t-3xl border-t border-outline/15 bg-surface shadow-[0_-8px_24px_rgb(0_0_0/0.12)] ${brushing.brush ? 'max-h-[40%]' : 'max-h-[72%]'} ${sheetShown ? '' : 'hidden'}`}>
+          {wide ? null : <SheetTop onClose={folded ? undefined : closeSheet} onGrow={(peek || folded) && !other ? () => setSheet(expandLayerSheet) : undefined} />}
           {panel}
         </aside>
       </div>

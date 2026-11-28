@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { ArrowLeft, Pointer } from 'lucide-react-native';
-import { AVANCE_MANUAL_HINT, AVANCE_MANUAL_ONE, AVANCE_PICK_STREET, AVANCE_TITLE, addManualMark, avanceLinesOf, avanceStreetAtTap, manualHandlesOf, manualRangeOf, measureOnStreet, moveManualMark, tapReachM, type StreetEnd, avanceChipsOf, avanceHint, avancePickedWork, avanceTargetOf, byApproveLinesOf, undoableOf, type ByApproveList, workMapView, type MapEditSend, type WorkMap, type WorkMapFilter, type WorkMapPoint } from '@lilachat/shared';
+import { AVANCE_MANUAL_HINT, AVANCE_MANUAL_ONE, AVANCE_PICK_STREET, AVANCE_TITLE, addManualMark, avanceLinesOf, avanceStreetAtTap, manualHandlesOf, manualRangeOf, measureOnStreet, moveManualMark, tapReachM, type StreetEnd, avanceChipsOf, avanceHint, avancePickedWork, avanceTargetOf, byApproveLinesOf, undoableOf, type ByApproveList, workMapView, layerMapLinesOf, type MapEditSend, type WorkMap, type WorkMapFilter, type WorkMapPoint } from '@lilachat/shared';
 import { Modal } from '../../../ui/Modal';
 import { useColores } from '../../../ui/tema';
 import { useMargenes } from '../../../ui/useMargenes';
@@ -38,6 +38,9 @@ function Hint(props: { text: string; error: string | null }) {
 }
 
 /** «Marcar a mano» (José 28/11): two taps on the picked street set «desde» and «hasta»; the rings drag. */
+const NO_FILTER = {};
+const NO_ROWS: never[] = [];
+
 export type ManualMarks = ReturnType<typeof useManualMarks>;
 
 export function useManualMarks(map: WorkMap, streetId: string | null) {
@@ -74,7 +77,10 @@ export function AvanceMode(props: { map: WorkMap; /** The board's stage and day 
   };
   const workId = avancePickedWork(map, chosen);
   const chips = useMemo(() => avanceChipsOf(map, workId, props.filter), [map, workId, props.filter]);
-  const view = useMemo(() => workMapView(map), [map]);
+  // The map by layer as on the board (José 28/11): the picked work dashed in its colour, the rest thin and neutral.
+  const whole = useMemo(() => workMapView(map), [map]);
+  const lines = useMemo(() => layerMapLinesOf({ map, view: whole, filter: NO_FILTER, workId, rows: NO_ROWS, hidden: false }), [map, whole, workId]);
+  const view = useMemo(() => ({ ...whole, planned: lines.planned, done: lines.done }), [whole, lines]);
   const target = workId && streetId ? avanceTargetOf(map, streetId, workId) : null;
   const workName = chips.find((chip) => chip.selected)?.name ?? '';
   const pending = useMemo(() => byApproveLinesOf(map, props.byApprove).filter((one) => one.workId === workId), [map, props.byApprove, workId]);
@@ -90,7 +96,7 @@ export function AvanceMode(props: { map: WorkMap; /** The board's stage and day 
   return (
     <Modal visible animationType="slide" onRequestClose={props.onExit}>
       <View testID="avance-modo" className="flex-1 bg-background">
-        <WorkMapSurface view={view} moves controlsInset={margins.pie} stretches={avanceLinesOf(map, workId, streetId, manual.range)} pending={pending} onTap={workId ? tap : undefined} handles={manual.handles} onHandleDrop={manual.drop} />
+        <WorkMapSurface view={view} bare={lines.base} moves controlsInset={margins.pie} stretches={avanceLinesOf(map, workId, streetId, manual.range)} pending={pending} onTap={workId ? tap : undefined} handles={manual.handles} onHandleDrop={manual.drop} />
         <View pointerEvents="box-none" className="absolute inset-x-0 gap-3" style={{ top: margins.cabecera + 8 }}>
           <Head title={props.title} onExit={props.onExit} />
           <LayerChips testPrefix="avance-trabajo" chips={chips} onPick={(id) => { setChosen(id); setError(null); }} onNewLayer={() => setNewLayer(true)} />

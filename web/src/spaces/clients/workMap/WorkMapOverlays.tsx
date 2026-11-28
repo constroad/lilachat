@@ -10,7 +10,7 @@ const SELECT = 'h-8 min-w-0 rounded-lg bg-transparent pr-1 text-[13px] font-semi
 
 type FilterProps = { map: WorkMap; view: WorkMapView; filter: WorkMapFilter; onFilter: (filter: WorkMapFilter) => void };
 
-const DOT = 'h-2.5 w-2.5 shrink-0 rounded-full ring-1 ring-on-surface/25';
+const DOT = 'h-2.5 w-2.5 shrink-0 rounded-full ring-[1.5px] ring-on-surface/40';
 
 /** The works as a list that opens (José 09/11: not chips, not the browser's select): each with its color. */
 function WorkSelect(props: FilterProps) {

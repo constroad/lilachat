@@ -20,7 +20,7 @@ function ChoiceSheet(props: { title: string; open: boolean; onClose: () => void;
       {props.choices.map((choice) => (
         <Pressable key={choice.testID} testID={choice.testID} accessibilityState={{ selected: choice.on }} onPress={() => { choice.pick(); props.onClose(); }} className="min-h-[48px] flex-row items-center justify-between border-b border-outline/10">
           <View className="flex-1 flex-row items-center gap-2">
-            {choice.color ? <View className="h-3 w-3 rounded-full" style={{ backgroundColor: choice.color }} /> : null}
+            {choice.color ? <View className="h-3 w-3 rounded-full border-[1.5px] border-on-surface/40" style={{ backgroundColor: choice.color }} /> : null}
             <Text className={`flex-1 text-[15px] ${choice.on ? 'font-semibold text-primary' : 'text-on-surface'}`}>{choice.label}</Text>
           </View>
           {choice.on ? <Check size={18} color={colors.primary} /> : null}
@@ -62,7 +62,7 @@ function WorkChip(props: FilterProps) {
   return (
     <>
       <Pressable testID="mapa-trabajo" onPress={() => setPicking(true)} className={`${FLOATING} max-w-[220px]`} style={MAP_SHADOW}>
-        {chosen ? <View className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: chosen.color }} /> : null}
+        {chosen ? <View className="h-2.5 w-2.5 rounded-full border-[1.5px] border-on-surface/40" style={{ backgroundColor: chosen.color }} /> : null}
         <Text numberOfLines={1} className="shrink text-[14px] font-semibold text-on-surface">{workChoiceLabel(view, filter.workId)}</Text>
         <ChevronDown size={16} color={colors['on-surface-variant']} />
       </Pressable>

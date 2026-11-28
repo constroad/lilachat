@@ -19,7 +19,7 @@ function Switch(props: { on: boolean; label: string; testId: string; onToggle: (
 }
 
 const ROW = 'flex min-h-12 items-center gap-3 rounded-xl border border-outline/15 bg-surface px-3 py-2';
-const Dot = ({ color, square }: { color: string; square?: boolean }) => <span aria-hidden className={`h-3 w-3 shrink-0 ring-1 ring-on-surface/20 ${square ? 'rounded-[3px]' : 'rounded-full'}`} style={{ backgroundColor: color }} />;
+const Dot = ({ color, square }: { color: string; square?: boolean }) => <span aria-hidden className={`h-3 w-3 shrink-0 ring-[1.5px] ring-on-surface/40 ${square ? 'rounded-[3px]' : 'rounded-full'}`} style={{ backgroundColor: color }} />;
 
 function Section(props: { title: string; aside?: string; children: React.ReactNode }) {
   return (

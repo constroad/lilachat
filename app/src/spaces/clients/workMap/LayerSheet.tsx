@@ -80,32 +80,37 @@ function StreetsToggle(props: { count: number; expanded: boolean; onPress: () =>
  */
 export function LayerSheet(props: SheetProps) {
   const { summary } = props;
-  const colors = useColores();
   const expanded = props.expanded ?? true;
   return (
-    <View testID="mapa-capa-hoja" className="gap-3">
+    <View testID="mapa-capa-hoja" className={expanded ? 'gap-3' : 'gap-2'}>
       <View className="flex-row items-center justify-between gap-2">
-        <Text className="min-w-0 flex-1 text-[13px] font-bold uppercase tracking-[1.5px] text-on-surface-variant">{summary.kicker}</Text>
-        {props.badge}
+        <Text numberOfLines={1} className="min-w-0 flex-1 text-[12px] font-bold uppercase tracking-[1.5px] text-on-surface-variant">{summary.kicker}</Text>
+        {expanded ? props.badge : null}
       </View>
-      <View testID="mapa-avance" className="gap-3">
+      <View testID="mapa-avance" className="gap-2">
         <View className="flex-row flex-wrap items-baseline justify-between gap-x-3">
-          <Text className="text-[22px] font-extrabold text-on-surface">{summary.headline}</Text>
-          {summary.streets.length ? <Text className="text-[30px] font-extrabold text-on-surface">{summary.percentText}</Text> : null}
+          <Text className={`${expanded ? 'text-[22px]' : 'text-[18px]'} font-extrabold text-on-surface`}>{summary.headline}</Text>
+          {summary.streets.length ? <Text className={`${expanded ? 'text-[30px]' : 'text-[22px]'} font-extrabold text-on-surface`}>{summary.percentText}</Text> : null}
         </View>
-        <LayerBar row={summary} color={summary.color} tall />
-        {summary.widthNote ? <Text testID="capa-sin-ancho" className="text-[12px] text-on-surface-variant">{summary.widthNote}</Text> : null}
+        <LayerBar row={summary} color={summary.color} tall={expanded} />
+        {expanded && summary.widthNote ? <Text testID="capa-sin-ancho" className="text-[12px] text-on-surface-variant">{summary.widthNote}</Text> : null}
       </View>
-      {props.onExpand && summary.streets.length ? <StreetsToggle count={summary.streets.length} expanded={expanded} onPress={props.onExpand} /> : null}
+      {expanded && props.onExpand && summary.streets.length ? <StreetsToggle count={summary.streets.length} expanded onPress={props.onExpand} /> : null}
       {expanded && summary.streets.length ? <View className="gap-2">{summary.streets.map((row) => <StreetRow key={row.streetId} row={row} color={summary.color} />)}</View> : null}
       {expanded ? <Legend color={summary.color} /> : null}
       {expanded && props.latest ? <Latest latest={props.latest} /> : null}
-      {props.onRecord ? (
-        <Pressable testID="capa-registrar" accessibilityRole="button" onPress={props.onRecord} className="h-[52px] flex-row items-center justify-center gap-3 rounded-2xl bg-primary px-5">
-          <Pencil size={20} color={colors['on-primary']} />
-          <Text numberOfLines={1} className="flex-shrink text-[16px] font-bold text-on-primary">{summary.recordLabel}</Text>
-        </Pressable>
-      ) : null}
+      {props.onRecord ? <RecordLayerButton label={summary.recordLabel} onPress={props.onRecord} /> : null}
     </View>
+  );
+}
+
+/** «Registrar avance de <capa>»: the sheet's ONE action (52 dp, primary); alone when the sheet is folded. */
+export function RecordLayerButton(props: { label: string; onPress: () => void }) {
+  const colors = useColores();
+  return (
+    <Pressable testID="capa-registrar" accessibilityRole="button" onPress={props.onPress} className="h-[52px] flex-row items-center justify-center gap-3 rounded-2xl bg-primary px-5">
+      <Pencil size={20} color={colors['on-primary']} />
+      <Text numberOfLines={1} className="flex-shrink text-[16px] font-bold text-on-primary">{props.label}</Text>
+    </Pressable>
   );
 }

@@ -1,6 +1,7 @@
 import { Check, Plus } from 'lucide-react';
 import { AVANCE_NO_WORKS, percentLabel, type AvanceChip } from '@lilachat/shared';
 import { NewLayerButton } from './WorkLayers';
+import { LAYER_DOT } from './LayerSheet';
 
 type ChipsProps = {
   chips: AvanceChip[];
@@ -29,7 +30,7 @@ export function LayerChips(props: ChipsProps) {
     <div role="group" aria-label="Capas" className="pointer-events-auto -mx-3 flex gap-2 overflow-x-auto px-3 pb-1">
       {props.chips.map((chip) => (
         <button key={chip.id} type="button" data-testid={`${props.testPrefix}-${chip.id}`} aria-pressed={chip.selected} aria-label={chip.label} onClick={() => props.onPick(chip.id)} className={`flex h-10 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-xl border px-3 text-[14px] text-on-surface shadow-md ${chip.selected ? 'border-primary/60 bg-surface font-bold' : 'border-outline/15 bg-surface/90 font-medium hover:bg-background'}`}>
-          <span aria-hidden className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: chip.color }} />
+          <span aria-hidden className={LAYER_DOT} style={{ backgroundColor: chip.color }} />
           <span className="max-w-[132px] truncate">{chip.name}</span>{' '}
           <span className="font-mono text-[13px] font-normal text-on-surface-variant">{percentLabel(chip.percent)}</span>
           {chip.selected ? <Check size={14} className="text-primary" /> : null}

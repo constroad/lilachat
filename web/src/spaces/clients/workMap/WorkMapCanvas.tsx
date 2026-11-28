@@ -4,7 +4,7 @@ import workerUrl from 'maplibre-gl/dist/maplibre-gl-csp-worker?url';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { addObservationLayer, useMapCardPopup, useObservationData } from './MapCardPopup';
 import { useDarkClass } from '../../../ui/useDarkClass';
-import { type MapPick, type ViewableFile, type WorkMapObservation, MARK_CHIP_PAINT, MARK_FILL_PAINT, MARK_GLYPH_PAINT, MARK_LINE_PAINT, MARK_TEXT_LAYOUT, MARK_TEXT_PAINT, mapMarkCollection, type WorkMapMark, PLACE_ZOOM, type MapFrame, STATION_DOT_PAINT, STATION_TEXT_LAYOUT, STATION_TEXT_PAINT, stationMarkCollection, type StationMark, NAMED_ROAD_LAYER, ROAD_SOURCE_LAYERS, tapBox, tapTolerancePx, WORK_MAP_PENDING_PAINT, LAYER_BASE_PAINT, LAYER_LABEL_LAYOUT, LAYER_LABEL_PAINT, LAYER_PLANNED_PAINT, STATION_MIN_ZOOM, workMapStyleFor, workMapCollection, type BasemapFeatureLike, type DischargePin, type StreetEnd, type StreetHandle, type TapFeatures, type WorkMapLine, type WorkMapPoint, type WorkMapView } from '@lilachat/shared';
+import { type MapPick, type ViewableFile, type WorkMapObservation, MARK_CHIP_PAINT, MARK_FILL_PAINT, MARK_GLYPH_PAINT, MARK_LINE_PAINT, MARK_TEXT_LAYOUT, MARK_TEXT_PAINT, mapMarkCollection, type WorkMapMark, PLACE_ZOOM, type MapFrame, STATION_DOT_PAINT, STATION_TEXT_LAYOUT, STATION_TEXT_PAINT, stationMarkCollection, type StationMark, NAMED_ROAD_LAYER, ROAD_SOURCE_LAYERS, tapBox, tapTolerancePx, WORK_MAP_PENDING_PAINT, LAYER_BASE_PAINT, lineCasingPaint, LAYER_LABEL_LAYOUT, LAYER_LABEL_PAINT, LAYER_PLANNED_PAINT, STATION_MIN_ZOOM, workMapStyleFor, workMapCollection, type BasemapFeatureLike, type DischargePin, type StreetEnd, type StreetHandle, type TapFeatures, type WorkMapLine, type WorkMapPoint, type WorkMapView } from '@lilachat/shared';
 
 maplibregl.setWorkerUrl(workerUrl);
 
@@ -17,6 +17,7 @@ const PENDING = 'work-map-pending';
 const STATIONS = 'work-map-stations';
 const BARE = 'work-map-bare';
 const LABELS = 'work-map-layer-labels';
+const DONE_WIDTH = 7;
 const MARKS = 'work-map-marks';
 const NO_MARKS: WorkMapMark[] = [];
 const NO_STATIONS: StationMark[] = [];
@@ -40,11 +41,14 @@ function addWorkLayers(map: maplibregl.Map) {
   map.addLayer({ id: BARE, type: 'line', source: BARE, layout: LINE_ROUND, paint: LAYER_BASE_PAINT as maplibregl.LineLayerSpecification['paint'] });
   map.addSource(PLANNED, { type: 'geojson', data: workMapCollection([]) });
   map.addSource(DONE, { type: 'geojson', data: workMapCollection([]) });
+  // A light rim under a near-black layer, so it reads on the dark map (José 28/11).
+  map.addLayer({ id: `${PLANNED}-casing`, type: 'line', source: PLANNED, layout: LINE_ROUND, paint: lineCasingPaint(LAYER_PLANNED_PAINT['line-width']) as maplibregl.LineLayerSpecification['paint'] });
   map.addLayer({ id: PLANNED, type: 'line', source: PLANNED, layout: LINE_ROUND, paint: LAYER_PLANNED_PAINT as maplibregl.LineLayerSpecification['paint'] });
   // Suggested and waiting stretches under the done line: the chosen work's color stays on top (José 09/11).
   map.addSource(STRETCH, { type: 'geojson', data: workMapCollection([]) });
   map.addLayer({ id: STRETCH, type: 'line', source: STRETCH, layout: LINE_ROUND, paint: { 'line-color': ['get', 'color'], 'line-width': 11, 'line-opacity': 0.55 } });
-  map.addLayer({ id: DONE, type: 'line', source: DONE, layout: LINE_ROUND, paint: { 'line-color': ['get', 'color'], 'line-width': 7 } });
+  map.addLayer({ id: `${DONE}-casing`, type: 'line', source: DONE, layout: LINE_ROUND, paint: lineCasingPaint(DONE_WIDTH) as maplibregl.LineLayerSpecification['paint'] });
+  map.addLayer({ id: DONE, type: 'line', source: DONE, layout: LINE_ROUND, paint: { 'line-color': ['get', 'color'], 'line-width': DONE_WIDTH } });
   // What waits for approval: thin and dashed in its work's color, over the approved line (José 28/11).
   map.addSource(PENDING, { type: 'geojson', data: workMapCollection([]) });
   map.addLayer({ id: PENDING, type: 'line', source: PENDING, layout: { 'line-join': 'round' }, paint: WORK_MAP_PENDING_PAINT as maplibregl.LineLayerSpecification['paint'] });
@@ -172,6 +176,14 @@ function roadsAt(map: maplibregl.Map, event: maplibregl.MapMouseEvent): TapFeatu
   return { underFinger, nearby, tap: { lat: event.lngLat.lat, lng: event.lngLat.lng } };
 }
 
+/** Lifts MapLibre's bottom-right controls by `inset` px, over whatever covers the foot of the map. */
+function useControlsInset(holder: HTMLElement | null, inset: number) {
+  useEffect(() => {
+    const corner = holder?.querySelector<HTMLElement>('.maplibregl-ctrl-bottom-right');
+    if (corner) corner.style.bottom = `${inset}px`;
+  }, [holder, inset]);
+}
+
 /** The streets of the work over a literal map (José 06/11). Lazy: its library weighs more than the chat. */
 /** `onTap`: drawing a street (design o-02), each tap is a bend; the map also offers «ubicarme» when there is nothing to frame. */
 /** A place found by the search flies there; a street picked whole frames both of its ends. */
@@ -194,7 +206,7 @@ function useSourceData<T>(map: maplibregl.Map | null, ready: boolean, source: st
   }, [map, ready, source, input, build]);
 }
 
-export default function WorkMapCanvas(props: { view: WorkMapView; expanded: boolean; /** The selected layer's «42 %» beside each street (design ma01). */ labels?: StationMark[]; pins?: DischargePin[]; stretches?: WorkMapLine[]; /** What waits for approval (José 28/11). */ pending?: WorkMapLine[]; /** «0+100» on the road (audit item 10). */ stations?: StationMark[]; /** The part of a street without a stretch (audit item 15). */ bare?: WorkMapLine[]; onTap?: (point: WorkMapPoint, roads: TapFeatures, zoom?: number) => void; /** Draggable ends of a picked street (José 08/11). */ handles?: StreetHandle[]; onHandleDrop?: HandleDrop; /** A tap on a pin (the «Fotos» layer, José 08/11). */ onPin?: (id: string) => void; /** A place found by the search: the map flies there (José 08/11). */ focus?: WorkMapPoint | null; /** A street just picked whole: the map shows both of its ends. */ frame?: MapFrame | null; /** Portal's drawings (José 19/11). */ marks?: readonly WorkMapMark[]; /** Portal's observations, as pins (José 19/11). */ observations?: readonly WorkMapObservation[]; /** The drawing or observation whose card stays open. */ selected?: MapPick | null; onSelect?: (pick: MapPick | null) => void; /** A thumbnail of a card: the photo full size. */ onCardPhoto?: (photo: ViewableFile, all: ViewableFile[]) => void }) {
+export default function WorkMapCanvas(props: { view: WorkMapView; expanded: boolean; /** The phone's sheet height: the zoom and «Mi ubicación» rise above it (José 28/11). */ controlsInset?: number; /** The selected layer's «42 %» beside each street (design ma01). */ labels?: StationMark[]; pins?: DischargePin[]; stretches?: WorkMapLine[]; /** What waits for approval (José 28/11). */ pending?: WorkMapLine[]; /** «0+100» on the road (audit item 10). */ stations?: StationMark[]; /** The part of a street without a stretch (audit item 15). */ bare?: WorkMapLine[]; onTap?: (point: WorkMapPoint, roads: TapFeatures, zoom?: number) => void; /** Draggable ends of a picked street (José 08/11). */ handles?: StreetHandle[]; onHandleDrop?: HandleDrop; /** A tap on a pin (the «Fotos» layer, José 08/11). */ onPin?: (id: string) => void; /** A place found by the search: the map flies there (José 08/11). */ focus?: WorkMapPoint | null; /** A street just picked whole: the map shows both of its ends. */ frame?: MapFrame | null; /** Portal's drawings (José 19/11). */ marks?: readonly WorkMapMark[]; /** Portal's observations, as pins (José 19/11). */ observations?: readonly WorkMapObservation[]; /** The drawing or observation whose card stays open. */ selected?: MapPick | null; onSelect?: (pick: MapPick | null) => void; /** A thumbnail of a card: the photo full size. */ onCardPhoto?: (photo: ViewableFile, all: ViewableFile[]) => void }) {
   const { view, expanded } = props;
   const holder = useRef<HTMLDivElement>(null);
   const map = useRef<maplibregl.Map | null>(null);
@@ -251,6 +263,7 @@ export default function WorkMapCanvas(props: { view: WorkMapView; expanded: bool
   }, [expanded]);
 
   useCameraMoves(map.current, ready, props.focus, props.frame);
+  useControlsInset(holder.current, props.controlsInset ?? 0);
 
   useSourceData(map.current, ready, STRETCH, props.stretches ?? NO_LINES, workMapCollection);
   useSourceData(map.current, ready, PENDING, props.pending ?? NO_LINES, workMapCollection);

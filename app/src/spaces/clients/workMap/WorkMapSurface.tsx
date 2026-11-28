@@ -4,9 +4,11 @@ import { Camera, GeoJSONSource, Images, Layer, Map as MapSurface, ViewAnnotation
 import { MapControls } from './MapControls';
 import { MY_LOCATION_DOT_PAINT, MY_LOCATION_HALO_PAINT, myLocationCollection, type LocatedPoint } from './myLocationDot';
 import { useTema } from '../../../ui/tema';
-import { OBSERVATION_PIN_PAINT, observationMapCollection, type MapPick, type WorkMapObservation, MARK_CHIP_PAINT, MARK_FILL_PAINT, MARK_GLYPH_PAINT, MARK_LINE_PAINT, MARK_TEXT_LAYOUT, MARK_TEXT_PAINT, mapMarkCollection, type WorkMapMark, PLACE_ZOOM, type MapFrame, dischargePinCollection, tapBox, tapTolerancePx, LAYER_BASE_PAINT, LAYER_LABEL_LAYOUT, LAYER_LABEL_PAINT, LAYER_PLANNED_PAINT, STATION_MIN_ZOOM, workMapStyleFor, workMapCollection, type BasemapFeatureLike, type DischargePin, type StreetEnd, type StreetHandle, type TapFeatures, type WorkMapLine, type WorkMapPoint, type WorkMapView , WORK_MAP_PENDING_PAINT, STATION_DOT_PAINT, STATION_TEXT_LAYOUT, STATION_TEXT_PAINT, stationMarkCollection, type StationMark } from '@lilachat/shared';
+import { OBSERVATION_PIN_PAINT, observationMapCollection, type MapPick, type WorkMapObservation, MARK_CHIP_PAINT, MARK_FILL_PAINT, MARK_GLYPH_PAINT, MARK_LINE_PAINT, MARK_TEXT_LAYOUT, MARK_TEXT_PAINT, mapMarkCollection, type WorkMapMark, PLACE_ZOOM, type MapFrame, dischargePinCollection, tapBox, tapTolerancePx, LAYER_BASE_PAINT, lineCasingPaint, LAYER_LABEL_LAYOUT, LAYER_LABEL_PAINT, LAYER_PLANNED_PAINT, STATION_MIN_ZOOM, workMapStyleFor, workMapCollection, type BasemapFeatureLike, type DischargePin, type StreetEnd, type StreetHandle, type TapFeatures, type WorkMapLine, type WorkMapPoint, type WorkMapView , WORK_MAP_PENDING_PAINT, STATION_DOT_PAINT, STATION_TEXT_LAYOUT, STATION_TEXT_PAINT, stationMarkCollection, type StationMark } from '@lilachat/shared';
 
 const LINE_ENDS = { 'line-cap': 'round', 'line-join': 'round' } as const;
+const DONE_WIDTH = 6;
+const PLANNED_WIDTH = LAYER_PLANNED_PAINT['line-width'];
 const EDGE = { top: 48, right: 48, bottom: 48, left: 48 };
 /** The style's own font: OpenFreeMap serves it, the street names use it. */
 const PIN_FONT = ['Noto Sans Bold'];
@@ -130,6 +132,8 @@ export function WorkMapSurface(props: { view: WorkMapView; moves: boolean; /** T
         <Layer id="work-map-bare-line" type="line" layout={LINE_ENDS} paint={LAYER_BASE_PAINT as never} />
       </GeoJSONSource>
       <GeoJSONSource id="work-map-planned" data={workMapCollection(view.planned)}>
+        {/* A light rim under a near-black layer, so it reads on the dark map (José 28/11). */}
+        <Layer id="work-map-planned-casing" type="line" layout={LINE_ENDS} paint={lineCasingPaint(PLANNED_WIDTH) as never} />
         <Layer id="work-map-planned-line" type="line" layout={LINE_ENDS} paint={LAYER_PLANNED_PAINT as never} />
       </GeoJSONSource>
       {/* Suggested and waiting stretches under the done line: the chosen work's color stays on top (José 09/11). */}
@@ -137,7 +141,8 @@ export function WorkMapSurface(props: { view: WorkMapView; moves: boolean; /** T
         <Layer id="work-map-stretch-line" type="line" layout={LINE_ENDS} paint={{ 'line-color': ['get', 'color'], 'line-width': 10, 'line-opacity': 0.55 }} />
       </GeoJSONSource>
       <GeoJSONSource id="work-map-done" data={workMapCollection(view.done)}>
-        <Layer id="work-map-done-line" type="line" layout={LINE_ENDS} paint={{ 'line-color': ['get', 'color'], 'line-width': 6 }} />
+        <Layer id="work-map-done-casing" type="line" layout={LINE_ENDS} paint={lineCasingPaint(DONE_WIDTH) as never} />
+        <Layer id="work-map-done-line" type="line" layout={LINE_ENDS} paint={{ 'line-color': ['get', 'color'], 'line-width': DONE_WIDTH }} />
       </GeoJSONSource>
       <PendingLayer lines={props.pending} />
       <StationLayers stations={props.stations} labels={props.labels} />

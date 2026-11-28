@@ -33,7 +33,7 @@ import { ServiceCroquisScreen } from './ServiceCroquis';
 import { AvanceMode } from './AvanceMode';
 import { NewLayerSheet } from './NewLayer';
 import { LayerChips } from './LayerChips';
-import { LayerSheet } from './LayerSheet';
+import { LayerSheet, RecordLayerButton } from './LayerSheet';
 import { useDisposicion } from '../../../ui/useDisposicion';
 
 type PhotoLayer = ReturnType<typeof usePhotoLayer>;
@@ -100,6 +100,10 @@ const NO_MAP_PHOTOS: MapPhoto[] = [];
 const NO_UNIT_PINS: DischargePin[] = [];
 const NO_LINES: WorkMapLine[] = [];
 const NO_ROWS: LayerStreetSummary[] = [];
+/** The strip beside «Más»: its own width, clipped, never under the button. */
+const STRIP_BESIDE_MORE = { flex: 1, minWidth: 0, overflow: 'hidden' } as const;
+/** A little air between the last chip and «Más» once scrolled to the end. */
+const STRIP_END_ROOM = 4;
 
 /** The units of the Control de pista over the map: the suggestion, its pins and the stretches being confirmed. */
 function useDischarges(map: WorkMap, discharges: UnitDischarge[], day: string, days: string[]) {
@@ -123,8 +127,9 @@ type FloatingProps = { /** The strip of layers (ma01). */ layerChips: ReactNode;
 function MapTop(props: FloatingProps) {
   return (
     <View pointerEvents="box-none" className="absolute inset-x-0 top-3 gap-2">
-      <View pointerEvents="box-none" className="flex-row items-center gap-1 pr-3">
-        <View pointerEvents="box-none" className="min-w-0 flex-1">{props.layerChips}</View>
+      {/* The strip takes only the width left of «Más» and clips there, so every chip scrolls clear of it (E2E 28/11). */}
+      <View pointerEvents="box-none" className="flex-row items-center pr-3">
+        <View pointerEvents="box-none" style={STRIP_BESIDE_MORE}>{props.layerChips}</View>
         <MapMoreMenu onPick={props.onMore} draws={props.draws} edits={props.edits} admin={props.admin} share screen="open" fieldTools record={props.record} />
       </View>
       <View pointerEvents="box-none" className="flex-row items-start justify-between gap-2 px-3">
@@ -162,6 +167,8 @@ export function WorkMapBoard(props: BoardProps) {
   // Design ma01 (José 28/11): the layer's peek opens with the map; «Capas y leyenda» only from its button.
   const [sheet, setSheet] = useState<MapSheet>(() => initialMapSheet(props.map.works.length));
   const [croquisOpen, setCroquisOpen] = useState(false);
+  // The zoom and «Mi ubicación» rise over the sheet instead of hiding under it (José 28/11).
+  const [sheetHeight, setSheetHeight] = useState(0);
   const [chosenLayer, setChosenLayer] = useState<string | null>(null);
   // The work picked in the map's select is the active layer too, so the sheet and the map agree.
   const layer = useMemo(() => activeLayerOf(map, byApprove.list, filter.workId ?? chosenLayer, limaDayKey(new Date()), filter), [map, byApprove.list, filter, chosenLayer]);
@@ -228,19 +235,20 @@ export function WorkMapBoard(props: BoardProps) {
     else if (from === 'map') setFilter({ workId: brush?.brush.id });
     else if (from) setLayers(from);
   };
-  const panel = <BoardSheet sheet={sheet} side={amplia} onSheet={setSheet} layerSheet={layerSheet} layers={layersNode} panel={(head) => <WorkMapPanel head={head} view={view} groups={groups} filter={filter} badge={props.badge} top={top} items={picks.items} deleteStreet={props.deleteStreet} onOpenStreet={(id) => openStreet(id)} />} />;
+  const action = summary && record ? <RecordLayerButton label={summary.recordLabel} onPress={record} /> : null;
+  const panel = <BoardSheet sheet={sheet} side={amplia} onSheet={setSheet} onHeight={setSheetHeight} action={action} layerSheet={layerSheet} layers={layersNode} panel={(head) => <WorkMapPanel head={head} view={view} groups={groups} filter={filter} badge={props.badge} top={top} items={picks.items} deleteStreet={props.deleteStreet} onOpenStreet={(id) => openStreet(id)} />} />;
   return (
     <View testID="mapa-servicio" className="flex-1">
       {wide ? null : picks.files.viewer}
       <View className="flex-1 flex-row">
       <View className="flex-1 overflow-hidden bg-surface-variant">
-        {wide ? null : <WorkMapSurface view={layered} moves stations={stations} bare={lines.base} labels={lines.labels} marks={drawn.marks} observations={drawn.observations} onPick={picks.pickOnMap} pins={photos.shown ? photos.pins : unitPins} onPin={photos.shown ? photos.openPin : undefined} stretches={stretches} pending={pendingLines} />}
+        {wide ? null : <WorkMapSurface view={layered} controlsInset={amplia ? 0 : sheetHeight} moves stations={stations} bare={lines.base} labels={lines.labels} marks={drawn.marks} observations={drawn.observations} onPick={picks.pickOnMap} pins={photos.shown ? photos.pins : unitPins} onPin={photos.shown ? photos.openPin : undefined} stretches={stretches} pending={pendingLines} />}
         {picks.card && !wide ? (
           <View className="absolute inset-x-3 bottom-20 items-center">
             <View style={{ width: '100%', maxWidth: CARD_MAX_WIDTH }}><MapCardView card={picks.card} onClose={picks.close} onPhoto={(photo, all) => picks.files.open(photo, all)} /></View>
           </View>
         ) : null}
-        <MapTop layerChips={<LayerChips testPrefix="mapa-capa" chips={layer.chips} onPick={pickLayer} />} notice={props.notice} layersOpen={sheet === 'layers'} onLayers={() => setSheet(toggleLayersSheet)} onMore={more} draws={Boolean(props.onDraw)} edits={Boolean(props.editMap)} admin={Boolean(props.admin)} record={Boolean(record) && !summary} />
+        <MapTop layerChips={<LayerChips testPrefix="mapa-capa" chips={layer.chips} onPick={pickLayer} endInset={STRIP_END_ROOM} />} notice={props.notice} layersOpen={sheet === 'layers'} onLayers={() => setSheet((now) => toggleLayersSheet(now, Boolean(action)))} onMore={more} draws={Boolean(props.onDraw)} edits={Boolean(props.editMap)} admin={Boolean(props.admin)} record={Boolean(record) && !summary} />
         {amplia ? null : panel}
       </View>
       {amplia ? panel : null}

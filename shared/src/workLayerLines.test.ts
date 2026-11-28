@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { workMapView, type WorkMap } from './workMap.js';
 import { LAYER_BASE_COLOR, layerMapLinesOf, STATION_MIN_ZOOM } from './workLayerLines.js';
-import { initialMapSheet, expandLayerSheet, sheetForLayerPick, toggleLayersSheet } from './workMapSheet.js';
+import { collapseSheet, initialMapSheet, expandLayerSheet, sheetForLayerPick, toggleLayersSheet } from './workMapSheet.js';
+import { colorLuminance, lineHaloOf, LINE_HALO_COLOR, workMapCollection } from './workMap.js';
 
 /** Design ma01 (José 28/11): the map by layer, no grey dashes outside «Editar croquis». */
 const LINE = [{ lat: -12, lng: -77 }, { lat: -12, lng: -76.999 }];
@@ -48,8 +49,9 @@ describe('the sheet over the phone map', () => {
   it('opens as the layer peek with layers, closed without them; «Capas» only from its button', () => {
     expect(initialMapSheet(2)).toBe('peek');
     expect(initialMapSheet(0)).toBeNull();
-    expect(toggleLayersSheet('peek')).toBe('layers');
-    expect(toggleLayersSheet('layers')).toBeNull();
+    expect(toggleLayersSheet('peek', true)).toBe('layers');
+    expect(toggleLayersSheet('layers', true)).toBe('min');
+    expect(toggleLayersSheet('layers', false)).toBeNull();
   });
 
   it('a chip shows its layer and the handle grows the detail and back', () => {
@@ -58,5 +60,23 @@ describe('the sheet over the phone map', () => {
     expect(sheetForLayerPick('full')).toBe('full');
     expect(expandLayerSheet('peek')).toBe('full');
     expect(expandLayerSheet('full')).toBe('peek');
+    expect(expandLayerSheet('min')).toBe('peek');
+  });
+
+  it('the X folds the detail to the peek and the peek to its action alone (José 28/11)', () => {
+    expect(collapseSheet('full', true)).toBe('peek');
+    expect(collapseSheet('peek', true)).toBe('min');
+    expect(collapseSheet('min', true)).toBe('min');
+    expect(collapseSheet('layers', false)).toBeNull();
+  });
+});
+
+describe('a near-black layer on the dark map (José 28/11)', () => {
+  it('gets a light rim; any other color keeps none', () => {
+    expect(colorLuminance('#111827')).toBeLessThan(0.12);
+    expect(lineHaloOf('#111827')).toBe(LINE_HALO_COLOR);
+    expect(lineHaloOf('#2563eb')).not.toBe(LINE_HALO_COLOR);
+    expect(lineHaloOf('rojo')).not.toBe(LINE_HALO_COLOR);
+    expect(workMapCollection([{ streetId: 'a', color: '#000000', coordinates: [[0, 0], [1, 1]] }]).features[0]!.properties.halo).toBe(LINE_HALO_COLOR);
   });
 });

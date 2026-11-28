@@ -420,6 +420,13 @@ Motores puros, con test, usados por web y APK:
   horizontal junto a un hermano `flex-1`, o raíz de un componente, declara `flexGrow: 0` (se añadió
   a `LayerChips`, `MapDays`, `ObservationParts` y `ReportItemsView`). Verificado en el emulador: la
   causa (build publicado). El arreglo: solo por tests y tsc (el build de desarrollo no tenía sesión).
+- **28/11** Ronda 2 de ma01 tras las capturas DESPUÉS del OTA 77c08e56: la fila de chips termina
+  antes de «Más» y recorta ahí; la vista previa de la capa es más chica (nombre, cifra, barra y la
+  acción), el asa la agranda y la X la pliega a «Registrar avance de <capa>» sola (estado `min`,
+  `collapseSheet`; sin acción, la X la cierra); el zoom y «Mi ubicación» suben sobre la hoja (APK
+  `controlsInset` por `onLayout`, web `useHeight`); Modo Avance dibuja por capa igual que el tablero;
+  una capa casi negra lleva aro claro en sus puntos y borde claro en sus líneas (`lineHaloOf`,
+  `lineCasingPaint`). Verificado: tests y tsc; en el dispositivo, las capturas de la ronda 1.
 - **28/11** Auditoría stitch-fidelity de ma01 tras las quejas de José (botones grandes, botones
   sobre las capas, «Capas y leyenda» abierta y enorme, líneas punteadas fuera de «Editar croquis»).
   Auditoría: `design/stitch/auditorias/ma01-mapa-capas.md` (16 diferencias del revisor independiente

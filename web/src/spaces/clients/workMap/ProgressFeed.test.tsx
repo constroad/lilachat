@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
-import { PHOTO_ADD_FAILED, PHOTO_ADDED, workMapOf, type ByApproveList, type WorkMap } from '@lilachat/shared';
+import { byApproveOf, PHOTO_ADD_FAILED, PHOTO_ADDED, workMapOf, type ByApproveList, type WorkMap } from '@lilachat/shared';
 import { ProgressFeed } from './ProgressFeed';
 
 /** Design ma05 on the web: every record by Hoy / Semana / Todo; none waits for approval (José 28/11). */
@@ -71,7 +71,8 @@ describe('ProgressFeed (ma05)', () => {
   });
 
   it('an empty period says so', () => {
-    render(<ProgressFeed map={{ ...map, progress: [] }} list={{ total: 0, items: [] }} admin={false} onUndo={vi.fn()} today={TODAY} />);
+    // Only yesterday's record: «Hoy» is an empty period, the work is not.
+    render(<ProgressFeed map={map} list={{ total: 0, items: [] }} admin={false} onUndo={vi.fn()} today={TODAY} />);
     expect(screen.getByText('No hay avances en este periodo.')).toBeTruthy();
   });
 
@@ -99,5 +100,38 @@ describe('ProgressFeed (ma05)', () => {
     expect(screen.getByTestId('avance-fotos-a2')).toHaveTextContent('2 fotos');
     expect(screen.getByTestId('agregar-foto-a2')).toHaveTextContent('Agregar foto');
     expect(screen.queryByTestId('agregar-foto-r1')).toBeNull();
+  });
+});
+
+/** 28/11: the history comes from `historial_de_avances_de_obra` and never disappears without a word. */
+describe('ProgressFeed history states', () => {
+  const noUndo = vi.fn(async () => null);
+  const bare: WorkMap = { ...map, progress: [] };
+
+  it('says the history could not load and retries', () => {
+    // Arrange
+    const onRetry = vi.fn();
+    render(<ProgressFeed map={bare} list={null} failed onRetry={onRetry} admin={false} onUndo={noUndo} today={TODAY} />);
+    // Act
+    fireEvent.click(screen.getByTestId('avances-reintentar'));
+    // Assert
+    expect(screen.getByTestId('avances-error')).toHaveTextContent('No se pudo cargar el historial');
+    expect(onRetry).toHaveBeenCalledTimes(1);
+  });
+
+  it('says there is nothing yet for a real empty history', () => {
+    render(<ProgressFeed map={bare} list={{ total: 0, items: [] }} admin={false} onUndo={noUndo} today={TODAY} />);
+    expect(screen.getByTestId('avances-vacio')).toHaveTextContent('Sin avances todavía');
+    expect(screen.queryByTestId('avances-error')).toBeNull();
+  });
+
+  it('shows the author\'s approved record with «Deshacer» from puedeDeshacer', () => {
+    // Arrange
+    const history = byApproveOf({ avances: [{ avanceId: 'h1', estado: 'aprobado', fecha: TODAY, calleId: 's1', desdeM: 0, hastaM: 52, tagId: 'imp', metrado: 52, autor: 'J zamora', propio: true, fotos: 2, puedeDeshacer: true }] });
+    // Act
+    render(<ProgressFeed map={bare} list={history} admin={false} onUndo={noUndo} today={TODAY} />);
+    // Assert
+    expect(screen.getByTestId('avance-h1')).toHaveTextContent('J zamora');
+    expect(screen.getByTestId('deshacer-avance-h1')).toBeInTheDocument();
   });
 });

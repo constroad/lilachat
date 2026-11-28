@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import type { WorkMap } from './workMap.js';
 import type { MapEditSend } from './workScopeDraft.js';
 import {
+  BY_APPROVE_IDLE,
   byApproveActions,
   byApproveOf,
   loadByApprove,
@@ -14,6 +15,7 @@ import {
   undoRequestOf,
   withPendingOf,
   workByApproveRequest,
+  type ByApproveLoad,
   workUndoRequest,
   UNDONE,
 } from './workByApprove.js';
@@ -168,33 +170,125 @@ describe('loadByApprove', () => {
   });
 });
 
+/** Keeps what `setLoad` would leave in the hook's state. */
+function loadRecorder() {
+  let state: ByApproveLoad = BY_APPROVE_IDLE;
+  const setLoad = vi.fn((update: (previous: ByApproveLoad) => ByApproveLoad) => { state = update(state); });
+  return { setLoad, current: () => state };
+}
+
 describe('byApproveActions', () => {
-  it('loads into the list, undoes and loads again; without a door the list is empty', async () => {
+  it('loads into the list, undoes and loads again', async () => {
     // Arrange
     const send = vi.fn<MapEditSend>(async (request) => (request.kind === 'work_by_approve' ? { ok: true, message: '', data: DATA } : { ok: true, message: UNDONE }));
-    const setList = vi.fn();
-    const actions = byApproveActions({ current: send }, setList);
+    const recorder = loadRecorder();
+    const actions = byApproveActions({ current: send }, recorder.setLoad);
     // Act
     actions.load();
     const failure = await actions.undo('a3');
     // Assert
     expect(failure).toBeNull();
-    await vi.waitFor(() => expect(setList).toHaveBeenCalledTimes(2));
+    await vi.waitFor(() => expect(recorder.setLoad).toHaveBeenCalledTimes(2));
+    expect(recorder.current()).toMatchObject({ failed: false });
+    expect(recorder.current().list?.items).toHaveLength(4);
     expect(send.mock.calls.map(([request]) => request.kind)).toEqual(['work_by_approve', 'work_undo', 'work_by_approve']);
   });
 
-  it('answers the failure when there is no door, and does not reload after a refusal', async () => {
+  it('marks the history failed when the tool is unavailable, keeping the last list, and clears it on retry', async () => {
     // Arrange
-    const setList = vi.fn();
+    let available = true;
+    const send = vi.fn<MapEditSend>(async () => (available ? { ok: true, message: '', data: DATA } : { ok: false, message: 'La herramienta no está disponible.' }));
+    const recorder = loadRecorder();
+    const actions = byApproveActions({ current: send }, recorder.setLoad);
+    actions.load();
+    await vi.waitFor(() => expect(recorder.current().list).not.toBeNull());
+    // Act
+    available = false;
+    actions.load();
+    await vi.waitFor(() => expect(recorder.current().failed).toBe(true));
+    const kept = recorder.current().list;
+    available = true;
+    actions.load();
+    // Assert
+    expect(kept?.items).toHaveLength(4);
+    await vi.waitFor(() => expect(recorder.current().failed).toBe(false));
+  });
+
+  it('is not a failure without a door; answers the failure on undo, and does not reload after a refusal', async () => {
+    // Arrange
+    const recorder = loadRecorder();
     const refused = vi.fn<MapEditSend>(async () => ({ ok: false, message: 'No es tuyo.' }));
     // Act
-    byApproveActions({ current: undefined }, setList).load();
-    const none = await byApproveActions({ current: undefined }, setList).undo('a3');
-    const no = await byApproveActions({ current: refused }, setList).undo('a3');
+    byApproveActions({ current: undefined }, recorder.setLoad).load();
+    const none = await byApproveActions({ current: undefined }, recorder.setLoad).undo('a3');
+    const no = await byApproveActions({ current: refused }, recorder.setLoad).undo('a3');
     // Assert
-    expect(setList).toHaveBeenCalledWith(null);
+    await vi.waitFor(() => expect(recorder.setLoad).toHaveBeenCalled());
+    expect(recorder.current()).toEqual(BY_APPROVE_IDLE);
     expect(none).toMatch(/No se pudo deshacer/);
     expect(no).toBe('No es tuyo.');
     expect(refused).toHaveBeenCalledTimes(1);
+  });
+});
+
+/** Portal's `historial_de_avances_de_obra` (28/11), with a real record of the service. */
+const REAL_RECORD = { avanceId: '6b0afed55d78e3fcaad02765', estado: 'aprobado', fecha: '2026-11-28', calleId: '6a95e5f0f13e6c925dad5c8d', desdeM: 0, hastaM: 52, tagId: '6a961d76f13e6c925dad6591', metrado: 208, autor: 'J zamora', propio: true, fotos: 0, puedeDeshacer: true };
+const HISTORY = {
+  structuredContent: {
+    data: {
+      total: 3,
+      avances: [
+        REAL_RECORD,
+        { avanceId: 'h2', estado: 'deshecho', fecha: '2026-11-27', calleId: 's1', desdeM: 0, hastaM: 20, tagId: 'imp', metrado: 20, autor: 'J zamora', propio: true, fotos: 2, puedeDeshacer: false },
+        { avanceId: 'h3', estado: 'pendiente', fecha: '2026-11-26', calleId: 's1', desdeM: 20, hastaM: 40, tagId: 'imp', metrado: 20, autor: 'Luis', propio: false, fotos: 1, puedeDeshacer: false },
+      ],
+    },
+  },
+};
+
+describe('historial_de_avances_de_obra', () => {
+  it('reads the real approved record with its photos and puedeDeshacer', () => {
+    // Act
+    const list = byApproveOf(HISTORY.structuredContent.data);
+    // Assert
+    expect(list.total).toBe(3);
+    expect(list.items[0]).toEqual({
+      id: '6b0afed55d78e3fcaad02765', state: 'aprobado', date: '2026-11-28', streetId: '6a95e5f0f13e6c925dad5c8d', fromM: 0, toM: 52,
+      workId: '6a961d76f13e6c925dad6591', quantity: 208, author: 'J zamora', own: true, rejectNote: null, photos: 0, canUndo: true,
+    });
+  });
+
+  it('keeps an undone one as rejected (it never counts) and reads the door\'s wrapping', () => {
+    const list = byApproveOf({ data: HISTORY.structuredContent.data });
+    expect(list.items.map((one) => [one.id, one.state, one.photos])).toEqual([['6b0afed55d78e3fcaad02765', 'aprobado', 0], ['h2', 'rechazado', 2], ['h3', 'pendiente', 1]]);
+  });
+
+  it('offers «Deshacer» where Portal says puedeDeshacer, approved ones included', () => {
+    // Arrange
+    const list = byApproveOf(HISTORY.structuredContent.data);
+    // Act
+    const ids = undoableIds(list);
+    // Assert
+    expect([...ids]).toEqual(['6b0afed55d78e3fcaad02765']);
+    expect(undoableOf(list, '6a95e5f0f13e6c925dad5c8d', '6a961d76f13e6c925dad6591')?.id).toBe('6b0afed55d78e3fcaad02765');
+  });
+
+  it('undoes the author\'s own with deshacer, and anyone else\'s (an admin) with the reject', () => {
+    const list = byApproveOf(HISTORY.structuredContent.data);
+    expect(undoRequestOf(list, '6b0afed55d78e3fcaad02765')).toMatchObject({ kind: 'work_undo', progress_id: '6b0afed55d78e3fcaad02765' });
+    expect(undoRequestOf(list, 'h3')).toMatchObject({ kind: 'work_resolve' });
+  });
+
+  it('folds only what is pending into the map: the approved one is already there', () => {
+    const list = byApproveOf(HISTORY.structuredContent.data);
+    const map = withPendingOf(MAP, list);
+    expect(map.progress.map((one) => one.id ?? 'old')).toEqual(['old', 'h3']);
+  });
+
+  it('a real empty history is a list, not a failure', async () => {
+    const empty = vi.fn<MapEditSend>(async () => ({ ok: true, message: '', data: { total: 0, avances: [] } }));
+    const unavailable = vi.fn<MapEditSend>(async () => ({ ok: true, message: 'La herramienta no está disponible.' }));
+    expect(await loadByApprove(empty)).toEqual({ total: 0, items: [] });
+    expect(await loadByApprove(unavailable)).toBeNull();
   });
 });

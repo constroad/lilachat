@@ -62,8 +62,31 @@ const SPANISH_NAME = ['upcase', ['coalesce', ['get', 'name'], ['get', 'name:lati
 const MAJOR = ['match', ['get', 'class'], ['motorway', 'trunk', 'primary', 'secondary'], true, false];
 const STREETS = ['match', ['get', 'class'], ['tertiary', 'minor', 'service', 'track'], true, false];
 
+/** How the base map's road widths grow with the zoom: base of the exponential curve and its [zoom, factor] stops. */
+const ROAD_WIDTH_BASE = 1.6;
+const ROAD_WIDTH_STOPS: ReadonlyArray<readonly [number, number]> = [[12, 0.15], [15, 0.55], [18, 2.4]];
+/** Pixels of a block-level street's fill at a factor of 1 (its casing is 2 more). */
+const STREET_BLOCK_PX = 9;
+const AVENUE_BLOCK_PX = 13;
+
 /** Width that grows with the zoom: a block-level street is wide, like the design. */
-const width = (atBlock: number) => ['interpolate', ['exponential', 1.6], ['zoom'], 12, atBlock * 0.15, 15, atBlock * 0.55, 18, atBlock * 2.4];
+const width = (atBlock: number) => ['interpolate', ['exponential', ROAD_WIDTH_BASE], ['zoom'], ...ROAD_WIDTH_STOPS.flatMap(([zoom, factor]) => [zoom, atBlock * factor])];
+
+/** The factor MapLibre's `exponential` interpolation gives at `zoom`; held at the first and last stop. */
+function roadFactorAt(zoom: number): number {
+  const first = ROAD_WIDTH_STOPS[0]!;
+  const last = ROAD_WIDTH_STOPS[ROAD_WIDTH_STOPS.length - 1]!;
+  if (zoom <= first[0]) return first[1];
+  if (zoom >= last[0]) return last[1];
+  const upper = ROAD_WIDTH_STOPS.findIndex(([stop]) => stop >= zoom);
+  const [fromZoom, fromFactor] = ROAD_WIDTH_STOPS[upper - 1]!;
+  const [toZoom, toFactor] = ROAD_WIDTH_STOPS[upper]!;
+  const share = (ROAD_WIDTH_BASE ** (zoom - fromZoom) - 1) / (ROAD_WIDTH_BASE ** (toZoom - fromZoom) - 1);
+  return fromFactor + share * (toFactor - fromFactor);
+}
+
+/** Screen pixels of the base map's drawn street (its fill, without the casing) at `zoom`: the work line covers at least this. */
+export const basemapStreetWidthPx = (zoom: number): number => STREET_BLOCK_PX * roadFactorAt(zoom);
 
 const roadLayers = (id: string, filter: unknown[], fill: string, edge: string, atBlock: number): MapStyleLayer[] => [
   { id: `${id}-edge`, type: 'line', source: TILES, 'source-layer': 'transportation', filter, layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': edge, 'line-width': width(atBlock + 2) } },
@@ -115,7 +138,7 @@ export function workMapStyle(palette: MapPalette = LIGHT_MAP_PALETTE): MapStyle 
     name: 'Lilachat · mapa de obra',
     sources: { [TILES]: { type: 'vector', url: 'https://tiles.openfreemap.org/planet' } },
     glyphs: 'https://tiles.openfreemap.org/fonts/{fontstack}/{range}.pbf',
-    layers: [...groundLayers(palette), ...roadLayers('street', STREETS, palette.road, palette.roadEdge, 9), ...roadLayers('avenue', MAJOR, palette.majorRoad, palette.majorEdge, 13), ...labelLayers(palette)],
+    layers: [...groundLayers(palette), ...roadLayers('street', STREETS, palette.road, palette.roadEdge, STREET_BLOCK_PX), ...roadLayers('avenue', MAJOR, palette.majorRoad, palette.majorEdge, AVENUE_BLOCK_PX), ...labelLayers(palette)],
   };
 }
 

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { DEFAULT_STREET_WIDTH_M, firstSymbolLayerId, groundWidthPx, metersPerPixel, streetWidthExpression } from './workLineWidth.js';
-import { WORK_MAP_STYLE } from './workMapStyle.js';
+import { DEFAULT_STREET_WIDTH_M, firstSymbolLayerId, groundWidthPx, metersPerPixel, streetWidthExpression, workLineWidthPx } from './workLineWidth.js';
+import { basemapStreetWidthPx, WORK_MAP_STYLE } from './workMapStyle.js';
 
 describe('metersPerPixel', () => {
   it('halves with each zoom step and shrinks away from the equator', () => {
@@ -24,7 +24,46 @@ describe('groundWidthPx', () => {
   });
 });
 
+describe('metersPerPixel tile size', () => {
+  it('uses MapLibre 512 px tiles: 0.597 m per pixel at zoom 18 on the equator', () => {
+    expect(metersPerPixel(18, 0)).toBeCloseTo(40_075_016.686 / (512 * 2 ** 18), 6);
+  });
+});
+
+describe('basemapStreetWidthPx', () => {
+  it('follows the base map street fill: 9 px times its stops, exponential 1.6 between them', () => {
+    expect(basemapStreetWidthPx(15)).toBeCloseTo(9 * 0.55, 6);
+    expect(basemapStreetWidthPx(18)).toBeCloseTo(9 * 2.4, 6);
+    expect(basemapStreetWidthPx(17.5)).toBeCloseTo(16.98, 1);
+    expect(basemapStreetWidthPx(10)).toBeCloseTo(9 * 0.15, 6);
+    expect(basemapStreetWidthPx(20)).toBeCloseTo(9 * 2.4, 6);
+  });
+});
+
+describe('workLineWidthPx', () => {
+  it('covers the drawn street where the base map draws it wider than 6 m (emulator QA: 13 px over 18 px)', () => {
+    // Arrange: a common 6 m street at zoom 17.5 in Lima
+    const ground = groundWidthPx(DEFAULT_STREET_WIDTH_M, 17.5, -12, 5);
+    // Act
+    const line = workLineWidthPx(DEFAULT_STREET_WIDTH_M, 17.5, -12, 5);
+    // Assert
+    expect(ground).toBeLessThan(basemapStreetWidthPx(17.5));
+    expect(line).toBeCloseTo(basemapStreetWidthPx(17.5), 6);
+  });
+
+  it('keeps the real width once it is wider than the drawn street', () => {
+    expect(workLineWidthPx(6, 20, -12, 5)).toBeCloseTo(groundWidthPx(6, 20, -12, 5), 6);
+    expect(workLineWidthPx(6, 20, -12, 5)).toBeGreaterThan(basemapStreetWidthPx(20));
+  });
+});
+
 describe('streetWidthExpression', () => {
+  it('never paints a stop under the drawn street', () => {
+    const stops = streetWidthExpression(2, -12).slice(3);
+    const atSeventeen = stops[stops.indexOf(17) + 1] as unknown[];
+    expect(atSeventeen[1]).toBeCloseTo(basemapStreetWidthPx(17), 6);
+  });
+
   it('interpolates base 2 over the zoom with one clamped stop per zoom from 12 to 22', () => {
     // Arrange / Act
     const expression = streetWidthExpression(4, 0);

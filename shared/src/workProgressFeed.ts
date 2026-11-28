@@ -4,9 +4,10 @@ import { undoableIds, type ByApproveList, type ByApproveProgress } from './workB
 
 /**
  * «Avances» (design ma05, José 28/11; Portal's approved prototype): every progress of the work in one
- * list — what Portal keeps pending or was undone (`avances_por_aprobar_de_obra`) plus what is done (the
- * map's `progress[]`, which carries no author) — filtered by «Hoy / Semana / Todo» on Lima days. Since
- * 28/11 nothing waits for an admin: pending and done read the same, only an undone one has a pill.
+ * list — Portal's history (`historial_de_avances_de_obra`: pending, approved and undone of 30 days,
+ * with author, photos and `puedeDeshacer`) plus what is older on the map (`progress[]`, no author) —
+ * filtered by «Hoy / Semana / Todo» on Lima days. Since 28/11 nothing waits for an admin: pending
+ * and done read the same, only an undone one has a pill.
  * PURE: the APK and the web draw what this decides.
  */
 export type FeedState = 'pendiente' | 'aprobado' | 'rechazado';
@@ -39,6 +40,10 @@ export const FEED_PILL: Record<FeedState, string> = { pendiente: '', aprobado: '
 export const FEED_RANGES: ReadonlyArray<{ id: FeedRange; label: string }> = [{ id: 'hoy', label: 'Hoy' }, { id: 'semana', label: 'Semana' }, { id: 'todo', label: 'Todo' }];
 export const FEED_TITLE = 'Avances';
 export const FEED_EMPTY = 'No hay avances en este periodo.';
+/** The work has no progress at all: the list says so instead of three empty tabs. */
+export const FEED_NOTHING = 'Sin avances todavía';
+export const FEED_FAILED = 'No se pudo cargar el historial';
+export const FEED_RETRY = 'Reintentar';
 export const FEED_SUMMARY_KICKER = 'Resumen';
 
 const NO_WORK = 'Trabajo';

@@ -241,7 +241,7 @@ export function WorkMapBoard(props: BoardProps) {
   // José 28/11 (design ma05): «Avances» with Hoy / Semana / Todo; an admin undoes any record there.
   const { uploadPhoto } = props;
   const addPhoto = editMap && uploadPhoto ? (id: string, file: File) => addPhotoToProgress({ take: async () => ({ shot: file }), upload: uploadPhoto, send: editMap, progressId: id }) : undefined;
-  const feed = editMap && byApprove.list ? <ProgressFeed map={map} list={byApprove.list} admin={Boolean(props.admin)} onAddPhoto={addPhoto} onUndo={(id) => byApprove.undo(id).then((failure) => { if (!failure) props.reload?.(); return failure; })} /> : null;
+  const feed = editMap && (byApprove.list || byApprove.failed) ? <ProgressFeed map={map} list={byApprove.list} failed={byApprove.failed} onRetry={byApprove.reload} admin={Boolean(props.admin)} onAddPhoto={addPhoto} onUndo={(id) => byApprove.undo(id).then((failure) => { if (!failure) props.reload?.(); return failure; })} /> : null;
   const top = discharges || primeCoat || feed ? <div className="space-y-5">{feed}{discharges}{primeCoat}</div> : null;
   const streetPanel = streetId ? <StreetScopes key={`${streetId}|${recordingStart}|${recordDraft?.fromM}-${recordDraft?.toM}`} map={map} streetId={streetId} send={editMap} uploadPhoto={props.uploadPhoto} startRecording={recordingStart} recordDraft={recordDraft} onBack={() => openStreet(null)} /> : null;
   const deletedPanel = seeingDeleted && editMap ? <DeletedWork map={map} send={editMap} onClose={() => setSeeingDeleted(false)} /> : null;

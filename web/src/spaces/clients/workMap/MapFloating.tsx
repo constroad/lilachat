@@ -41,9 +41,9 @@ export function MapLegendCard(props: { view: WorkMapView; /** Streets drawn with
   );
 }
 
-/** The top of the phone's sheet: its handle (it grows the layer's sheet one step) and the X that folds it. */
+/** The top of the phone's sheet: its handle (it grows the layer's sheet one step) and the X that folds it, tall enough that the X never covers the first row (emulator QA 28/11: it sat on the status badge). */
 export const SheetTop = (props: { onClose?: () => void; onGrow?: () => void }) => (
-  <div className="sticky top-0 z-10 flex min-h-6 items-center justify-between bg-surface px-4 pt-2">
+  <div className={`sticky top-0 z-10 flex items-center justify-between bg-surface px-4 pt-2 ${props.onClose ? 'min-h-11' : 'min-h-6'}`}>
     {props.onGrow
       ? <button type="button" data-testid="mapa-hoja-asa" aria-label="Ver más del trabajo" onClick={props.onGrow} className="mx-auto grid h-6 w-16 place-items-center"><span aria-hidden className="h-1 w-10 rounded-full bg-outline/30" /></button>
       : <span aria-hidden className="mx-auto h-1 w-10 rounded-full bg-outline/30" />}

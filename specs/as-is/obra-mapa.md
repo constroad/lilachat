@@ -52,7 +52,7 @@ ingeniero de campo desde el celular y lo mira el cliente desde una computadora.
 | Registrar avance a mano | o-06 | Calle → trabajo → «Hasta dónde» (±10 m o «Mi GPS») → foto con sello |
 | Avance sugerido por unidades | o-07 | Ubica las descargas del Control de pista sobre la calle (`suggestDischarges`) |
 | Avance sugerido de imprimación | — | Desde el Control de imprimación (`PrimeCoat.tsx`); usa la herramienta manual |
-| Deshacer avance | ma05 | Quien lo marcó, mientras Portal lo guarda pendiente; un admin, cualquiera (28/11) |
+| Deshacer avance | ma05 | Quien lo marcó cuando Portal dice `puedeDeshacer` (propio, no deshecho, obra abierta); un admin, cualquiera (28/11) |
 | Compartir avance | o-08 | Avance parcial por trabajo y calle; enlace firmado con el corte |
 | Incluir en el informe | o-08 | Interruptor «Incluir en el informe del servicio» |
 | Exportar | o-12 | KMZ para Google Earth, PDF para el cliente, Plano PDF A3/A1, copiar enlace |
@@ -375,6 +375,36 @@ Motores puros, con test, usados por web y APK:
   sin escala ni «Configuración de trazado»; la miniatura es un ícono de cámara (ninguna de las dos
   listas trae la URL de la foto); la hora no sale (las fechas llegan sin hora); la progresiva del aro
   se actualiza al soltarlo, no durante el arrastre.
+- **28/11** Historial de «Avances» (web y APK). La lista salía vacía: `avances_por_aprobar_de_obra` solo
+  trae pendientes y rechazados, y ya nada espera aprobación, así que «Agregar foto» y «Deshacer» no se
+  alcanzaban. La puerta `work_by_approve` ahora abre `historial_de_avances_de_obra({ servicioId })`
+  (Portal, solo lectura, aprobada por José en Agentes): todo lo pendiente más lo resuelto en 30 días,
+  200 como máximo, lo más nuevo primero, con `estado` aprobado/pendiente/deshecho, `autor`, `propio`,
+  `fotos` y `puedeDeshacer`. `byApproveOf` lee los tres estados («deshecho» queda como `rechazado`: no
+  suma, píldora DESHECHO). Solo lo pendiente se suma al mapa (`withPendingOf`); lo aprobado ya viene en
+  `progress[]` y se lista una vez por id. «Deshacer» sigue `puedeDeshacer` (el autor, por `work_undo`);
+  un admin deshace cualquiera con `resolver_avance_de_obra` «rechazar». «N fotos» sale de `fotos`. Si la
+  herramienta falla o no responde datos, la lista muestra «No se pudo cargar el historial» con
+  «Reintentar» (`byApproveActions` guarda `{ list, failed }` y conserva la última lista); una obra sin
+  ningún avance muestra «Sin avances todavía» en vez de pestañas vacías; un periodo vacío sigue con «No
+  hay avances en este periodo.».
+- **28/11** QA del emulador, mapa (web y APK):
+  - Ancho de la línea: la cuenta metros→píxeles estaba bien (teselas de 512 px, latitud de Lima); el
+    mapa base dibuja la calle más ancha que su ancho real hasta el zoom 18 (6 m: 17 px a 17,5 contra
+    14,5 px de suelo). Cada parada de `streetWidthExpression` cubre al menos la calle dibujada
+    (`basemapStreetWidthPx` de `workMapStyle.ts`, `workLineWidthPx`); con más zoom manda el ancho real.
+  - La X de la hoja tapaba la insignia de estado («PENDIENTE»): APK `BoardSheet` pone asa y X en su
+    propia barra de 44 dp sobre el contenido; web `SheetTop` mide 44 px cuando lleva la X.
+  - Largos que no coinciden (Jirón Los Naranjos: 239 m / 260 m en la hoja del trabajo, 373 m / 261 m en
+    la tarjeta y los formularios). Hay DOS fuentes: la tarjeta de calle, «Modo Avance», «Registrar
+    avance» y los formularios leen el `lengthM` guardado de la calle (el que Portal valida al registrar
+    avance); la hoja del trabajo suma los TRAMOS del trabajo (`workLayerPercent`, igual que el resumen
+    de Portal). El tramo 0+000 → 0+239 no llega al final de una calle de 373 m: o la calle se volvió a
+    trazar o se unió después de crear el tramo, o Portal guarda los tramos en la escala del largo medido
+    y al mapa solo manda el largo del trazo. Llevar el tramo al `lengthM` rompe la paridad con Portal
+    (`workMapPortalParity.test.ts` y 6 pruebas más), así que no se cambió. **Pendiente de decisión
+    (José/Portal):** corregir el tramo en Portal, o medir el trabajo sobre `lengthM` y perder la paridad.
+    `workStreetLength.test.ts` fija las dos fuentes.
 - **28/11** «Nueva capa» como ma03 (web y APK; prototipo aprobado de Portal
   `claude.ai/artifact/L8iULepUHhNJukC7MJkpF9`). La abren «Agregar trabajo» de «Trabajos» y el chip
   «+ Trabajo» de «Modo Avance» (también su estado sin trabajos); reemplaza el campo de nombre. Motor

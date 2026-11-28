@@ -205,7 +205,7 @@ export function WorkMapBoard(props: BoardProps) {
   // José 28/11 (design ma05): «Avances» with Hoy / Semana / Todo; an admin undoes any record there.
   const { uploadPhoto } = props;
   const addPhoto = editMap && uploadPhoto ? (id: string) => addPhotoToProgress({ take: takeFieldPhoto, upload: uploadPhoto, send: editMap, progressId: id }) : undefined;
-  const feed = editMap && byApprove.list ? <ProgressFeed map={map} list={byApprove.list} admin={Boolean(props.admin)} onAddPhoto={addPhoto} onUndo={(id) => byApprove.undo(id).then((failure) => { if (!failure) props.reload?.(); return failure; })} /> : null;
+  const feed = editMap && (byApprove.list || byApprove.failed) ? <ProgressFeed map={map} list={byApprove.list} failed={byApprove.failed} onRetry={byApprove.reload} admin={Boolean(props.admin)} onAddPhoto={addPhoto} onUndo={(id) => byApprove.undo(id).then((failure) => { if (!failure) props.reload?.(); return failure; })} /> : null;
   const top = discharges || primeCoat || feed ? <View className="gap-5">{feed}{discharges}{primeCoat}</View> : null;
   const more = (key: MapMoreKey) => {
     if (key === 'share' || key === 'export') setSide(key);

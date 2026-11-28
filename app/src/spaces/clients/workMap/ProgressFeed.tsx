@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
-import { Camera, TriangleAlert } from 'lucide-react-native';
-import { FEED_EMPTY, FEED_RANGES, FEED_SUMMARY_KICKER, FEED_TITLE, feedCounts, feedInRange, feedSummaryOf, limaDayKey, progressFeedOf, type ByApproveList, type FeedCard, type FeedRange, type ProgressPhotoResult, type WorkMap } from '@lilachat/shared';
+import { Camera, RotateCw, TriangleAlert } from 'lucide-react-native';
+import { FEED_EMPTY, FEED_FAILED, FEED_NOTHING, FEED_RANGES, FEED_RETRY, FEED_SUMMARY_KICKER, FEED_TITLE, feedCounts, feedInRange, feedSummaryOf, limaDayKey, progressFeedOf, type ByApproveList, type FeedCard, type FeedRange, type ProgressPhotoResult, type WorkMap } from '@lilachat/shared';
 import { useColores } from '../../../ui/tema';
 import { AddProgressPhoto } from './AddProgressPhoto';
 import { UndoProgress } from './PendingProgress';
@@ -61,9 +61,24 @@ function FeedRow(props: { card: FeedCard; onUndo: (id: string) => Promise<string
   );
 }
 
+/** The history did not come (the tool not approved yet, no signal): a small line and «Reintentar», never a silent gap. */
+function FeedFailed(props: { onRetry?: () => void }) {
+  const colors = useColores();
+  return (
+    <View testID="avances-error" accessibilityRole="alert" className="flex-row items-center justify-between gap-2 rounded-xl border border-error/30 bg-error/5 px-3 py-2">
+      <Text className="min-w-0 flex-1 text-[14px] font-semibold text-error">{FEED_FAILED}</Text>
+      {props.onRetry ? (
+        <Pressable testID="avances-reintentar" accessibilityRole="button" onPress={props.onRetry} className="h-10 flex-row items-center gap-1.5 rounded-lg border border-outline/25 px-3">
+          <RotateCw size={14} color={colors['on-surface']} /><Text className="text-[14px] font-semibold text-on-surface">{FEED_RETRY}</Text>
+        </Pressable>
+      ) : null}
+    </View>
+  );
+}
+
 /** «Agregar foto» on one record: the camera, the Drive upload, then Portal's tool; null when the camera was closed. */
 type AddPhoto = (id: string) => Promise<ProgressPhotoResult | null>;
-type FeedProps = { map: WorkMap; list: ByApproveList | null; /** An admin undoes any record; anyone else, their own. */ admin: boolean; onUndo: (id: string) => Promise<string | null>; onAddPhoto?: AddPhoto };
+type FeedProps = { map: WorkMap; list: ByApproveList | null; /** The history could not come: says so with «Reintentar». */ failed?: boolean; onRetry?: () => void; /** An admin undoes any record; anyone else, their own. */ admin: boolean; onUndo: (id: string) => Promise<string | null>; onAddPhoto?: AddPhoto };
 
 /** «Avances» (design ma05, José 28/11): every record, by Hoy / Semana / Todo; none waits for approval. */
 export function ProgressFeed(props: FeedProps) {
@@ -71,9 +86,19 @@ export function ProgressFeed(props: FeedProps) {
   const today = limaDayKey(new Date());
   const cards = useMemo(() => progressFeedOf(props.map, props.list, today, props.admin), [props.map, props.list, today, props.admin]);
   const shown = feedInRange(cards, range, today);
+  const failure = props.failed ? <FeedFailed onRetry={props.onRetry} /> : null;
+  if (!cards.length) {
+    return (
+      <View testID="avances-lista" className="gap-2">
+        <Text className={KICKER}>{FEED_TITLE}</Text>
+        {failure ?? <Text testID="avances-vacio" className="text-[14px] text-on-surface-variant">{FEED_NOTHING}</Text>}
+      </View>
+    );
+  }
   return (
     <View testID="avances-lista" className="gap-3">
       <Text className={KICKER}>{FEED_TITLE}</Text>
+      {failure}
       <RangeTabs range={range} counts={feedCounts(cards, today)} onRange={setRange} />
       <Summary cards={shown} label={FEED_RANGES.find((option) => option.id === range)?.label ?? ''} />
       {shown.map((card) => <FeedRow key={card.id} card={card} onUndo={props.onUndo} onAddPhoto={props.onAddPhoto} />)}

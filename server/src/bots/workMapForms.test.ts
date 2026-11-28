@@ -186,11 +186,11 @@ describe('pending progress, through the door (Portal a9b1c3ba; José 09/11)', ()
 
 /** José 28/11: what waits (anyone's) and the rejected ones, and undoing one's own before approval. */
 describe('progress to approve and undo, through the member\'s door', () => {
-  it('lists every pending and the recent rejected with only the service', () => {
+  it('reads the progress history (pending plus 30 days resolved) with only the service', () => {
     // Act
     const prepared = workMapFormPrepared(SERVICE, workMapFormInputOf({ kind: 'work_by_approve' })!);
     // Assert
-    expect(prepared.form.id).toBe('avances_por_aprobar_de_obra');
+    expect(prepared.form.id).toBe('historial_de_avances_de_obra');
     expect(prepared.context).toEqual({ servicioId: SERVICE });
   });
 

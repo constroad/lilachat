@@ -1,7 +1,12 @@
+import { basemapStreetWidthPx } from './workMapStyle.js';
+
 /**
  * The work's lines as wide as the street on the ground (José 28/11: «no ocupan el ancho de la calle»).
  * MapLibre paints `line-width` in screen pixels; with an exponential interpolation of base 2 over the
  * zoom, a width of N meters stays N meters at every zoom, never thinner than a readable minimum.
+ * The meters math is right (512 px tiles, latitude of Lima), but the base map draws its streets
+ * wider than their real width up to zoom 18 (a 6 m street: 17 px at 17.5 against 14.5 px of ground),
+ * so the line also covers at least the drawn street (emulator QA 28/11: 13 px over 18-20 px).
  * PURE: the web and the APK paint what this returns.
  */
 
@@ -24,15 +29,19 @@ export const metersPerPixel = (zoom: number, latitude: number): number =>
 export const groundWidthPx = (widthM: number, zoom: number, latitude: number, minPx: number): number =>
   Math.max(minPx, widthM / metersPerPixel(zoom, latitude));
 
+/** What one line takes on screen: its ground width, never under the drawn street nor `minPx`. */
+export const workLineWidthPx = (widthM: number, zoom: number, latitude: number, minPx: number): number =>
+  Math.max(basemapStreetWidthPx(zoom), groundWidthPx(widthM, zoom, latitude, minPx));
+
 const stopZooms = (): number[] => Array.from({ length: LAST_STOP_ZOOM - FIRST_STOP_ZOOM + 1 }, (_, index) => FIRST_STOP_ZOOM + index);
 
 /**
- * `line-width` that reads each line's `widthM` property: one stop per zoom, each clamped to `minPx`,
+ * `line-width` that reads each line's `widthM` property: one stop per zoom, each clamped to `minPx` and the drawn street,
  * joined by base-2 interpolation (exact between two unclamped stops). Under zoom 12 it holds the minimum.
  */
 export function streetWidthExpression(minPx: number, latitude: number = WORK_MAP_REFERENCE_LATITUDE): unknown[] {
   const widthM = ['coalesce', ['get', 'widthM'], DEFAULT_STREET_WIDTH_M];
-  const stops = stopZooms().flatMap((zoom) => [zoom, ['max', minPx, ['*', widthM, 1 / metersPerPixel(zoom, latitude)]]]);
+  const stops = stopZooms().flatMap((zoom) => [zoom, ['max', Math.max(minPx, basemapStreetWidthPx(zoom)), ['*', widthM, 1 / metersPerPixel(zoom, latitude)]]]);
   return ['interpolate', ['exponential', ZOOM_BASE], ['zoom'], ...stops];
 }
 

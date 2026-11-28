@@ -5,13 +5,14 @@ import { sendMapTool, type WorkProgressDeps, type WorkProgressResult } from './w
 import type { MapEditSend } from './workScopeDraft.js';
 
 /**
- * Field progress counts as soon as it is recorded (José 28/11: «ningún admin lo aprueba»). Portal
- * still stores it pending until it changes, so `avances_por_aprobar_de_obra` (ALL pending of the
- * service, and the rejected of the last 14 days) is folded into the done progress here. Undo:
- * `deshacer_avance_de_obra` deletes the caller's own while Portal keeps it pending; an admin takes
- * back any other with `resolver_avance_de_obra` «rechazar». PURE: the APK and the web send what this decides.
+ * Field progress counts as soon as it is recorded (José 28/11: «ningún admin lo aprueba»). The door
+ * `work_by_approve` reads Portal's `historial_de_avances_de_obra`: every pending record plus all
+ * resolved in the last 30 days (at most 200, newest first). Pending ones are folded into the done
+ * progress here. Undo: `deshacer_avance_de_obra` on the caller's own when Portal says `puedeDeshacer`;
+ * an admin takes back any other with `resolver_avance_de_obra` «rechazar». Portal's «deshecho» is kept
+ * as `rechazado` (the old list's word): neither counts. PURE: the APK and the web send what this decides.
  */
-export type ByApproveState = 'pendiente' | 'rechazado';
+export type ByApproveState = 'pendiente' | 'aprobado' | 'rechazado';
 export type ByApproveProgress = {
   id: string;
   state: ByApproveState;
@@ -26,6 +27,8 @@ export type ByApproveProgress = {
   rejectNote: string | null;
   /** Photos Portal reports on it, when it does (José 28/11: «Agregar foto»). */
   photos?: number;
+  /** Portal's `puedeDeshacer` (own, not undone, open work); null when the older list did not say. */
+  canUndo?: boolean | null;
 };
 export type ByApproveList = { total: number; items: ByApproveProgress[] };
 export type WorkByApproveRequest = { kind: 'work_by_approve'; forms: number };
@@ -34,14 +37,15 @@ export type WorkUndoRequest = { kind: 'work_undo'; progress_id: string; forms: n
 export const UNDO_LABEL = 'Deshacer';
 export const UNDONE = 'Avance deshecho.';
 export const UNDO_FAILED = 'No se pudo deshacer el avance. Revisa tu señal y vuelve a intentarlo.';
-const BY_APPROVE_FAILED = 'No se pudo traer el avance registrado.';
+const BY_APPROVE_FAILED = 'No se pudo cargar el historial';
 /** Kept in the resident's record when an admin takes a progress back from the map. */
 const UNDO_NOTE = 'Deshecho desde el mapa.';
 export const pendingAlready = (toM: number) => `Ya hay un avance registrado hasta ${stationLabel(toM)} en esta calle.`;
 export const undoQuestion = (toM: number) => `¿Deshacer el avance hasta ${stationLabel(toM)}? Deja de sumar al avance de la obra.`;
 
 type Raw = Record<string, unknown>;
-const STATES = new Set<string>(['pendiente', 'rechazado']);
+/** Portal's word for each state; «deshecho» (the history) and «rechazado» (the older list) read the same. */
+const STATES: Readonly<Record<string, ByApproveState>> = { pendiente: 'pendiente', aprobado: 'aprobado', deshecho: 'rechazado', rechazado: 'rechazado' };
 const objectOf = (raw: unknown): Raw => (raw && typeof raw === 'object' ? (raw as Raw) : {});
 const textOf = (raw: unknown): string => (typeof raw === 'string' ? raw.trim() : '');
 const meterOf = (raw: unknown): number | null => (typeof raw === 'number' && Number.isFinite(raw) && raw >= 0 ? raw : null);
@@ -50,11 +54,11 @@ const photosOf = (one: Raw): number => (Array.isArray(one.fotoIds) ? one.fotoIds
 
 function progressOf(one: Raw): ByApproveProgress | null {
   const id = textOf(one.avanceId);
-  const state = textOf(one.estado);
-  if (!id || !STATES.has(state)) return null;
+  const state = STATES[textOf(one.estado)];
+  if (!id || !state) return null;
   return {
     id,
-    state: state as ByApproveState,
+    state,
     date: textOf(one.fecha),
     streetId: textOf(one.calleId) || null,
     fromM: meterOf(one.desdeM),
@@ -65,6 +69,7 @@ function progressOf(one: Raw): ByApproveProgress | null {
     own: one.propio === true,
     rejectNote: textOf(one.notaRechazo) || null,
     photos: photosOf(one),
+    canUndo: typeof one.puedeDeshacer === 'boolean' ? one.puedeDeshacer : null,
   };
 }
 
@@ -98,20 +103,27 @@ export function pendingEndOf(map: Pick<WorkMap, 'pending'>, streetId: string, wo
   return ends.length ? Math.round(Math.max(...ends)) : null;
 }
 
-const isUndoable = (one: ByApproveProgress): boolean => one.own && one.state === 'pendiente' && one.toM !== null;
+/** Portal decides with `puedeDeshacer`; the older list only allowed the caller's own pending one. */
+const isUndoable = (one: ByApproveProgress): boolean =>
+  one.toM !== null && (typeof one.canUndo === 'boolean' ? one.own && one.canUndo : one.own && one.state === 'pendiente');
 
 /** The caller's newest pending progress of that work on that street: the one «Deshacer» removes. */
 export function undoableOf(list: ByApproveList | null, streetId: string, workId: string): ByApproveProgress | null {
   return list?.items.find((one) => isUndoable(one) && one.streetId === streetId && one.workId === workId) ?? null;
 }
 
-/** In the list, «Deshacer» only on the newest own pending one of each street and work. */
+/** In the list, «Deshacer» where Portal says `puedeDeshacer`; with the older list, the newest own pending one of each street and work. */
 export function undoableIds(list: ByApproveList | null): Set<string> {
   const seen = new Set<string>();
   const ids = new Set<string>();
   for (const one of list?.items ?? []) {
     const key = `${one.streetId}|${one.workId}`;
-    if (!isUndoable(one) || seen.has(key)) continue;
+    if (!isUndoable(one)) continue;
+    if (typeof one.canUndo === 'boolean') {
+      ids.add(one.id);
+      continue;
+    }
+    if (seen.has(key)) continue;
     seen.add(key);
     ids.add(one.id);
   }
@@ -121,26 +133,31 @@ export function undoableIds(list: ByApproveList | null): Set<string> {
 export const workByApproveRequest = (): WorkByApproveRequest => ({ kind: 'work_by_approve', forms: FORMS_LEVEL });
 export const workUndoRequest = (id: string): WorkUndoRequest => ({ kind: 'work_undo', progress_id: id, forms: FORMS_LEVEL });
 
-/** The caller's own pending one is deleted; anything else (an admin's undo) is taken back with the existing reject. */
+/** The caller's own undoable one is deleted; anything else (an admin's undo) is taken back with the existing reject. */
 export function undoRequestOf(list: ByApproveList | null, id: string): WorkUndoRequest | WorkResolveRequest {
-  const own = list?.items.find((one) => one.id === id && one.own && one.state === 'pendiente');
+  const own = list?.items.find((one) => one.id === id && isUndoable(one));
   return own ? workUndoRequest(id) : workResolveRequest(id, 'rechazar', UNDO_NOTE);
 }
 
 const sendByApprove = (deps: WorkProgressDeps): Promise<WorkProgressResult> => sendMapTool(deps, {}, { sent: '', failed: BY_APPROVE_FAILED });
 const sendUndo = (deps: WorkProgressDeps): Promise<WorkProgressResult> => sendMapTool(deps, {}, { sent: UNDONE, failed: UNDO_FAILED });
 
-/** The list next to the map; null when it could not come (an older Portal, no signal): the map works as before. */
+/** The history next to the map; null when it could not come (the tool not approved yet, no signal): the map works as before and the list says so. */
 export async function loadByApprove(send: MapEditSend): Promise<ByApproveList | null> {
   try {
     const answer = await send(workByApproveRequest(), sendByApprove);
-    return answer?.ok ? byApproveOf(answer.data) : null;
+    if (answer?.ok && answer.data !== undefined) return byApproveOf(answer.data);
+    console.warn('work-map: progress history unavailable', answer?.message ?? 'no answer');
+    return null;
   } catch (error) {
-    // Quiet by design: without the list the map is today's map, and a log says why.
-    console.warn('work-map: by-approve list unavailable', error instanceof Error ? error.message : error);
+    console.warn('work-map: progress history unavailable', error instanceof Error ? error.message : error);
     return null;
   }
 }
+
+/** The history and whether its last load failed: «No se pudo cargar el historial» with «Reintentar», never a silent gap. */
+export type ByApproveLoad = { list: ByApproveList | null; failed: boolean };
+export const BY_APPROVE_IDLE: ByApproveLoad = { list: null, failed: false };
 
 /** «Deshacer»: null when Portal deleted or took it back, else Portal's reason. */
 export async function undoByApprove(send: MapEditSend, id: string, list: ByApproveList | null): Promise<string | null> {
@@ -148,12 +165,13 @@ export async function undoByApprove(send: MapEditSend, id: string, list: ByAppro
   return answer.ok ? null : answer.message;
 }
 
-/** What the platforms' `useByApprove` runs: load the list into `setList`, and undo then load again. */
-export function byApproveActions(sender: { current: MapEditSend | undefined }, setList: (list: ByApproveList | null) => void) {
+/** What the platforms' `useByApprove` runs: load the history into `setLoad` (a failure kept the last list), and undo then load again. */
+export function byApproveActions(sender: { current: MapEditSend | undefined }, setLoad: (update: (previous: ByApproveLoad) => ByApproveLoad) => void) {
   let latest: Promise<ByApproveList | null> = Promise.resolve(null);
   const load = (): void => {
-    latest = sender.current ? loadByApprove(sender.current) : Promise.resolve(null);
-    void latest.then(setList);
+    const send = sender.current;
+    latest = send ? loadByApprove(send) : Promise.resolve(null);
+    void latest.then((list) => setLoad((previous) => (list ? { list, failed: false } : { list: previous.list, failed: Boolean(send) })));
   };
   const undo = async (id: string): Promise<string | null> => {
     if (!sender.current) return UNDO_FAILED;

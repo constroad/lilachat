@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { Undo2 } from 'lucide-react-native';
-import { byApproveActions, UNDO_LABEL, undoQuestion, type ByApproveList, type MapEditSend } from '@lilachat/shared';
+import { BY_APPROVE_IDLE, byApproveActions, UNDO_LABEL, undoQuestion, type ByApproveLoad, type MapEditSend } from '@lilachat/shared';
 import { useColores } from '../../../ui/tema';
 
 /** «Deshacer» on a record (José 28/11: no approval, but a mistake can be taken back): asks once, then Portal does it or says why not. */
@@ -34,12 +34,16 @@ export function UndoProgress(props: { id: string; toM: number; onUndo: (id: stri
   );
 }
 
-/** What Portal still keeps pending, next to the map (José 28/11: it counts as done): loaded with it, again after each change. */
+/** Portal's progress history next to the map (José 28/11: pending counts as done): loaded with it, again after each change; `failed` when it could not come. */
 export function useByApprove(send: MapEditSend | undefined, reloadKey: unknown) {
-  const [list, setList] = useState<ByApproveList | null>(null);
+  const [load, setLoad] = useState<ByApproveLoad>(BY_APPROVE_IDLE);
+  // The sender is new on every render: the latest one answers.
   const sender = useRef(send);
   sender.current = send;
-  const actions = useMemo(() => byApproveActions(sender, setList), []);
-  useEffect(actions.load, [reloadKey, actions]);
-  return { list, undo: actions.undo, reload: actions.load };
+  const actions = useMemo(() => byApproveActions(sender, setLoad), []);
+  useEffect(() => {
+    actions.load();
+    return undefined;
+  }, [reloadKey, actions]);
+  return { list: load.list, failed: load.failed, undo: actions.undo, reload: actions.load };
 }

@@ -226,7 +226,8 @@ export function workMapFormPrepared(serviceId: string, input: WorkMapFormInput):
     case 'work_restore': return { form: formOf('restaurar_de_obra', 'Restaurar', 'Restaurar'), context: restoreContext(serviceId, input) };
     case 'work_deleted': return { form: formOf('borrados_de_obra', 'Lo borrado del mapa', 'Ver'), context: { servicioId: serviceId } };
     case 'work_pending': return { form: formOf('avances_pendientes_de_obra', 'Avances por aprobar', 'Ver'), context: { servicioId: serviceId } };
-    case 'work_by_approve': return { form: formOf('avances_por_aprobar_de_obra', 'Avances por aprobar', 'Ver'), context: { servicioId: serviceId } };
+    // Portal's read-only history (28/11): every pending record and what was resolved in 30 days.
+    case 'work_by_approve': return { form: formOf('historial_de_avances_de_obra', 'Historial de avances', 'Ver'), context: { servicioId: serviceId } };
     case 'work_undo': return { form: formOf('deshacer_avance_de_obra', 'Deshacer avance', 'Deshacer'), context: { servicioId: serviceId, avanceId: input.progressId } };
     case 'work_progress_photo': return { form: formOf('agregar_foto_a_avance_de_obra', 'Agregar foto al avance', 'Agregar'), context: { servicioId: serviceId, avanceId: input.progressId, fotoIds: input.photoIds } };
     case 'service_croquis': return { form: formOf('abrir_croquis_de_servicio', 'Croquis del servicio', 'Abrir'), context: { servicioId: serviceId } };

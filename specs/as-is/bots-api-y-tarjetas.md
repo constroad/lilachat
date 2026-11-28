@@ -247,6 +247,9 @@ Montaje en `server/src/app.ts` (líneas 160–166): `/api/oauth`, `/api/bots/app
   `{ servicioId, avanceId, fotoIds }` («Agregar foto» a un avance ya registrado; cualquier miembro).
   Sin avance, sin fotos, más de 6 o un id que no es de archivo es 400. La herramienta espera la
   aprobación de José en Agentes.
+- **28/11** `workMapForms.ts`: `work_by_approve` ahora abre `historial_de_avances_de_obra` (antes
+  `avances_por_aprobar_de_obra`), con solo `{ servicioId }`: lectura de miembro con todo lo pendiente y
+  lo resuelto en 30 días, incluido `puedeDeshacer`. Aprobada por José en Agentes.
 
 ## 5. Diseños de Stitch relacionados
 

@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
-import { Camera, TriangleAlert } from 'lucide-react';
-import { FEED_EMPTY, FEED_RANGES, FEED_SUMMARY_KICKER, FEED_TITLE, feedCounts, feedInRange, feedSummaryOf, limaDayKey, progressFeedOf, type ByApproveList, type FeedCard, type FeedRange, type ProgressPhotoResult, type WorkMap } from '@lilachat/shared';
+import { Camera, RotateCw, TriangleAlert } from 'lucide-react';
+import { FEED_EMPTY, FEED_FAILED, FEED_NOTHING, FEED_RANGES, FEED_RETRY, FEED_SUMMARY_KICKER, FEED_TITLE, feedCounts, feedInRange, feedSummaryOf, limaDayKey, progressFeedOf, type ByApproveList, type FeedCard, type FeedRange, type ProgressPhotoResult, type WorkMap } from '@lilachat/shared';
 import { AddProgressPhoto } from './AddProgressPhoto';
 import { UndoProgress } from './PendingProgress';
 
@@ -57,9 +57,19 @@ function FeedRow(props: { card: FeedCard; onUndo: (id: string) => Promise<string
   );
 }
 
+/** The history did not come (the tool not approved yet, no signal): a small line and «Reintentar», never a silent gap. */
+function FeedFailed(props: { onRetry?: () => void }) {
+  return (
+    <div data-testid="avances-error" role="alert" className="flex items-center justify-between gap-2 rounded-xl border border-error/30 bg-error/5 px-3 py-2">
+      <p className="text-[13px] font-semibold text-error">{FEED_FAILED}</p>
+      {props.onRetry ? <button type="button" data-testid="avances-reintentar" onClick={props.onRetry} className="flex h-9 items-center gap-1.5 rounded-lg border border-outline/25 px-3 text-[13px] font-semibold text-on-surface hover:bg-background"><RotateCw size={14} />{FEED_RETRY}</button> : null}
+    </div>
+  );
+}
+
 /** «Agregar foto» on one record: the photo taken, uploaded to the Drive, then Portal's tool. */
 type AddPhoto = (id: string, file: File) => Promise<ProgressPhotoResult | null>;
-type FeedProps = { map: WorkMap; list: ByApproveList | null; /** An admin undoes any record; anyone else, their own. */ admin: boolean; onUndo: (id: string) => Promise<string | null>; onAddPhoto?: AddPhoto; /** Today in Lima; a test fixes it. */ today?: string };
+type FeedProps = { map: WorkMap; list: ByApproveList | null; /** The history could not come: says so with «Reintentar». */ failed?: boolean; onRetry?: () => void; /** An admin undoes any record; anyone else, their own. */ admin: boolean; onUndo: (id: string) => Promise<string | null>; onAddPhoto?: AddPhoto; /** Today in Lima; a test fixes it. */ today?: string };
 
 /** «Avances» (design ma05, José 28/11): every record, by Hoy / Semana / Todo; none waits for approval. */
 export function ProgressFeed(props: FeedProps) {
@@ -67,9 +77,19 @@ export function ProgressFeed(props: FeedProps) {
   const today = props.today ?? limaDayKey(new Date());
   const cards = useMemo(() => progressFeedOf(props.map, props.list, today, props.admin), [props.map, props.list, today, props.admin]);
   const shown = feedInRange(cards, range, today);
+  const failure = props.failed ? <FeedFailed onRetry={props.onRetry} /> : null;
+  if (!cards.length) {
+    return (
+      <section data-testid="avances-lista" className="space-y-2">
+        <p className={KICKER}>{FEED_TITLE}</p>
+        {failure ?? <p data-testid="avances-vacio" className="text-[13px] text-on-surface-variant">{FEED_NOTHING}</p>}
+      </section>
+    );
+  }
   return (
     <section data-testid="avances-lista" className="space-y-3">
       <p className={KICKER}>{FEED_TITLE}</p>
+      {failure}
       <RangeTabs range={range} counts={feedCounts(cards, today)} onRange={setRange} />
       <Summary cards={shown} label={FEED_RANGES.find((option) => option.id === range)?.label ?? ''} />
       {shown.length ? <ul className="space-y-3">{shown.map((card) => <FeedRow key={card.id} card={card} onUndo={props.onUndo} onAddPhoto={props.onAddPhoto} />)}</ul> : <p className="text-[13px] text-on-surface-variant">{FEED_EMPTY}</p>}

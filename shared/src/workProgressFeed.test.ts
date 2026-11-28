@@ -135,3 +135,25 @@ describe('ma05: Hoy / Semana / Todo', () => {
     expect(feedWhen('', TODAY)).toBe('');
   });
 });
+
+describe('progress history (historial_de_avances_de_obra, 28/11)', () => {
+  it('shows an approved record of the history with its author, photos and «Deshacer» from puedeDeshacer', async () => {
+    // Arrange
+    const { byApproveOf } = await import('./workByApprove.js');
+    const history = byApproveOf({
+      total: 1,
+      avances: [{ avanceId: '6b0afed55d78e3fcaad02765', estado: 'aprobado', fecha: '2026-11-28', calleId: 's1', desdeM: 0, hastaM: 52, tagId: 'imp', metrado: 208, autor: 'J zamora', propio: true, fotos: 3, puedeDeshacer: true }],
+    });
+    // Act
+    const [card] = progressFeedOf(mapOf(), history, TODAY);
+    // Assert
+    expect(card).toMatchObject({ id: '6b0afed55d78e3fcaad02765', state: 'aprobado', pill: '', author: 'J zamora', photos: 3, photoable: true, undoable: true, stretch: '0+000 → 0+052' });
+  });
+
+  it('gives no «Deshacer» to a non-admin when Portal says it cannot be undone', async () => {
+    const { byApproveOf } = await import('./workByApprove.js');
+    const history = byApproveOf({ avances: [{ avanceId: 'h1', estado: 'aprobado', fecha: TODAY, calleId: 's1', desdeM: 0, hastaM: 10, tagId: 'imp', propio: true, puedeDeshacer: false }] });
+    expect(progressFeedOf(mapOf(), history, TODAY)[0]?.undoable).toBe(false);
+    expect(progressFeedOf(mapOf(), history, TODAY, true)[0]?.undoable).toBe(true);
+  });
+});

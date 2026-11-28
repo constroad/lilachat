@@ -18,7 +18,7 @@ export function ServiceStages({ detail }: { detail: ServiceDetail }) {
     state === 'done' ? <CircleCheck size={18} color={colors['en-linea']} /> : state === 'doing' ? <Clock size={18} color={colors.warning} /> : <Circle size={18} color={colors.outline} />;
   const Chevron = open ? ChevronUp : ChevronDown;
   return (
-    <View testID="etapas-servicio" className="mt-3 border-t border-outline/10 pt-1">
+    <View testID="etapas-servicio">
       <Pressable testID="etapas-toggle" accessibilityState={{ expanded: open }} onPress={() => setOpen(!open)} className="min-h-[40px] flex-row items-center gap-2">
         <Text className="flex-1 text-[11px] font-bold uppercase tracking-[1.5px] text-on-surface-variant">{`Etapas · ${progress.done} de ${progress.total}`}</Text>
         <Chevron size={18} color={colors['on-surface-variant']} />

@@ -81,7 +81,8 @@ export function ManualProgress(props: Props) {
       : <StreetChooser map={layerMap} problem={stage.problem} locating={stage.locating} onPick={(id) => { setPicked(id); setChoosing(false); }} onClose={props.onDone} />;
   return (
     <Modal visible animationType="slide" onRequestClose={props.onDone}>
-      <View accessibilityLabel={recordTitle(null)} className="flex-1 bg-background" style={{ paddingTop: margins.cabecera, paddingBottom: margins.pie }}>{body}</View>
+      {/* The record screen pads its own foot (system bar), so that room stays inside its scroll. */}
+      <View accessibilityLabel={recordTitle(null)} className="flex-1 bg-background" style={{ paddingTop: margins.cabecera, paddingBottom: stage.kind === 'record' ? 0 : margins.pie }}>{body}</View>
     </Modal>
   );
 }

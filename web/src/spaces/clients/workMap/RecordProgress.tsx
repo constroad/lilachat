@@ -188,7 +188,7 @@ export function RecordScreen(props: RecordScreenProps) {
           </Suspense>
           {props.located ? <p data-testid="avance-ubicado" className="pointer-events-none absolute right-3 top-3 rounded-xl border border-outline/20 bg-surface px-3 py-2 text-[14px] text-on-surface shadow-md">{youAreOn(props.located)}</p> : null}
         </div>
-        <div className="max-h-[40dvh] overflow-y-auto rounded-t-3xl bg-surface p-3 md:max-h-none md:w-[380px] md:rounded-none">
+        <div className="max-h-[40dvh] overflow-y-auto rounded-t-3xl bg-surface p-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] md:max-h-none md:w-[380px] md:rounded-none">
           <RecordFoot record={record} map={props.map} streetId={props.streetId} canPhoto={Boolean(props.uploadPhoto)} />
         </div>
       </div>

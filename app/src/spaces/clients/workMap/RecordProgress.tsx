@@ -1,11 +1,13 @@
 import { useContext, useMemo, useState } from 'react';
 import { Pressable, ScrollView, Text, TextInput, useWindowDimensions, View } from 'react-native';
 import { randomUUID } from 'expo-crypto';
+import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
 import { Camera, Crosshair, Hand, Map as MapIcon, X } from 'lucide-react-native';
 import { GPS_UNAVAILABLE, MANUAL_NOTE_MAX, RECORD_ADD_NOTE, RECORD_NOTE_PLACEHOLDER, layerDraftFor, manualEndFromGps, pickManualWork, progressPreviewOf, RECORD_CHANGE, RECORD_PENDING_NOTE, RECORD_PHOTO_AND_SEND, RECORD_SEND, RECORD_TO_ME, RECORD_WHOLE, RECORD_WITHOUT_PHOTO, recordAtPercent, streetPercentOf, recordDropAt, recordHint, recordTitle, recordMapOf, recordProblem, recordSummary, recordWholeStreet, runManualProgress, youAreOn, type GpsStreet, type ManualPhotoUpload, type ManualProgressDraft, type MapEditSend, type StreetEnd, type WorkManualProgressRequest, type WorkMap, type WorkMapPoint, type WorkMapWork } from '@lilachat/shared';
 import type { CapturedShot } from '../../../chat/camara/cameraRequests';
 import { useColores } from '../../../ui/tema';
 import { useDisposicion } from '../../../ui/useDisposicion';
+import { useMargenes } from '../../../ui/useMargenes';
 import { takeFieldPhoto } from '../useDriveUpload';
 import { ServiceScopeContext } from '../serviceScope';
 import { enqueueManualProgress, MANUAL_QUEUED } from './manualProgressJobs';
@@ -179,6 +181,7 @@ export function RecordScreen(props: RecordScreenProps) {
   const { amplia } = useDisposicion();
   const { height } = useWindowDimensions();
   const record = useRecord(props);
+  const margins = useMargenes();
   const shown = useMemo(() => recordMapOf(props.map, props.streetId, record.draft, record.drops), [props.map, props.streetId, record.draft, record.drops]);
   // Framed once per street: the ring moving does not move the camera.
   const view = useMemo(() => progressPreviewOf(props.map, props.streetId, STREET_ONLY).view, [props.map, props.streetId]);
@@ -194,15 +197,18 @@ export function RecordScreen(props: RecordScreenProps) {
         <Pressable testID="avance-cerrar" accessibilityLabel="Cerrar" onPress={props.onClose} className="h-11 w-11 items-center justify-center rounded-full"><X size={22} color={colors['on-surface']} /></Pressable>
       </View>
       <Pickers works={record.works} workId={record.draft.workId} streetName={record.street?.name ?? ''} onWork={(workId) => record.change(pickManualWork(props.map, props.streetId, record.draft, workId))} onChangeStreet={props.onChangeStreet} />
+      {/* `padding` on Android too: edge-to-edge does not shrink the window for the keyboard (as PantallaEnModal). The map gives way, the % field stays in sight. */}
+      <KeyboardAvoidingView behavior="padding" style={{ flex: 1 }}>
       <View className={`flex-1 ${amplia ? 'flex-row' : ''}`}>
         <View className="flex-1 overflow-hidden bg-surface-variant">
           <WorkMapSurface view={view} moves stretches={shown.stretch} pending={shown.pending} stations={shown.stations} handles={shown.handles} onHandleDrop={record.drop} />
           {props.located ? <View pointerEvents="none" className="absolute right-3 top-3 rounded-xl border border-outline/20 bg-surface px-3 py-2"><Text testID="avance-ubicado" className="text-[14px] text-on-surface">{youAreOn(props.located)}</Text></View> : null}
         </View>
-        <ScrollView keyboardShouldPersistTaps="handled" style={amplia ? { width: SIDE_WIDTH, flexGrow: 0 } : { flexGrow: 0, maxHeight: height * FOOT_MAX_SHARE }} className="rounded-t-3xl bg-surface" contentContainerStyle={{ padding: 12 }}>
+        <ScrollView keyboardShouldPersistTaps="handled" style={amplia ? { width: SIDE_WIDTH, flexGrow: 0 } : { flexGrow: 0, maxHeight: height * FOOT_MAX_SHARE }} className="rounded-t-3xl bg-surface" contentContainerStyle={{ padding: 12, paddingBottom: 12 + margins.pie }}>
           <RecordFoot record={record} map={props.map} streetId={props.streetId} />
         </ScrollView>
       </View>
+      </KeyboardAvoidingView>
     </View>
   );
 }

@@ -18,7 +18,7 @@ export function ServiceStagesWeb({ detail }: { detail: ServiceDetail }) {
   const stages = serviceStages(detail);
   const progress = stagesDone(stages);
   return (
-    <div data-testid="etapas-servicio" className="mt-3 border-t border-outline/10 pt-2">
+    <div data-testid="etapas-servicio">
       <button type="button" data-testid="etapas-toggle" aria-expanded={open} onClick={() => setOpen(!open)} className="flex min-h-[36px] w-full items-center gap-2 text-left">
         <span className="flex-1 text-[11px] font-bold uppercase tracking-[0.18em] text-on-surface-variant">{`Etapas · ${progress.done} de ${progress.total}`}</span>
         <ChevronDown size={16} className={`text-on-surface-variant transition-transform ${open ? 'rotate-180' : ''}`} />

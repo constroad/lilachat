@@ -1,6 +1,6 @@
 import { useMemo, useState, type ReactNode } from 'react';
 import { Pressable, Text, View } from 'react-native';
-import { isLayerOn, layerRowsOf, NO_HIDDEN_LAYERS, toggleLayer, workMapStageFilter, type MapLayerGroup, type MapLayers, type ReportPhotoLayerRow, type WorkMap, type WorkMapFilter, type WorkMapView } from '@lilachat/shared';
+import { isLayerOn, layerRowsOf, NO_HIDDEN_LAYERS, NO_WORKS_YET, toggleLayer, workMapStageFilter, type MapLayerGroup, type MapLayers, type ReportPhotoLayerRow, type WorkMap, type WorkMapFilter, type WorkMapView } from '@lilachat/shared';
 import { Interruptor } from '../../../ui/Interruptor';
 import { KICKER } from './WorkMapPanel';
 
@@ -93,7 +93,11 @@ export function MapLayersPanel(props: PanelProps) {
             </View>
           ))}
         </Section>
-      ) : null}
+      ) : (
+        <Section title="Partidas (trabajos)">
+          <Text testID="capas-sin-trabajos" className="py-2 text-[14px] text-on-surface-variant">{NO_WORKS_YET}</Text>
+        </Section>
+      )}
       <StageChips map={props.map} filter={props.filter} onFilter={props.onFilter} />
       {rows.marks.length ? (
         <Section title={`Dibujos · ${rows.marks.reduce((sum, group) => sum + group.count, 0)}`}>

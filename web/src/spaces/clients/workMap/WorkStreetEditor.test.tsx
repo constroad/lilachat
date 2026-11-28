@@ -57,6 +57,25 @@ describe('WorkStreetEditor, walking with GPS', () => {
     expect(send.mock.calls[0]![0]).toMatchObject({ name: 'Jr. Caminado', mode: 'gps' });
   });
 
+  it('a typed length travels with the street (José 27/11)', async () => {
+    // Arrange
+    const send = vi.fn<StreetSend>(async () => ({ ok: true, message: 'Calle guardada.' }));
+    render(<WorkStreetEditor title="Obra" map={null} send={send} onClose={vi.fn()} onSaved={vi.fn()} />);
+    fireEvent.click(screen.getByTestId('editor-modo-gps'));
+    fireEvent.click(screen.getByTestId('editor-gps-empezar'));
+    walkTo(0);
+    walkTo(60);
+    fireEvent.click(screen.getByTestId('editor-gps-terminar'));
+    // Act
+    fireEvent.change(screen.getByTestId('editor-calle-nombre'), { target: { value: 'Jr. Lima' } });
+    fireEvent.change(screen.getByTestId('editor-calle-largo-escrito'), { target: { value: '7.25' } });
+    fireEvent.click(screen.getByTestId('editor-calle-guardar'));
+    // Assert
+    expect(screen.getByTestId('editor-calle-largo')).toHaveTextContent('60 m');
+    await waitFor(() => expect(send).toHaveBeenCalledTimes(1));
+    expect(send.mock.calls[0]![0]).toMatchObject({ name: 'Jr. Lima', lengthM: 7.25 });
+  });
+
   it('«Deshacer» takes back the last stretch walked, not the whole walk (audit 08/11 item 12)', async () => {
     render(<WorkStreetEditor title="Obra" map={null} send={vi.fn()} onClose={vi.fn()} onSaved={vi.fn()} />);
     fireEvent.click(screen.getByTestId('editor-modo-gps'));

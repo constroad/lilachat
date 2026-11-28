@@ -176,6 +176,7 @@ function StreetFields({ draft, stages, onChange }: { draft: StreetDraft; stages:
         <span className="flex items-center justify-between">Largo<span className="text-[11px] font-bold text-primary">Auto</span></span>
         <p data-testid="editor-calle-largo" className="mt-1 flex h-11 items-center font-mono text-[15px] normal-case text-on-surface">{metersLabel(streetDraftLengthM(draft))}</p>
         <p data-testid="editor-calle-extremos" className="font-mono text-[11px] normal-case tracking-normal text-on-surface-variant">{streetDraftEnds(draft) ?? LENGTH_HINT}</p>
+        <input data-testid="editor-calle-largo-escrito" type="number" inputMode="decimal" min={0.1} max={20000} step={0.01} value={draft.lengthM ?? ''} placeholder="Otro largo (m)" aria-label="Largo escrito en metros" onChange={(event) => onChange({ lengthM: event.target.value === '' ? null : Number(event.target.value) })} className={`${FIELD} mt-1 normal-case tracking-normal text-on-surface`} />
       </div>
       <label className="text-[12px] font-semibold uppercase tracking-wide text-on-surface-variant">Ancho (m)
         <input data-testid="editor-calle-ancho" type="number" inputMode="decimal" min={0.1} max={60} step={0.1} value={draft.widthM ?? ''} placeholder="6.0" onChange={(event) => onChange({ widthM: event.target.value === '' ? null : Number(event.target.value) })} className={`${FIELD} mt-1 normal-case tracking-normal text-on-surface`} />

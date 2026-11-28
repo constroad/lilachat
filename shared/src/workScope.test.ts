@@ -123,6 +123,7 @@ describe('a new stage or work', () => {
     expect(workStageRequest('  Etapa 2 ')).toEqual({ kind: 'work_stage', name: 'Etapa 2', forms: expect.any(Number) });
     expect(workTagRequest('Bacheo', WORK_TAG_COLORS[2]!)).toEqual({ kind: 'work_tag', name: 'Bacheo', color: WORK_TAG_COLORS[2], forms: expect.any(Number) });
     expect(WORK_TAG_COLORS.every((color) => /^#[0-9a-f]{6}$/i.test(color))).toBe(true);
+    expect(new Set(WORK_TAG_COLORS).size).toBe(16);
     expect(LENGTH).toBeGreaterThan(0);
   });
 });

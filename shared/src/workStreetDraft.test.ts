@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { FORMS_LEVEL } from './appForms';
-import { addStreetPoint, DRAFT_BAD_WIDTH, saveStreetWithStage, sendWorkStreet, STREET_FAILED, STREET_SAVED, STREET_STAGE_FAILED, workStreetRequest, streetDraftLines, streetDraftPins, WORK_MAP_DRAFT_COLOR, DRAFT_NAME_TOO_LONG, DRAFT_NEEDS_NAME, DRAFT_NEEDS_POINTS, EMPTY_STREET, STREET_POINTS_MAX, streetDraftLengthM, streetDraftProblem, undoStreetPoint, type StreetDraft } from './workStreetDraft';
+import { addStreetPoint, DRAFT_BAD_LENGTH, DRAFT_BAD_WIDTH, streetDraftWorkLengthM, saveStreetWithStage, sendWorkStreet, STREET_FAILED, STREET_SAVED, STREET_STAGE_FAILED, workStreetRequest, streetDraftLines, streetDraftPins, WORK_MAP_DRAFT_COLOR, DRAFT_NAME_TOO_LONG, DRAFT_NEEDS_NAME, DRAFT_NEEDS_POINTS, EMPTY_STREET, STREET_POINTS_MAX, streetDraftLengthM, streetDraftProblem, undoStreetPoint, type StreetDraft } from './workStreetDraft';
 
 /** About 100 m east along -12, the way a street is tapped on the map (design o-02). */
 const START = { lat: -12, lng: -77 };
@@ -78,6 +78,20 @@ describe('saving the street through Portal (guardar_calle_de_obra)', () => {
   it('sends the trimmed name, the line, the width only when given, and the phone\'s entry', () => {
     expect(workStreetRequest(drawn({ name: '  Jr. Los Pinos ', widthM: 6 }), ENTRY)).toEqual({ kind: 'work_street', name: 'Jr. Los Pinos', line: [START, HUNDRED_M_EAST], width_m: 6, entry_id: ENTRY, forms: FORMS_LEVEL });
     expect(workStreetRequest(drawn(), ENTRY)).not.toHaveProperty('width_m');
+  });
+
+  it('sends a typed length (José 27/11), and the area counts it instead of the line', () => {
+    const typed = drawn({ widthM: 4, lengthM: 7.25 });
+    expect(workStreetRequest(typed, ENTRY)).toMatchObject({ length_m: 7.25 });
+    expect(workStreetRequest(drawn(), ENTRY)).not.toHaveProperty('length_m');
+    expect(streetDraftWorkLengthM(typed)).toBe(7.25);
+    expect(streetDraftWorkLengthM(drawn())).toBe(100);
+  });
+
+  it('a typed length must be over 0 and up to 20 km', () => {
+    expect(streetDraftProblem(drawn({ name: 'Jr. A', lengthM: 0 }))).toBe(DRAFT_BAD_LENGTH);
+    expect(streetDraftProblem(drawn({ name: 'Jr. A', lengthM: 20_001 }))).toBe(DRAFT_BAD_LENGTH);
+    expect(streetDraftProblem(drawn({ name: 'Jr. A', lengthM: 12.5 }))).toBeNull();
   });
 
   it('confirms the tool with nothing to fill and reads Portal\'s answer', async () => {

@@ -32,8 +32,8 @@ export function NewLabel(props: NewLabelProps) {
       {props.colors ? (
         <View accessibilityRole="radiogroup" className="mt-2 flex-row flex-wrap gap-2">
           {props.colors.map((one) => (
-            <Pressable key={one} testID={`${props.testID}-color-${one.slice(1)}`} accessibilityRole="radio" accessibilityState={{ checked: color === one }} onPress={() => set({ color: one })} className="h-10 w-10 items-center justify-center rounded-full" style={{ backgroundColor: one }}>
-              {color === one ? <Check size={16} color={palette.background} /> : null}
+            <Pressable key={one} testID={`${props.testID}-color-${one.slice(1)}`} accessibilityRole="radio" accessibilityState={{ checked: color === one }} onPress={() => set({ color: one })} className={`h-10 w-10 items-center justify-center rounded-full border-2 ${color === one ? 'border-on-surface' : 'border-outline/40'}`} style={{ backgroundColor: one }}>
+              {color === one ? <Check size={16} color="#ffffff" /> : null}
             </Pressable>
           ))}
         </View>

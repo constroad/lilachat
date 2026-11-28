@@ -48,3 +48,6 @@ export function layerRowsOf(view: Pick<WorkMapView, 'works'>, marks: readonly Wo
     observations: counts.filter((one) => one.count > 0),
   };
 }
+
+/** Without works the layers sheet showed only streets (José 27/11: «¿no deberían ser los trabajos?»). */
+export const NO_WORKS_YET = 'Aún no hay trabajos (imprimación, base, carpeta…). Créalos en ⋮ › Trabajos y asígnalos a las calles: aquí verás el avance de cada uno.';

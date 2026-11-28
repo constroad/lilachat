@@ -14,11 +14,14 @@ import type { WorkScopeRequest } from './workScopeDraft.js';
 export type DrawMode = 'street' | 'gps' | 'hand';
 /** `reversed`: the person marked the start further along the map's road than the end; the line is turned so 0+000 is their start. */
 /** `stageId`: the stage chosen with the street (o-02); it rides on a stretch over the whole street. */
-export type StreetDraft = { name: string; points: WorkMapPoint[]; widthM: number | null; mode: DrawMode; pick: StreetPick | null; reversed?: boolean; stageId?: string };
+/** `lengthM`: a length the person typed; it wins over the line's (José 27/11). */
+export type StreetDraft = { name: string; points: WorkMapPoint[]; widthM: number | null; lengthM?: number | null; mode: DrawMode; pick: StreetPick | null; reversed?: boolean; stageId?: string };
 
 export const STREET_POINTS_MAX = 500;
 export const STREET_NAME_MAX = 80;
 export const STREET_WIDTH_MAX_M = 60;
+/** Portal's `guardar_calle_de_obra` takes `largoM` up to 20 km. */
+export const STREET_LENGTH_MAX_M = 20_000;
 export const EMPTY_STREET: StreetDraft = { name: '', points: [], widthM: null, mode: 'street', pick: null };
 
 export const DRAFT_NEEDS_POINTS = 'Toca el inicio y el fin de la calle en el mapa.';
@@ -26,6 +29,7 @@ export const DRAFT_NEEDS_STREET = 'Toca en el mapa la calle donde vas a trabajar
 export const DRAFT_NEEDS_NAME = 'Ponle nombre a la calle.';
 export const DRAFT_NAME_TOO_LONG = `El nombre lleva hasta ${STREET_NAME_MAX} letras.`;
 export const DRAFT_BAD_WIDTH = `El ancho va de 0,1 a ${STREET_WIDTH_MAX_M} m.`;
+export const DRAFT_BAD_LENGTH = 'El largo va de 0,1 m a 20 km. Déjalo vacío para usar el del trazo.';
 
 /** A tap adds a bend; past the limit the line stays as it is. */
 export const addStreetPoint = (draft: StreetDraft, point: WorkMapPoint): StreetDraft =>
@@ -37,6 +41,9 @@ export const undoStreetPoint = (draft: StreetDraft): StreetDraft => ({ ...draft,
 /** Whole meters, following the bends: what the person reads while drawing. */
 export const streetDraftLengthM = (draft: Pick<StreetDraft, 'points'>): number => (draft.points.length < 2 ? 0 : Math.round(lineLengthM(draft.points)));
 
+/** The length that counts for the area: the typed one, else the line's. */
+export const streetDraftWorkLengthM = (draft: Pick<StreetDraft, 'points' | 'lengthM'>): number => (draft.lengthM != null ? draft.lengthM : streetDraftLengthM(draft));
+
 /** What stops «Guardar calle», in the order the person meets it on the screen. */
 export function streetDraftProblem(draft: StreetDraft): string | null {
   if (draft.points.length < 2) return draft.mode === 'street' ? DRAFT_NEEDS_STREET : DRAFT_NEEDS_POINTS;
@@ -44,6 +51,7 @@ export function streetDraftProblem(draft: StreetDraft): string | null {
   if (!name) return DRAFT_NEEDS_NAME;
   if (name.length > STREET_NAME_MAX) return DRAFT_NAME_TOO_LONG;
   if (draft.widthM !== null && !(draft.widthM > 0 && draft.widthM <= STREET_WIDTH_MAX_M)) return DRAFT_BAD_WIDTH;
+  if (draft.lengthM != null && !(draft.lengthM > 0 && draft.lengthM <= STREET_LENGTH_MAX_M)) return DRAFT_BAD_LENGTH;
   return null;
 }
 
@@ -65,7 +73,7 @@ export function streetDraftPins(draft: Pick<StreetDraft, 'points'> & { mode?: Dr
 export const streetDraftLines = (draft: Pick<StreetDraft, 'points'>): WorkMapLine[] =>
   draft.points.length < 2 ? [] : [{ streetId: 'trazo', color: WORK_MAP_DRAFT_COLOR, coordinates: draft.points.map((point) => [point.lng, point.lat] as [number, number]) }];
 
-export type WorkStreetRequest = { kind: 'work_street'; name: string; line: WorkMapPoint[]; width_m?: number; entry_id: string; forms: number };
+export type WorkStreetRequest = { kind: 'work_street'; name: string; line: WorkMapPoint[]; width_m?: number; length_m?: number; entry_id: string; forms: number };
 
 export const STREET_SAVED = 'Calle guardada. Ya aparece en el mapa.';
 export const STREET_FAILED = 'No se pudo guardar la calle. Revisa tu señal y vuelve a guardar.';
@@ -76,6 +84,7 @@ export const workStreetRequest = (draft: StreetDraft, entryId: string): WorkStre
   name: draft.name.trim(),
   line: draft.points.map(({ lat, lng }) => ({ lat, lng })),
   ...(draft.widthM !== null ? { width_m: draft.widthM } : {}),
+  ...(draft.lengthM != null ? { length_m: draft.lengthM } : {}),
   entry_id: entryId,
   forms: FORMS_LEVEL,
 });

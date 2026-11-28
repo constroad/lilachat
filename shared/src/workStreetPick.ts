@@ -1,7 +1,7 @@
 import { lengthOfLine, pickedRange, pickStreet, pointAtMeasure, projectToLine, sliceLine, stationLabel, streetAtTap, tapOnPick, type StreetPick, type TapFeatures } from '@constroad/shared/obra';
 /** What the maps need to ask for the roads at a tap; the rules stay in the package. */
 export { NAMED_ROAD_LAYER, ROAD_SOURCE_LAYERS, tapBox, tapTolerancePx, type BasemapFeatureLike, type TapFeatures } from '@constroad/shared/obra';
-import { addStreetPoint, EMPTY_STREET, streetDraftLengthM, undoStreetPoint, type DrawMode, type StreetDraft } from './workStreetDraft.js';
+import { addStreetPoint, EMPTY_STREET, streetDraftLengthM, streetDraftWorkLengthM, undoStreetPoint, type DrawMode, type StreetDraft } from './workStreetDraft.js';
 import { metersLabel, type WorkMapPoint } from './workMap.js';
 
 /**
@@ -20,7 +20,7 @@ export const DRAW_MODES: ReadonlyArray<{ mode: DrawMode; label: string }> = [
 export const NO_STREET_THERE = 'Ahí no hay una calle del mapa. Toca sobre la vía, o dibújala «A mano».';
 
 /** Another way of drawing starts the line again; the name and the width stay. */
-export const setDrawMode = (draft: StreetDraft, mode: DrawMode): StreetDraft => (draft.mode === mode ? draft : { ...EMPTY_STREET, name: draft.name, widthM: draft.widthM, ...(draft.stageId ? { stageId: draft.stageId } : {}), mode });
+export const setDrawMode = (draft: StreetDraft, mode: DrawMode): StreetDraft => (draft.mode === mode ? draft : { ...EMPTY_STREET, name: draft.name, widthM: draft.widthM, lengthM: draft.lengthM ?? null, ...(draft.stageId ? { stageId: draft.stageId } : {}), mode });
 
 /** The «A mano» counter: «1 punto», «3 puntos». */
 export const handPointsLabel = (count: number): string => (count === 1 ? '1 punto' : `${count} puntos`);
@@ -105,7 +105,7 @@ export function streetDraftEnds(draft: StreetDraft): string | null {
 
 /** Design o-02's «Área neta»: length times width, once both are there. */
 export function streetDraftArea(draft: StreetDraft): string | null {
-  const lengthM = streetDraftLengthM(draft);
+  const lengthM = streetDraftWorkLengthM(draft);
   if (!lengthM || draft.widthM === null || !(draft.widthM > 0)) return null;
   return `${metersLabel(lengthM * draft.widthM).slice(0, -2)} m²`;
 }

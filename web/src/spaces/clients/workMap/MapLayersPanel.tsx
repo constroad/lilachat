@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { isLayerOn, layerRowsOf, NO_HIDDEN_LAYERS, toggleLayer, workMapStageFilter, type MapLayerGroup, type MapLayers, type ReportPhotoLayerRow, type WorkMap, type WorkMapFilter, type WorkMapView } from '@lilachat/shared';
+import { isLayerOn, layerRowsOf, NO_HIDDEN_LAYERS, NO_WORKS_YET, toggleLayer, workMapStageFilter, type MapLayerGroup, type MapLayers, type ReportPhotoLayerRow, type WorkMap, type WorkMapFilter, type WorkMapView } from '@lilachat/shared';
 import { KICKER } from './WorkMapPanel';
 
 /** The layers the map hides; everything starts on (José 19/11, design cc-04). */
@@ -91,7 +91,11 @@ export function MapLayersPanel(props: PanelProps) {
             </div>
           ))}
         </Section>
-      ) : null}
+      ) : (
+        <Section title="Partidas (trabajos)">
+          <p data-testid="capas-sin-trabajos" className="py-2 text-[14px] text-on-surface-variant">{NO_WORKS_YET}</p>
+        </Section>
+      )}
       <StageChips map={props.map} filter={props.filter} onFilter={props.onFilter} />
       {rows.marks.length ? (
         <Section title={`Dibujos · ${rows.marks.reduce((sum, group) => sum + group.count, 0)}`}>

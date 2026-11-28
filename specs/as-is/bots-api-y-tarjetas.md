@@ -236,6 +236,9 @@ Montaje en `server/src/app.ts` (líneas 160–166): `/api/oauth`, `/api/bots/app
   admins editan), 404 `not-found` → la cotización ya no existe, cualquier otro → 502. No necesita que el
   `link` normal de la tarjeta desaparezca: pueden ir juntos.
 
+- **27/11** `workStreetForm.ts` (calle de obra → `guardar_calle_de_obra`): acepta `length_m` opcional
+  (0 < x ≤ 20 000) y lo pasa a Portal como `largoM`. Fuera de rango es 400.
+
 ## 5. Diseños de Stitch relacionados
 
 | Diseño | Estado | Evidencia |

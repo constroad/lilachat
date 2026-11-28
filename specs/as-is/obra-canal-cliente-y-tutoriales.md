@@ -425,3 +425,4 @@ Un Control de imprimación con fotos ubicadas y dos días de avance aprobado (o-
 - **27/11** Editor de calle del APK: banda neutra en modo oscuro y punto de «Mi ubicación» (detalle en `obra-mapa.md`).
 - **27/11** Campos de metros del APK aceptan decimales (`DecimalInput`; detalle en `obra-mapa.md`).
 - **27/11** «A mano» sugiere el nombre de la vía tocada (detalle en `obra-mapa.md`).
+- **27/11** Largo escrito en el editor de calle, paleta de 16 colores y sección de trabajos siempre visible en «Capas» (detalle en `obra-mapa.md`).

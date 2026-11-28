@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { DecimalInput } from '../../../ui/DecimalInput';
 import { ChevronDown, ChevronUp, Navigation, Save, Undo2, X } from 'lucide-react-native';
-import { DRAW_MODES, metersLabel, streetDraftArea, streetDraftEnds, streetDraftLengthM, WORK_MAP_DRAFT_COLOR, WORK_MAP_PLANNED_COLOR, type DrawMode, type StreetDraft, type StreetEnd, type WorkMapStage } from '@lilachat/shared';
+import { DRAW_MODES, metersLabel, streetDraftArea, streetDraftEnds, streetDraftLengthM, streetDraftWorkLengthM, WORK_MAP_DRAFT_COLOR, WORK_MAP_PLANNED_COLOR, type DrawMode, type StreetDraft, type StreetEnd, type WorkMapStage } from '@lilachat/shared';
 import { useColores, useTema } from '../../../ui/tema';
 import { editorBandTone } from './editorBand';
 
@@ -127,7 +127,7 @@ export function EndNudges({ onNudge }: { onNudge: (handle: StreetEnd, deltaM: nu
 type StreetFormProps = { draft: StreetDraft; stages: WorkMapStage[]; error: string | null; saving: boolean; change: (next: Partial<StreetDraft>) => void; onSave: () => void; /** A side panel has room: no folding. */ foldable: boolean };
 
 /** «Jr. Los Pinos · 65 m · 6 m de ancho»: what a folded form still tells. */
-const foldedSummary = (draft: StreetDraft): string => [draft.name.trim() || 'Sin nombre', metersLabel(streetDraftLengthM(draft)), draft.widthM === null ? null : `${draft.widthM} m de ancho`].filter(Boolean).join(' · ');
+const foldedSummary = (draft: StreetDraft): string => [draft.name.trim() || 'Sin nombre', metersLabel(streetDraftWorkLengthM(draft)), draft.widthM === null ? null : `${draft.widthM} m de ancho`].filter(Boolean).join(' · ');
 
 /**
  * Name and width in one row, the length under them, the button last (José 27/11). On a phone the form
@@ -161,7 +161,7 @@ export function StreetForm(props: StreetFormProps) {
           <View className="mt-2 flex-row items-center gap-2">
             <Text className={LABEL}>Largo</Text>
             <Text testID="editor-calle-largo" className="font-mono text-[14px] font-bold text-on-surface">{metersLabel(streetDraftLengthM(draft))}</Text>
-            <Text className="text-[10px] font-bold text-primary">Auto</Text>
+            <DecimalInput testID="editor-calle-largo-escrito" accessibilityLabel="Largo escrito en metros" value={draft.lengthM ?? null} placeholder="Otro" onValue={(lengthM) => props.change({ lengthM })} className="h-9 w-20 rounded-lg border border-outline/25 bg-background px-2 font-mono text-[14px] text-on-surface" />
             <Text testID="editor-calle-extremos" numberOfLines={1} className="flex-1 font-mono text-[11px] text-on-surface-variant">{streetDraftEnds(draft) ?? LENGTH_HINT}</Text>
             {area ? <Text testID="editor-calle-area" accessibilityLabel={`Área neta ${area}`} className="rounded-md bg-primary/10 px-2 py-0.5 font-mono text-[13px] font-bold text-primary">{area}</Text> : null}
           </View>

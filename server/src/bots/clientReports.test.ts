@@ -491,6 +491,14 @@ describe('drawing a street of the work from the map (design o-02, José 07/11)',
     expect(run?.context).toEqual({ servicioId: 'srv-318', calleId: 'st-1', nombre: 'Jr. Las Flores' });
   });
 
+  it('a typed length goes to Portal as largoM (José 27/11: the field\'s measure is not always the work\'s)', async () => {
+    const opened = await openOf(ana, street({ length_m: 7.25 })).expect(200);
+    const run = await BotCommandRunModel.findById(opened.body.commandId).lean();
+    expect(run?.context).toMatchObject({ largoM: 7.25, anchoM: 6 });
+    await openOf(ana, street({ length_m: 0 })).expect(400);
+    await openOf(ana, street({ length_m: 20_001 })).expect(400);
+  });
+
   it('a new street needs its name, a line of 2 to 500 points and its entry', async () => {
     await openOf(ana, street({ name: '' })).expect(400);
     await openOf(ana, street({ line: [line[0]] })).expect(400);

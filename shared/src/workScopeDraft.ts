@@ -25,7 +25,8 @@ export const LABEL_NEEDS_NAME = 'Ponle nombre.';
 export const LABEL_TOO_LONG = `El nombre lleva hasta ${LABEL_MAX} letras.`;
 
 /** The colors of the drawings (o-05): subgrade, base, priming and asphalt, then four more to tell works apart. MapLibre paints hex. */
-export const WORK_TAG_COLORS = ['#7c4a2d', '#d97706', '#0d9488', '#111827', '#2563eb', '#7c3aed', '#db2777', '#65a30d'] as const;
+/** The first 8 keep their order (the stage brush takes [5]); 16 so each work of a job gets its own (José 27/11). */
+export const WORK_TAG_COLORS = ['#7c4a2d', '#d97706', '#0d9488', '#111827', '#2563eb', '#7c3aed', '#db2777', '#65a30d', '#dc2626', '#ea580c', '#ca8a04', '#16a34a', '#0891b2', '#4f46e5', '#c026d3', '#64748b'] as const;
 
 export const SCOPE_SAVED = 'Tramo guardado.';
 export const SCOPE_SAVE_FAILED = 'No se pudo guardar el tramo. Revisa tu señal y vuelve a guardar.';

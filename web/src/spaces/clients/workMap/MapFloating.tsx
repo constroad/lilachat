@@ -36,7 +36,7 @@ export function MapLegendCard(props: { view: WorkMapView; waiting: number }) {
       {mapLegendEntries(props.view, props.waiting).map((entry) => (
         <span key={entry.key} className="flex items-center gap-1.5">
           {entry.kind === 'todo' ? <span aria-hidden className="w-4 border-t-2 border-dashed border-on-surface-variant/60" />
-            : entry.kind === 'waiting' ? <span aria-hidden className="h-2.5 w-4 rounded-full bg-on-surface/30" />
+            : entry.kind === 'waiting' ? <span aria-hidden className="w-4 border-t-[3px] border-dashed border-on-surface/50" />
             : <span aria-hidden className="h-1 w-4 rounded-full" style={{ backgroundColor: entry.color ?? undefined }} />}
           <span className={entry.kind === 'work' ? 'font-semibold text-on-surface' : 'text-on-surface-variant'}>{entry.label}</span>
         </span>

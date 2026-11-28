@@ -2,10 +2,11 @@ import { useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { randomUUID } from 'expo-crypto';
 import { CircleCheck, Ruler, X } from 'lucide-react-native';
-import { AVANCE_FOOTER, AVANCE_PERCENTS, avanceEndFor, avanceKicker, avanceProgressLine, metersLabel, runAvanceSave, stationLabel, type AvanceEntryIds, type AvancePercent, type AvanceTarget, type MapEditSend, type WorkMap } from '@lilachat/shared';
+import { AVANCE_FOOTER, AVANCE_PERCENTS, avanceEndFor, avanceKicker, avanceProgressLine, metersLabel, runAvanceSave, stationLabel, type AvanceEntryIds, type ByApproveProgress, type AvancePercent, type AvanceTarget, type MapEditSend, type WorkMap } from '@lilachat/shared';
 import { DecimalInput } from '../../../ui/DecimalInput';
 import { useColores } from '../../../ui/tema';
 import { KICKER } from './WorkMapPanel';
+import { UndoProgress } from './PendingProgress';
 
 const FIELD = 'mt-2 h-12 rounded-xl border border-outline/25 bg-background px-3 font-mono text-[15px] text-on-surface';
 const newIds = (): AvanceEntryIds => ({ scope: randomUUID(), progress: randomUUID() });
@@ -56,6 +57,7 @@ function StreetHead(props: { target: AvanceTarget }) {
         <Text className="font-mono text-[13px] text-on-surface-variant">{progress.line}</Text>
         <Text className="font-mono text-[13px] font-bold text-primary">{progress.percent} % completado</Text>
       </View>
+      {props.target.pendingM !== null ? <Text testID="avance-por-aprobar" className="font-mono text-[13px] text-on-surface-variant">Por aprobar hasta {stationLabel(props.target.pendingM)}</Text> : null}
     </View>
   );
 }
@@ -82,7 +84,7 @@ function useAvanceSave(map: WorkMap, target: AvanceTarget, send: MapEditSend) {
 }
 
 /** The bottom panel of «Modo Avance» (design av-01): street, bar, five buttons, the exact end and «Guardar avance». */
-export function AvancePanel(props: { map: WorkMap; target: AvanceTarget; send: MapEditSend; bottom: number; onClose: () => void }) {
+export function AvancePanel(props: { map: WorkMap; target: AvanceTarget; send: MapEditSend; undoable: ByApproveProgress | null; onUndo: (id: string) => Promise<string | null>; bottom: number; onClose: () => void }) {
   const colors = useColores();
   const save = useAvanceSave(props.map, props.target, props.send);
   return (
@@ -92,6 +94,7 @@ export function AvancePanel(props: { map: WorkMap; target: AvanceTarget; send: M
       <PercentButtons picked={save.typing ? null : save.picked} onPick={save.pick} />
       <ExactEnd open={save.typing} endM={save.endM} typed={save.typed} onOpen={save.openTyping} onTyped={save.type} />
       {save.answer ? <Text testID="avance-respuesta-modo" accessibilityRole="alert" className={`text-[14px] font-semibold ${save.answer.ok ? 'text-primary' : 'text-error'}`}>{save.answer.message}</Text> : null}
+      {props.undoable && props.undoable.toM !== null ? <UndoProgress id={props.undoable.id} toM={props.undoable.toM} onUndo={props.onUndo} /> : null}
       <Pressable testID="avance-guardar" disabled={save.busy} onPress={() => void save.save()} className={`h-14 flex-row items-center justify-center gap-2 rounded-2xl bg-primary ${save.busy ? 'opacity-60' : ''}`}>
         <CircleCheck size={22} color={colors['on-primary']} />
         <Text className="text-[17px] font-bold text-on-primary">{save.busy ? 'Guardando…' : 'Guardar avance'}</Text>

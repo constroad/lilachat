@@ -429,3 +429,4 @@ Un Control de imprimación con fotos ubicadas y dos días de avance aprobado (o-
 - **27/11** Selector de color libre de trabajos y «Capas» con todos los trabajos (detalle en `obra-mapa.md`).
 - **27/11** «A mano»: aros arrastrables en el inicio y el fin (detalle en `obra-mapa.md`).
 - **27/11** «Modo Avance» en el mapa: elegir trabajo, tocar calle, % y «Guardar avance» (detalle en `obra-mapa.md`).
+- **28/11** Mapa: lo por aprobar se dibuja punteado, no se registra dos veces, «Deshacer» lo propio y lo rechazado se ve (detalle en `obra-mapa.md`).

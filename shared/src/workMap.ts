@@ -18,8 +18,10 @@ export type WorkMapProgress = { streetId: string; workId: string; fromM: number;
 /** `partida`: a contracted item, not a tag of the map; the progress names it `partidaId`. */
 export type WorkMapWork = { id: string; name: string; color: string; partida?: true };
 export type WorkMapStage = { id: string; name: string };
+/** A progress still waiting for approval (José 28/11): not drawn as done, but «desde» skips it. */
+export type WorkMapPendingStretch = { streetId: string; workId: string; fromM: number; toM: number };
 /** `marks` and `observations`: Portal's drawings (gibas, manholes…) and what was seen on the work, shown even before there are streets (José 19/11). */
-export type WorkMap = { streets: WorkMapStreet[]; scopes: WorkMapScope[]; progress: WorkMapProgress[]; works: WorkMapWork[]; stages: WorkMapStage[]; marks?: WorkMapMark[]; observations?: WorkMapObservation[] };
+export type WorkMap = { streets: WorkMapStreet[]; scopes: WorkMapScope[]; progress: WorkMapProgress[]; works: WorkMapWork[]; stages: WorkMapStage[]; marks?: WorkMapMark[]; observations?: WorkMapObservation[]; pending?: WorkMapPendingStretch[] };
 
 export type WorkMapFilter = { stageId?: string; workId?: string; untilDay?: string };
 /** A done line also says its stations, so an export can name the stretch. */

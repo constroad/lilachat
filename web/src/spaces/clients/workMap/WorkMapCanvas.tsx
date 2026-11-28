@@ -4,7 +4,7 @@ import workerUrl from 'maplibre-gl/dist/maplibre-gl-csp-worker?url';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { addObservationLayer, useMapCardPopup, useObservationData } from './MapCardPopup';
 import { useDarkClass } from '../../../ui/useDarkClass';
-import { type MapPick, type ViewableFile, type WorkMapObservation, MARK_CHIP_PAINT, MARK_FILL_PAINT, MARK_GLYPH_PAINT, MARK_LINE_PAINT, MARK_TEXT_LAYOUT, MARK_TEXT_PAINT, mapMarkCollection, type WorkMapMark, PLACE_ZOOM, type MapFrame, STATION_DOT_PAINT, STATION_TEXT_LAYOUT, STATION_TEXT_PAINT, stationMarkCollection, type StationMark, NAMED_ROAD_LAYER, ROAD_SOURCE_LAYERS, tapBox, tapTolerancePx, WORK_MAP_PLANNED_COLOR, workMapStyleFor, workMapCollection, type BasemapFeatureLike, type DischargePin, type StreetEnd, type StreetHandle, type TapFeatures, type WorkMapLine, type WorkMapPoint, type WorkMapView } from '@lilachat/shared';
+import { type MapPick, type ViewableFile, type WorkMapObservation, MARK_CHIP_PAINT, MARK_FILL_PAINT, MARK_GLYPH_PAINT, MARK_LINE_PAINT, MARK_TEXT_LAYOUT, MARK_TEXT_PAINT, mapMarkCollection, type WorkMapMark, PLACE_ZOOM, type MapFrame, STATION_DOT_PAINT, STATION_TEXT_LAYOUT, STATION_TEXT_PAINT, stationMarkCollection, type StationMark, NAMED_ROAD_LAYER, ROAD_SOURCE_LAYERS, tapBox, tapTolerancePx, WORK_MAP_PENDING_PAINT, WORK_MAP_PLANNED_COLOR, workMapStyleFor, workMapCollection, type BasemapFeatureLike, type DischargePin, type StreetEnd, type StreetHandle, type TapFeatures, type WorkMapLine, type WorkMapPoint, type WorkMapView } from '@lilachat/shared';
 
 maplibregl.setWorkerUrl(workerUrl);
 
@@ -13,6 +13,7 @@ export type MapHolder = HTMLDivElement & { workMap?: maplibregl.Map };
 const PLANNED = 'work-map-planned';
 const DONE = 'work-map-done';
 const STRETCH = 'work-map-stretch';
+const PENDING = 'work-map-pending';
 const STATIONS = 'work-map-stations';
 const BARE = 'work-map-bare';
 const MARKS = 'work-map-marks';
@@ -43,6 +44,9 @@ function addWorkLayers(map: maplibregl.Map) {
   map.addSource(STRETCH, { type: 'geojson', data: workMapCollection([]) });
   map.addLayer({ id: STRETCH, type: 'line', source: STRETCH, layout: LINE_ROUND, paint: { 'line-color': ['get', 'color'], 'line-width': 11, 'line-opacity': 0.55 } });
   map.addLayer({ id: DONE, type: 'line', source: DONE, layout: LINE_ROUND, paint: { 'line-color': ['get', 'color'], 'line-width': 7 } });
+  // What waits for approval: thin and dashed in its work's color, over the approved line (José 28/11).
+  map.addSource(PENDING, { type: 'geojson', data: workMapCollection([]) });
+  map.addLayer({ id: PENDING, type: 'line', source: PENDING, layout: { 'line-join': 'round' }, paint: WORK_MAP_PENDING_PAINT as maplibregl.LineLayerSpecification['paint'] });
   map.addSource(STATIONS, { type: 'geojson', data: stationMarkCollection([]) });
   map.addLayer({ id: `${STATIONS}-dot`, type: 'circle', source: STATIONS, paint: STATION_DOT_PAINT });
   map.addLayer({ id: `${STATIONS}-text`, type: 'symbol', source: STATIONS, layout: STATION_TEXT_LAYOUT as maplibregl.SymbolLayerSpecification['layout'], paint: STATION_TEXT_PAINT });
@@ -165,7 +169,27 @@ function roadsAt(map: maplibregl.Map, event: maplibregl.MapMouseEvent): TapFeatu
 
 /** The streets of the work over a literal map (José 06/11). Lazy: its library weighs more than the chat. */
 /** `onTap`: drawing a street (design o-02), each tap is a bend; the map also offers «ubicarme» when there is nothing to frame. */
-export default function WorkMapCanvas(props: { view: WorkMapView; expanded: boolean; pins?: DischargePin[]; stretches?: WorkMapLine[]; /** «0+100» on the road (audit item 10). */ stations?: StationMark[]; /** The part of a street without a stretch (audit item 15). */ bare?: WorkMapLine[]; onTap?: (point: WorkMapPoint, roads: TapFeatures) => void; /** Draggable ends of a picked street (José 08/11). */ handles?: StreetHandle[]; onHandleDrop?: HandleDrop; /** A tap on a pin (the «Fotos» layer, José 08/11). */ onPin?: (id: string) => void; /** A place found by the search: the map flies there (José 08/11). */ focus?: WorkMapPoint | null; /** A street just picked whole: the map shows both of its ends. */ frame?: MapFrame | null; /** Portal's drawings (José 19/11). */ marks?: readonly WorkMapMark[]; /** Portal's observations, as pins (José 19/11). */ observations?: readonly WorkMapObservation[]; /** The drawing or observation whose card stays open. */ selected?: MapPick | null; onSelect?: (pick: MapPick | null) => void; /** A thumbnail of a card: the photo full size. */ onCardPhoto?: (photo: ViewableFile, all: ViewableFile[]) => void }) {
+/** A place found by the search flies there; a street picked whole frames both of its ends. */
+function useCameraMoves(map: maplibregl.Map | null, ready: boolean, focus: WorkMapPoint | null | undefined, frame: MapFrame | null | undefined) {
+  useEffect(() => {
+    if (ready && focus) map?.flyTo({ center: [focus.lng, focus.lat], zoom: PLACE_ZOOM, duration: 600 });
+  }, [map, ready, focus]);
+  useEffect(() => {
+    if (ready && frame) map?.fitBounds(frame, { ...FIT, duration: 600 });
+  }, [map, ready, frame]);
+}
+
+type SourceData = Parameters<maplibregl.GeoJSONSource['setData']>[0];
+const NO_LINES: WorkMapLine[] = [];
+
+/** Keeps one of the map's sources in step with what it draws once the map is ready; `build` is a module function. */
+function useSourceData<T>(map: maplibregl.Map | null, ready: boolean, source: string, input: T, build: (input: T) => SourceData) {
+  useEffect(() => {
+    if (ready) (map?.getSource(source) as maplibregl.GeoJSONSource | undefined)?.setData(build(input));
+  }, [map, ready, source, input, build]);
+}
+
+export default function WorkMapCanvas(props: { view: WorkMapView; expanded: boolean; pins?: DischargePin[]; stretches?: WorkMapLine[]; /** What waits for approval (José 28/11). */ pending?: WorkMapLine[]; /** «0+100» on the road (audit item 10). */ stations?: StationMark[]; /** The part of a street without a stretch (audit item 15). */ bare?: WorkMapLine[]; onTap?: (point: WorkMapPoint, roads: TapFeatures) => void; /** Draggable ends of a picked street (José 08/11). */ handles?: StreetHandle[]; onHandleDrop?: HandleDrop; /** A tap on a pin (the «Fotos» layer, José 08/11). */ onPin?: (id: string) => void; /** A place found by the search: the map flies there (José 08/11). */ focus?: WorkMapPoint | null; /** A street just picked whole: the map shows both of its ends. */ frame?: MapFrame | null; /** Portal's drawings (José 19/11). */ marks?: readonly WorkMapMark[]; /** Portal's observations, as pins (José 19/11). */ observations?: readonly WorkMapObservation[]; /** The drawing or observation whose card stays open. */ selected?: MapPick | null; onSelect?: (pick: MapPick | null) => void; /** A thumbnail of a card: the photo full size. */ onCardPhoto?: (photo: ViewableFile, all: ViewableFile[]) => void }) {
   const { view, expanded } = props;
   const holder = useRef<HTMLDivElement>(null);
   const map = useRef<maplibregl.Map | null>(null);
@@ -221,26 +245,13 @@ export default function WorkMapCanvas(props: { view: WorkMapView; expanded: bool
     map.current?.resize();
   }, [expanded]);
 
-  useEffect(() => {
-    if (ready && props.focus) map.current?.flyTo({ center: [props.focus.lng, props.focus.lat], zoom: PLACE_ZOOM, duration: 600 });
-  }, [ready, props.focus]);
+  useCameraMoves(map.current, ready, props.focus, props.frame);
 
-  useEffect(() => {
-    if (ready && props.frame) map.current?.fitBounds(props.frame, { ...FIT, duration: 600 });
-  }, [ready, props.frame]);
-
-  useEffect(() => {
-    if (ready) (map.current?.getSource(STRETCH) as maplibregl.GeoJSONSource | undefined)?.setData(workMapCollection(props.stretches ?? []));
-  }, [ready, props.stretches]);
-  useEffect(() => {
-    if (ready) (map.current?.getSource(BARE) as maplibregl.GeoJSONSource | undefined)?.setData(workMapCollection(props.bare ?? []));
-  }, [ready, props.bare]);
-  useEffect(() => {
-    if (ready) (map.current?.getSource(MARKS) as maplibregl.GeoJSONSource | undefined)?.setData(mapMarkCollection(props.marks ?? NO_MARKS));
-  }, [ready, props.marks]);
-  useEffect(() => {
-    if (ready) (map.current?.getSource(STATIONS) as maplibregl.GeoJSONSource | undefined)?.setData(stationMarkCollection(props.stations ?? NO_STATIONS));
-  }, [ready, props.stations]);
+  useSourceData(map.current, ready, STRETCH, props.stretches ?? NO_LINES, workMapCollection);
+  useSourceData(map.current, ready, PENDING, props.pending ?? NO_LINES, workMapCollection);
+  useSourceData(map.current, ready, BARE, props.bare ?? NO_LINES, workMapCollection);
+  useSourceData(map.current, ready, MARKS, props.marks ?? NO_MARKS, mapMarkCollection);
+  useSourceData(map.current, ready, STATIONS, props.stations ?? NO_STATIONS, stationMarkCollection);
   useObservationData(map.current, ready, props.observations);
   const card = useMapCardPopup(map.current, ready, { marks: props.marks ?? NO_MARKS, observations: props.observations, selected: props.selected, onSelect: props.onSelect, onPhoto: props.onCardPhoto, drawing: Boolean(props.onTap) });
   usePins(map.current, ready, props.pins ?? NO_PINS, onPin);

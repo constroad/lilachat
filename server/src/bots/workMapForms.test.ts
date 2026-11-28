@@ -184,6 +184,33 @@ describe('pending progress, through the door (Portal a9b1c3ba; José 09/11)', ()
   });
 });
 
+/** José 28/11: what waits (anyone's) and the rejected ones, and undoing one's own before approval. */
+describe('progress to approve and undo, through the member\'s door', () => {
+  it('lists every pending and the recent rejected with only the service', () => {
+    // Act
+    const prepared = workMapFormPrepared(SERVICE, workMapFormInputOf({ kind: 'work_by_approve' })!);
+    // Assert
+    expect(prepared.form.id).toBe('avances_por_aprobar_de_obra');
+    expect(prepared.context).toEqual({ servicioId: SERVICE });
+  });
+
+  it('undoes one progress with the service and its id', () => {
+    // Act
+    const prepared = workMapFormPrepared(SERVICE, workMapFormInputOf({ kind: 'work_undo', progress_id: ' p9 ' })!);
+    // Assert
+    expect(prepared.form.id).toBe('deshacer_avance_de_obra');
+    expect(prepared.form.submitLabel).toBe('Deshacer');
+    expect(prepared.context).toEqual({ servicioId: SERVICE, avanceId: 'p9' });
+  });
+
+  it('refuses an undo without a progress or with a wrong one', () => {
+    // Act / Assert
+    expect(workMapFormInputOf({ kind: 'work_undo' })).toBeNull();
+    expect(workMapFormInputOf({ kind: 'work_undo', progress_id: 42 })).toBeNull();
+    expect(workMapFormInputOf({ kind: 'work_undo', progress_id: 'x'.repeat(200) })).toBeNull();
+  });
+});
+
 /** José 19/11: «Editar croquis» opens Portal's croquis editor of the service. */
 describe('the service croquis, through the door', () => {
   it('asks Portal\'s abrir_croquis_de_servicio with only the service', () => {

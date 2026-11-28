@@ -64,7 +64,7 @@ describe('avancePickedWork', () => {
 
 describe('avanceTargetOf', () => {
   it('reads what is done on a street that carries the work', () => {
-    expect(avanceTargetOf(MAP, 's1', 'imp')).toEqual({ streetId: 's1', streetName: 'Jr. Lima', workId: 'imp', workName: 'Imprimación', lengthM: 120, doneM: 60, fromM: 60, needsScope: false });
+    expect(avanceTargetOf(MAP, 's1', 'imp')).toEqual({ streetId: 's1', streetName: 'Jr. Lima', workId: 'imp', workName: 'Imprimación', lengthM: 120, doneM: 60, fromM: 60, needsScope: false, pendingM: null });
   });
 
   it('a street without the work needs a stretch first and starts where its stretches start', () => {
@@ -124,6 +124,33 @@ describe('avanceProblem', () => {
     expect(avanceProblem(target, 150)).toMatch(/pasa el largo de la calle \(120 m\)/);
     expect(avanceProblem(target, 90)).toBeNull();
     expect(avanceProblem(target, null)).toBe(MANUAL_NO_LENGTH);
+  });
+});
+
+/** José 28/11: a second save of the same percent waits on the first; rejected ones do not count. */
+describe('what waits for approval', () => {
+  const waiting: WorkMap = { ...MAP, pending: [{ streetId: 's1', workId: 'imp', fromM: 60, toM: 90 }, { streetId: 's1', workId: 'base', fromM: 0, toM: 120 }] };
+
+  it('starts the next progress after the pending one, while done stays the approved metres', () => {
+    expect(avanceTargetOf(waiting, 's1', 'imp')).toMatchObject({ doneM: 60, fromM: 90, pendingM: 90 });
+    expect(avanceTargetOf(waiting, 's3', 'imp')).toMatchObject({ fromM: 0, pendingM: null });
+  });
+
+  it('refuses an end that the pending one already reaches, and lets a farther one through', () => {
+    const target = avanceTargetOf(waiting, 's1', 'imp')!;
+    expect(avanceProblem(target, 90)).toBe('Ya hay un avance por aprobar hasta 0+090 en esta calle.');
+    expect(avanceProblem(target, 75)).toBe('Ya hay un avance por aprobar hasta 0+090 en esta calle.');
+    expect(avanceProblem(target, 120)).toBeNull();
+  });
+
+  it('sends nothing on the twin save', async () => {
+    // Arrange
+    const send = vi.fn<MapEditSend>(async () => ({ ok: true, message: MANUAL_SENT }));
+    // Act
+    const answer = await runAvanceSave({ map: waiting, target: avanceTargetOf(waiting, 's1', 'imp')!, toM: 90, ids: IDS, now: NOW, send });
+    // Assert
+    expect(send).not.toHaveBeenCalled();
+    expect(answer).toEqual({ ok: false, message: 'Ya hay un avance por aprobar hasta 0+090 en esta calle.' });
   });
 });
 

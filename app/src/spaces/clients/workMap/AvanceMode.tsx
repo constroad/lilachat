@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { ArrowLeft, Check, Pointer } from 'lucide-react-native';
-import { AVANCE_NO_WORKS, AVANCE_PICK_STREET, AVANCE_TITLE, avanceChipsOf, avanceHint, avancePickedWork, avanceTargetOf, brushLinesOf, createdOrRefusal, sendWorkTag, stretchLineOf, streetAtTap, WORK_TAG_COLORS, workMapView, workTagRequest, type AvanceChip, type MapEditSend, type WorkMap, type WorkMapLine, type WorkMapPoint } from '@lilachat/shared';
+import { AVANCE_NO_WORKS, AVANCE_PICK_STREET, AVANCE_TITLE, avanceChipsOf, avanceHint, avancePickedWork, avanceTargetOf, brushLinesOf, byApproveLinesOf, undoableOf, type ByApproveList, createdOrRefusal, sendWorkTag, stretchLineOf, streetAtTap, WORK_TAG_COLORS, workMapView, workTagRequest, type AvanceChip, type MapEditSend, type WorkMap, type WorkMapLine, type WorkMapPoint } from '@lilachat/shared';
 import { Modal } from '../../../ui/Modal';
 import { useColores } from '../../../ui/tema';
 import { useMargenes } from '../../../ui/useMargenes';
@@ -71,7 +71,7 @@ function linesOf(map: WorkMap, workId: string | null, streetId: string | null): 
  * «Modo Avance» on the phone (design av-01, José 27/11): the strip of works on top, a tap on a
  * street opens its panel, and «Guardar avance» sends it to wait for an admin's approval.
  */
-export function AvanceMode(props: { map: WorkMap; title: string; send: MapEditSend; onExit: () => void }) {
+export function AvanceMode(props: { map: WorkMap; title: string; send: MapEditSend; byApprove: ByApproveList | null; onUndo: (id: string) => Promise<string | null>; onExit: () => void }) {
   const { map } = props;
   const margins = useMargenes();
   const [chosen, setChosen] = useState<string | null>(null);
@@ -82,6 +82,7 @@ export function AvanceMode(props: { map: WorkMap; title: string; send: MapEditSe
   const view = useMemo(() => workMapView(map), [map]);
   const target = workId && streetId ? avanceTargetOf(map, streetId, workId) : null;
   const workName = chips.find((chip) => chip.selected)?.name ?? '';
+  const pending = useMemo(() => byApproveLinesOf(map, props.byApprove).filter((one) => one.workId === workId), [map, props.byApprove, workId]);
   const tap = (place: WorkMapPoint) => {
     const found = streetAtTap(map, place);
     setError(found ? null : AVANCE_PICK_STREET);
@@ -90,13 +91,13 @@ export function AvanceMode(props: { map: WorkMap; title: string; send: MapEditSe
   return (
     <Modal visible animationType="slide" onRequestClose={props.onExit}>
       <View testID="avance-modo" className="flex-1 bg-background">
-        <WorkMapSurface view={view} moves controlsInset={margins.pie} stretches={linesOf(map, workId, streetId)} onTap={workId ? tap : undefined} />
+        <WorkMapSurface view={view} moves controlsInset={margins.pie} stretches={linesOf(map, workId, streetId)} pending={pending} onTap={workId ? tap : undefined} />
         <View pointerEvents="box-none" className="absolute inset-x-0 gap-3" style={{ top: margins.cabecera + 8 }}>
           <Head title={props.title} onExit={props.onExit} />
           <WorkChips chips={chips} onPick={(id) => { setChosen(id); setError(null); }} send={props.send} />
           {workId ? <Hint text={avanceHint(workName)} error={error} /> : null}
         </View>
-        {target ? <AvancePanel key={`${target.streetId}|${target.workId}`} map={map} target={target} send={props.send} bottom={margins.pie} onClose={() => setStreetId(null)} /> : null}
+        {target ? <AvancePanel key={`${target.streetId}|${target.workId}`} map={map} target={target} send={props.send} undoable={undoableOf(props.byApprove, target.streetId, target.workId)} onUndo={props.onUndo} bottom={margins.pie} onClose={() => setStreetId(null)} /> : null}
       </View>
     </Modal>
   );

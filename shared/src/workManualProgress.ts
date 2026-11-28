@@ -4,6 +4,7 @@ import { metersLabel, workMapView, type WorkMap, type WorkMapLine, type WorkMapP
 import { stationMarksOf, type StationMark } from './workMapStations.js';
 import { stretchLineOf, stretchWorksOf } from './workMapProgress.js';
 import type { DriveUploadResult } from './driveUpload.js';
+import { pendingAlready, pendingEndOf } from './workByApprove.js';
 import type { MapEditSend } from './workScopeDraft.js';
 import { WALK_MAX_ACCURACY_M, type GpsFix } from './workStreetWalk.js';
 import { sendMapTool, type WorkProgressDeps, type WorkProgressResult } from './workProgressSend.js';
@@ -51,9 +52,20 @@ const scopeStart = (map: Pick<WorkMap, 'scopes'>, streetId: string, workId: stri
   return starts.length ? Math.min(...starts) : 0;
 };
 
-/** «Sigue donde quedó»: the end of the approved progress of that work, or the start of its stretch. */
-export const manualStartOf = (map: Pick<WorkMap, 'progress' | 'scopes'>, streetId: string, workId: string): number =>
-  Math.round(approvedEnd(map, streetId, workId) ?? scopeStart(map, streetId, workId));
+/**
+ * «Sigue donde quedó»: the end of the approved progress of that work, or the start of its stretch;
+ * past what still waits for approval (José 28/11), so the same stretch is not registered twice.
+ */
+export function manualStartOf(map: Pick<WorkMap, 'progress' | 'scopes' | 'pending'>, streetId: string, workId: string): number {
+  const start = Math.round(approvedEnd(map, streetId, workId) ?? scopeStart(map, streetId, workId));
+  return Math.max(start, pendingEndOf(map, streetId, workId) ?? start);
+}
+
+/** «Ya hay un avance por aprobar hasta…» when the end does not pass what waits; null otherwise. */
+export function pendingProblem(map: Pick<WorkMap, 'pending'>, streetId: string, workId: string | null, toM: number): string | null {
+  const pendingM = workId ? pendingEndOf(map, streetId, workId) : null;
+  return pendingM !== null && toM <= pendingM ? pendingAlready(pendingM) : null;
+}
 
 /** The works the street's stretches carry; with one, it comes picked. */
 export function manualDraftFor(map: WorkMap, streetId: string): { works: WorkMapWork[]; draft: ManualProgressDraft } {
@@ -123,7 +135,7 @@ type ManualRun = { map: WorkMap; streetId: string; lengthM: number; draft: Manua
 
 /** Checks it, then sends it through the door; what is wrong comes back as the message to show. */
 export async function runManualProgress(run: ManualRun): Promise<WorkProgressResult> {
-  const problem = manualProblem(run.draft, run.lengthM);
+  const problem = (run.draft.workId && pendingProblem(run.map, run.streetId, run.draft.workId, run.draft.toM)) || manualProblem(run.draft, run.lengthM);
   if (problem) return { ok: false, message: problem };
   return run.send(workManualProgressRequest(run.map, run.streetId, run.draft, run.entryId, run.now), (deps) => sendWorkManualProgress(deps, run.draft.note));
 }

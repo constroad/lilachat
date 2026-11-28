@@ -314,6 +314,23 @@ Motores puros, con test, usados por web y APK:
   pantalla completa; web: tira y pista sobre el mapa, panel en la hoja/lateral. Sin trabajos, ofrece
   «Agregar trabajo» (`NewLabel`). Diferencia con el diseño: sin la barra blanca «Mapa Operativo
   Vial» (Stitch la inventó) ni los botones de zoom propios (se usan los del mapa).
+- **28/11** Lo que espera aprobación, en el mapa (web y APK; Portal ya publicó las herramientas).
+  Con el mapa se pide `work_by_approve` → `avances_por_aprobar_de_obra({ servicioId })` (lectura de
+  miembro, por la puerta de sesión; nunca por el enlace del cliente): TODO lo pendiente del servicio
+  (de cualquiera) y lo rechazado de 14 días. Motor puro `shared/src/workByApprove.ts` (`byApproveOf`
+  tolera campos faltantes; estado desconocido se salta). Si falla o la herramienta no existe, el mapa
+  queda como antes (sin aviso). Lo pendiente se dibuja en el color del trabajo, delgado y punteado
+  (`WORK_MAP_PENDING_PAINT`, capa `work-map-pending` sobre lo aprobado); lo rechazado no se dibuja.
+  Leyenda «Por aprobar (N)» con trazo punteado. Sin doble registro: `withPendingOf` mete lo pendiente
+  en `map.pending` y `manualStartOf` arranca después de eso; en «Registrar avance» y en «Modo
+  Avance» un fin que no pasa lo pendiente dice «Ya hay un avance por aprobar hasta 0+060 en esta
+  calle.» y no se envía (`pendingProblem`, `AvanceTarget.pendingM`). «Deshacer» en el panel de Modo
+  Avance y en «Pendiente de aprobar», solo en el avance PROPIO más reciente pendiente de esa calle y
+  trabajo (`undoableOf`/`undoableIds`): pide confirmación («¿Deshacer el avance hasta 0+060? Se
+  borra antes de que lo aprueben.») y llama `work_undo` → `deshacer_avance_de_obra({ servicioId,
+  avanceId })`; al deshacer recarga mapa y lista; si Portal se niega, muestra su motivo. La lista
+  «Pendiente de aprobar» lleva la píldora «POR APROBAR» y suma lo rechazado con «RECHAZADO» en rojo
+  y la nota del rechazo. `work_by_approve` es lectura (`READS_ONLY`): no recarga el mapa.
 - **20/11** Rediseño aprobado `mapa-v2` (web y APK): cabecera de una fila en Mapa, mapa a pantalla,
   días y corte flotando, «Compartir avance» y «Pantalla completa» dentro de «Más», panel como hoja
   en el teléfono. Auditorías: `design/stitch/auditorias/mapa-v2-movil.md` y `mapa-v2-escritorio.md`.

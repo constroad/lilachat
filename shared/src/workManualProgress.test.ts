@@ -144,6 +144,30 @@ describe('manual progress: photos and the run', () => {
   });
 });
 
+/** José 28/11: «desde» skips what waits for approval; the twin is refused before sending. */
+describe('manual progress: what waits for approval', () => {
+  const waiting = (): WorkMap => ({ ...mapOf(), pending: [{ streetId: 's1', workId: 'base', fromM: 120, toM: 200 }] });
+
+  it('starts after the pending progress of that work, never before the approved one', () => {
+    expect(manualStartOf(waiting(), 's1', 'base')).toBe(200);
+    expect(manualStartOf({ ...mapOf(), pending: [{ streetId: 's1', workId: 'base', fromM: 0, toM: 60 }] }, 's1', 'base')).toBe(120);
+    expect(manualStartOf(waiting(), 's1', 'asfalto')).toBe(0);
+  });
+
+  it('refuses an end the pending one reaches and sends nothing', async () => {
+    // Arrange
+    const send = vi.fn<MapEditSend>(async () => ({ ok: true, message: MANUAL_SENT }));
+    const base = { map: waiting(), streetId: 's1', lengthM: 320, entryId: ENTRY, send, now: new Date('2026-11-28T15:00:00.000Z') };
+    // Act
+    const twin = await runManualProgress({ ...base, draft: { workId: 'base', fromM: 120, toM: 200, photoIds: [], note: '' } });
+    const farther = await runManualProgress({ ...base, draft: { workId: 'base', fromM: 200, toM: 240, photoIds: [], note: '' } });
+    // Assert
+    expect(twin).toEqual({ ok: false, message: 'Ya hay un avance por aprobar hasta 0+200 en esta calle.' });
+    expect(send).toHaveBeenCalledTimes(1);
+    expect(farther.ok).toBe(true);
+  });
+});
+
 describe('manual progress: «Mi GPS»', () => {
   const draft = { workId: 'base', fromM: 120, toM: 120, photoIds: [], note: '' };
   const street = mapOf().streets[0]!;

@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import type { MapEditSend } from '@lilachat/shared';
+import { byApproveOf, type MapEditSend, type WorkMap } from '@lilachat/shared';
 import { PendingProgressCard } from './PendingProgress';
 
 /** José 09/11: the progress sent «disappeared»; it now waits above the map, and an admin approves it there. */
@@ -55,5 +55,51 @@ describe('«Por aprobar» above the work map', () => {
     await waitFor(() => expect(onList).toHaveBeenCalledTimes(2));
     expect(onList).toHaveBeenCalledWith([expect.objectContaining({ id: 'a1', streetId: 's1', fromM: 0, toM: 30 })]);
     expect(onList).toHaveBeenCalledWith([]);
+  });
+});
+
+/** José 28/11: «POR APROBAR» and «RECHAZADO» pills, and «Deshacer» on the caller's own pending progress. */
+describe('what waits and what was rejected, with undo', () => {
+  const line = [{ lat: -12, lng: -77 }, { lat: -12, lng: -76.999 }];
+  const MAP: WorkMap = { streets: [{ id: 's1', name: 'Jr. Moquegua', line, lengthM: 120 }], scopes: [], progress: [], works: [{ id: 'asf', name: 'Asfalto QA', color: '#111827' }], stages: [] };
+  const byApprove = byApproveOf({ total: 2, avances: [
+    { avanceId: 'a1', estado: 'pendiente', fecha: '2026-11-28', calleId: 's1', desdeM: 0, hastaM: 30, tagId: 'asf', metrado: 30, autor: 'Ana Ruiz', propio: true },
+    { avanceId: 'r1', estado: 'rechazado', fecha: '2026-11-27', calleId: 's1', desdeM: 30, hastaM: 60, tagId: 'asf', metrado: 30, autor: 'Ana Ruiz', propio: true, notaRechazo: 'Mal medido' },
+  ] });
+
+  it('pills each row and shows the rejected one with its note', async () => {
+    // Arrange
+    const { send } = sender(data);
+    // Act
+    render(<PendingProgressCard send={send} admin={false} reloadKey={1} byApprove={{ list: byApprove, map: MAP, onUndo: vi.fn() }} />);
+    // Assert
+    expect(await screen.findByTestId('avance-pendiente-a1')).toHaveTextContent('POR APROBAR');
+    expect(screen.getByTestId('avance-rechazado-r1')).toHaveTextContent('RECHAZADO');
+    expect(screen.getByTestId('avance-rechazado-r1')).toHaveTextContent('Mal medido');
+    expect(screen.getByTestId('avance-rechazado-r1')).toHaveTextContent('Jr. Moquegua · 0+030 a 0+060 · Asfalto QA');
+  });
+
+  it('«Deshacer» asks first, then undoes; Portal\'s refusal is shown', async () => {
+    // Arrange
+    const { send } = sender(data);
+    const onUndo = vi.fn(async () => 'Ya fue aprobado.');
+    render(<PendingProgressCard send={send} admin={false} reloadKey={1} byApprove={{ list: byApprove, map: MAP, onUndo }} />);
+    // Act
+    fireEvent.click(await screen.findByTestId('deshacer-avance-a1'));
+    // Assert
+    expect(screen.getByTestId('avance-pendiente-a1')).toHaveTextContent('¿Deshacer el avance hasta 0+030? Se borra antes de que lo aprueben.');
+    expect(onUndo).not.toHaveBeenCalled();
+    // Act
+    fireEvent.click(screen.getByTestId('deshacer-si-a1'));
+    // Assert
+    await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('Ya fue aprobado.'));
+    expect(onUndo).toHaveBeenCalledWith('a1');
+  });
+
+  it('shows only the rejected ones when nothing waits', async () => {
+    const { send } = sender({ total: 0, verTodos: false, pendientes: [] });
+    render(<PendingProgressCard send={send} admin={false} reloadKey={1} byApprove={{ list: { total: 1, items: byApprove.items.slice(1) }, map: MAP, onUndo: vi.fn() }} />);
+    expect(await screen.findByTestId('avance-rechazado-r1')).toBeInTheDocument();
+    expect(screen.queryByTestId('deshacer-avance-a1')).toBeNull();
   });
 });

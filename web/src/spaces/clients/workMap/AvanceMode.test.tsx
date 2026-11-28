@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
-import { MANUAL_SENT, type MapEditSend, type WorkMap } from '@lilachat/shared';
+import { byApproveOf, MANUAL_SENT, withPendingOf, type MapEditSend, type WorkMap } from '@lilachat/shared';
 import { AvanceTop, useAvanceMode } from './AvanceMode';
 import { AvancePanel } from './AvancePanel';
 
@@ -16,7 +16,7 @@ const MAP: WorkMap = {
 const ON_STREET = { lat: -12, lng: -76.9995 };
 const OFF_STREET = { lat: -12.01, lng: -76.9995 };
 
-function Harness(props: { map: WorkMap; send: MapEditSend }) {
+function Harness(props: { map: WorkMap; send: MapEditSend; onUndo?: (id: string) => Promise<string | null>; undoable?: ReturnType<typeof byApproveOf>['items'][number] }) {
   const mode = useAvanceMode(props.map);
   return (
     <>
@@ -24,7 +24,7 @@ function Harness(props: { map: WorkMap; send: MapEditSend }) {
       {mode.on ? <AvanceTop mode={mode} title="Pachacamac" send={props.send} /> : null}
       <button type="button" data-testid="toque-calle" onClick={() => mode.tap(ON_STREET)} />
       <button type="button" data-testid="toque-fuera" onClick={() => mode.tap(OFF_STREET)} />
-      {mode.target ? <AvancePanel map={props.map} target={mode.target} send={props.send} /> : null}
+      {mode.target ? <AvancePanel map={props.map} target={mode.target} send={props.send} undoable={props.undoable ?? null} onUndo={props.onUndo} /> : null}
     </>
   );
 }
@@ -101,5 +101,39 @@ describe('Modo Avance (web)', () => {
     expect(screen.getByTestId('avance-sin-trabajos')).toHaveTextContent('Aún no hay trabajos');
     expect(screen.getByTestId('trabajo-nueva')).toBeTruthy();
     expect(screen.queryByTestId('avance-pista')).toBeNull();
+  });
+});
+
+/** José 28/11: the twin of a pending save is refused, and the author can undo it from the panel. */
+describe('Modo Avance with what waits for approval (web)', () => {
+  const list = byApproveOf({ avances: [{ avanceId: 'a9', estado: 'pendiente', calleId: 's1', desdeM: 60, hastaM: 90, tagId: 'imp', propio: true }] });
+  const waiting = withPendingOf(MAP, list);
+
+  it('the same 75 % again says it already waits and sends nothing', async () => {
+    // Arrange
+    const send = okSend();
+    render(<Harness map={waiting} send={send} />);
+    fireEvent.click(screen.getByTestId('mapa-modo-avance'));
+    // Act
+    fireEvent.click(screen.getByTestId('toque-calle'));
+    fireEvent.click(screen.getByTestId('avance-pct-75'));
+    fireEvent.click(screen.getByTestId('avance-guardar'));
+    // Assert
+    expect(screen.getByTestId('avance-por-aprobar')).toHaveTextContent('Por aprobar hasta 0+090');
+    await waitFor(() => expect(screen.getByTestId('avance-respuesta-modo')).toHaveTextContent('Ya hay un avance por aprobar hasta 0+090 en esta calle.'));
+    expect(send).not.toHaveBeenCalled();
+  });
+
+  it('«Deshacer» on the own pending one asks and calls the undo', async () => {
+    // Arrange
+    const onUndo = vi.fn(async () => null);
+    render(<Harness map={waiting} send={okSend()} undoable={list.items[0]} onUndo={onUndo} />);
+    fireEvent.click(screen.getByTestId('mapa-modo-avance'));
+    fireEvent.click(screen.getByTestId('toque-calle'));
+    // Act
+    fireEvent.click(screen.getByTestId('deshacer-avance-a9'));
+    fireEvent.click(screen.getByTestId('deshacer-si-a9'));
+    // Assert
+    await waitFor(() => expect(onUndo).toHaveBeenCalledWith('a9'));
   });
 });

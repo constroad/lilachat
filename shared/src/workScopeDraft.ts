@@ -88,7 +88,7 @@ export const sendWorkTag = (deps: WorkProgressDeps): Promise<WorkProgressResult>
 export type MapEditSend = (request: ReportFormRequest, run: (deps: WorkProgressDeps) => Promise<WorkProgressResult>) => Promise<WorkProgressResult>;
 
 /** Lists that only read, and the croquis' link: asking them changes nothing on the map (the pending one is asked on every reload). */
-const READS_ONLY = new Set<ReportFormRequest['kind']>(['work_pending', 'work_deleted', 'service_croquis']);
+const READS_ONLY = new Set<ReportFormRequest['kind']>(['work_pending', 'work_by_approve', 'work_deleted', 'service_croquis']);
 
 /** An edit that worked asks for the map again, so the panel shows what Portal kept; a read does not. */
 export const editThenReload = (send: MapEditSend | undefined, reload: () => Promise<unknown>): MapEditSend | undefined =>

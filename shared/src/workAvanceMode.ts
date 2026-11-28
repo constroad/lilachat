@@ -4,6 +4,7 @@ import { brushRequests } from './workMapBrush.js';
 import { manualProblem, manualStartOf, sendWorkManualProgress, workManualProgressRequest, MANUAL_NO_LENGTH, type WorkManualProgressRequest } from './workManualProgress.js';
 import { sendWorkScope, type MapEditSend, type WorkScopeRequest } from './workScopeDraft.js';
 import type { WorkProgressResult } from './workProgressSend.js';
+import { pendingAlready, pendingEndOf } from './workByApprove.js';
 
 /**
  * «Modo Avance» (design av-01, José 27/11): pick a work in the strip, tap a street, pick a big
@@ -16,8 +17,8 @@ export type AvancePercent = (typeof AVANCE_PERCENTS)[number];
 const FULL_PERCENT = 100;
 
 export type AvanceChip = { id: string; name: string; color: string; percent: number; label: string; selected: boolean };
-/** `doneM`: the approved end of that work on the street; `fromM`: where the new progress starts. */
-export type AvanceTarget = { streetId: string; streetName: string; workId: string; workName: string; lengthM: number; doneM: number; fromM: number; needsScope: boolean };
+/** `doneM`: the approved end of that work on the street; `fromM`: where the new progress starts; `pendingM`: where what waits for approval ends. */
+export type AvanceTarget = { streetId: string; streetName: string; workId: string; workName: string; lengthM: number; doneM: number; fromM: number; needsScope: boolean; pendingM: number | null };
 export type AvanceRequest = WorkScopeRequest | WorkManualProgressRequest;
 /** One id per save for each door: a resend after a lost answer is the same entry, never a twin. */
 export type AvanceEntryIds = { scope: string; progress: string };
@@ -64,7 +65,7 @@ export function avanceTargetOf(map: WorkMap, streetId: string, workId: string): 
   if (!street || !work) return null;
   const needsScope = !carries(map, streetId, workId);
   const planned = needsScope ? withWorkOnStreet(map, streetId, workId, street.lengthM) : map;
-  return { streetId, streetName: street.name, workId, workName: work.name, lengthM: Math.round(street.lengthM), doneM: approvedEnd(map, streetId, workId), fromM: manualStartOf(planned, streetId, workId), needsScope };
+  return { streetId, streetName: street.name, workId, workName: work.name, lengthM: Math.round(street.lengthM), doneM: approvedEnd(map, streetId, workId), fromM: manualStartOf(planned, streetId, workId), needsScope, pendingM: pendingEndOf(map, streetId, workId) };
 }
 
 /** «50 %» of the street: the chainage where the work arrives. */
@@ -82,6 +83,7 @@ export function avanceProgressLine(target: Pick<AvanceTarget, 'doneM' | 'lengthM
 /** Why the chosen end cannot go; null when it can. What is already done is said in words. */
 export function avanceProblem(target: AvanceTarget, toM: number | null): string | null {
   if (toM === null) return MANUAL_NO_LENGTH;
+  if (target.pendingM !== null && toM <= target.pendingM) return pendingAlready(target.pendingM);
   if (toM <= target.fromM) {
     if (target.doneM > 0) return avanceAlready(target.doneM, target.workName);
     return target.fromM > 0 ? avanceStartsLater(target.fromM) : MANUAL_NO_LENGTH;

@@ -29,6 +29,10 @@ export type WorkMapFormInput =
   | { kind: 'work_restore'; target: RestoreTarget; id: string }
   | { kind: 'work_deleted' }
   | { kind: 'work_pending' }
+  /** José 28/11: every pending progress of the service (anyone's) and the rejected of the last 14 days. */
+  | { kind: 'work_by_approve' }
+  /** José 28/11: the caller's own progress, deleted while still pending (Portal checks both). */
+  | { kind: 'work_undo'; progressId: string }
   /** «Editar croquis» (José 19/11): Portal's croquis editor link of the service, 12 h. */
   | { kind: 'service_croquis' }
   | { kind: 'work_resolve'; progressId: string; decision: 'aprobar' | 'rechazar'; note: string | null }
@@ -158,7 +162,8 @@ export function workMapFormInputOf(raw: Record<string, unknown>): WorkMapFormInp
   if (raw.kind === 'work_restore') return restoreInputOf(raw);
   if (raw.kind === 'work_stage_edit' || raw.kind === 'work_tag_edit') return editInputOf(raw);
   if (raw.kind === 'work_stage_delete' || raw.kind === 'work_tag_delete') return deleteInputOf(raw);
-  if (raw.kind === 'work_deleted' || raw.kind === 'work_pending' || raw.kind === 'service_croquis') return { kind: raw.kind };
+  if (raw.kind === 'work_deleted' || raw.kind === 'work_pending' || raw.kind === 'work_by_approve' || raw.kind === 'service_croquis') return { kind: raw.kind };
+  if (raw.kind === 'work_undo') return idOf(raw.progress_id) ? { kind: 'work_undo', progressId: idOf(raw.progress_id) } : null;
   if (raw.kind === 'work_resolve') return resolveInputOf(raw);
   if (raw.kind === 'work_progress_link') return progressLinkInputOf(raw);
   if (raw.kind === 'work_import') return importInputOf(raw);
@@ -168,7 +173,7 @@ export function workMapFormInputOf(raw: Record<string, unknown>): WorkMapFormInp
 }
 
 /** The kinds the door opens; restore and the deleted list since agentes checks their service (890b02e). */
-const FORM_KINDS = new Set(['work_scope', 'work_scope_delete', 'work_stage', 'work_tag', 'work_stage_edit', 'work_tag_edit', 'work_stage_delete', 'work_tag_delete', 'work_restore', 'work_deleted', 'work_pending', 'work_resolve', 'work_progress_link', 'work_import', 'work_progress_pdf', 'work_map_in_report', 'service_croquis']);
+const FORM_KINDS = new Set(['work_scope', 'work_scope_delete', 'work_stage', 'work_tag', 'work_stage_edit', 'work_tag_edit', 'work_stage_delete', 'work_tag_delete', 'work_restore', 'work_deleted', 'work_pending', 'work_by_approve', 'work_undo', 'work_resolve', 'work_progress_link', 'work_import', 'work_progress_pdf', 'work_map_in_report', 'service_croquis']);
 export const isWorkMapFormKind = (kind: unknown): boolean => typeof kind === 'string' && FORM_KINDS.has(kind);
 
 /** Narrows the door's union to these kinds. */
@@ -208,6 +213,8 @@ export function workMapFormPrepared(serviceId: string, input: WorkMapFormInput):
     case 'work_restore': return { form: formOf('restaurar_de_obra', 'Restaurar', 'Restaurar'), context: restoreContext(serviceId, input) };
     case 'work_deleted': return { form: formOf('borrados_de_obra', 'Lo borrado del mapa', 'Ver'), context: { servicioId: serviceId } };
     case 'work_pending': return { form: formOf('avances_pendientes_de_obra', 'Avances por aprobar', 'Ver'), context: { servicioId: serviceId } };
+    case 'work_by_approve': return { form: formOf('avances_por_aprobar_de_obra', 'Avances por aprobar', 'Ver'), context: { servicioId: serviceId } };
+    case 'work_undo': return { form: formOf('deshacer_avance_de_obra', 'Deshacer avance', 'Deshacer'), context: { servicioId: serviceId, avanceId: input.progressId } };
     case 'service_croquis': return { form: formOf('abrir_croquis_de_servicio', 'Croquis del servicio', 'Abrir'), context: { servicioId: serviceId } };
     // Portal's schema is strict and takes no service: the progress already names it.
     case 'work_resolve': return { form: formOf('resolver_avance_de_obra', 'Aprobar o rechazar avance', input.decision === 'aprobar' ? 'Aprobar' : 'Rechazar'), context: { avanceId: input.progressId, decision: input.decision, ...(input.note ? { nota: input.note } : {}) } };

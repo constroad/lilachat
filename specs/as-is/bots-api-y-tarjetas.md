@@ -238,6 +238,10 @@ Montaje en `server/src/app.ts` (líneas 160–166): `/api/oauth`, `/api/bots/app
 
 - **27/11** `workStreetForm.ts` (calle de obra → `guardar_calle_de_obra`): acepta `length_m` opcional
   (0 < x ≤ 20 000) y lo pasa a Portal como `largoM`. Fuera de rango es 400.
+- **28/11** `workMapForms.ts`: dos tipos nuevos por la puerta del miembro. `work_by_approve` →
+  `avances_por_aprobar_de_obra` con solo `{ servicioId }`; `work_undo` (`progress_id`) →
+  `deshacer_avance_de_obra` con `{ servicioId, avanceId }` (Portal solo borra lo propio y pendiente).
+  Sin `progress_id` válido es 400.
 
 ## 5. Diseños de Stitch relacionados
 

@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { CircleCheck, Ruler } from 'lucide-react';
-import { AVANCE_FOOTER, AVANCE_PERCENTS, AVANCE_PICK_STREET, avanceEndFor, avanceKicker, avanceProgressLine, metersLabel, runAvanceSave, stationLabel, type AvanceEntryIds, type AvancePercent, type AvanceTarget, type MapEditSend, type WorkMap } from '@lilachat/shared';
+import { AVANCE_FOOTER, AVANCE_PERCENTS, AVANCE_PICK_STREET, avanceEndFor, avanceKicker, avanceProgressLine, metersLabel, runAvanceSave, stationLabel, type AvanceEntryIds, type ByApproveProgress, type AvancePercent, type AvanceTarget, type MapEditSend, type WorkMap } from '@lilachat/shared';
 import { KICKER } from './WorkMapPanel';
+import { UndoProgress } from './PendingProgress';
 
 const FIELD = 'mt-2 h-11 w-full rounded-xl border border-outline/25 bg-background px-3 font-mono text-[15px] outline-none focus:border-primary';
 const newIds = (): AvanceEntryIds => ({ scope: crypto.randomUUID(), progress: crypto.randomUUID() });
@@ -34,6 +35,7 @@ function StreetHead(props: { target: AvanceTarget }) {
         <span className="text-on-surface-variant">{progress.line}</span>
         <span className="font-bold text-primary">{progress.percent} % completado</span>
       </div>
+      {props.target.pendingM !== null ? <p data-testid="avance-por-aprobar" className="mt-1 font-mono text-[12px] text-on-surface-variant">Por aprobar hasta {stationLabel(props.target.pendingM)}</p> : null}
     </div>
   );
 }
@@ -60,12 +62,14 @@ function useAvanceSave(map: WorkMap, target: AvanceTarget, send: MapEditSend) {
 }
 
 /** «Modo Avance» in the panel (design av-01): street, bar, five buttons, the exact end and «Guardar avance». */
-export function AvancePanel(props: { map: WorkMap; target: AvanceTarget | null; send: MapEditSend }) {
+type UndoProps = { undoable: ByApproveProgress | null; onUndo: (id: string) => Promise<string | null> };
+
+export function AvancePanel(props: { map: WorkMap; target: AvanceTarget | null; send: MapEditSend } & Partial<UndoProps>) {
   if (!props.target) return <p data-testid="avance-panel-vacio" className="p-5 text-[14px] text-on-surface-variant">{AVANCE_PICK_STREET}</p>;
-  return <AvanceStreet key={`${props.target.streetId}|${props.target.workId}`} map={props.map} target={props.target} send={props.send} />;
+  return <AvanceStreet key={`${props.target.streetId}|${props.target.workId}`} map={props.map} target={props.target} send={props.send} undoable={props.undoable ?? null} onUndo={props.onUndo} />;
 }
 
-function AvanceStreet(props: { map: WorkMap; target: AvanceTarget; send: MapEditSend }) {
+function AvanceStreet(props: { map: WorkMap; target: AvanceTarget; send: MapEditSend; undoable: ByApproveProgress | null; onUndo?: (id: string) => Promise<string | null> }) {
   const save = useAvanceSave(props.map, props.target, props.send);
   return (
     <div data-testid="avance-panel" className="space-y-4 p-4 md:p-5">
@@ -76,6 +80,7 @@ function AvanceStreet(props: { map: WorkMap; target: AvanceTarget; send: MapEdit
         {save.typing ? <input data-testid="avance-progresiva-m" type="number" inputMode="decimal" min={0} autoFocus aria-label="Hasta (m)" placeholder="Hasta (m)" value={save.typed} onChange={(event) => save.type(event.target.value)} className={FIELD} /> : null}
       </div>
       {save.answer ? <p role="alert" data-testid="avance-respuesta-modo" className={`text-[13px] font-semibold ${save.answer.ok ? 'text-primary' : 'text-error'}`}>{save.answer.message}</p> : null}
+      {props.undoable && props.undoable.toM !== null && props.onUndo ? <UndoProgress id={props.undoable.id} toM={props.undoable.toM} onUndo={props.onUndo} /> : null}
       <button type="button" data-testid="avance-guardar" disabled={save.busy} onClick={() => void save.save()} className="flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-primary text-[16px] font-bold text-on-primary disabled:opacity-60"><CircleCheck size={20} />{save.busy ? 'Guardando…' : 'Guardar avance'}</button>
       <p className="text-center text-[12px] text-on-surface-variant">{AVANCE_FOOTER}</p>
     </div>

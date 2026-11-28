@@ -1,7 +1,7 @@
 import { useMemo, useState, type ReactNode } from 'react';
 import { Linking, Pressable, Text, View } from 'react-native';
 import { X } from 'lucide-react-native';
-import { definedStreetIdsOf, isShortSheet, expandLayerSheet, initialMapSheet, layerMapLinesOf, sheetForLayerPick, toggleLayersSheet, type LayerStreetSummary, type MapSheet, activeLayerOf, limaDayKey, workMapWorkFilter, viewWithLayers, visibleMarks, visibleObservations, type WorkMapMark, type WorkMapObservation, mapCardOf, mapPickAnchor, mapPickOnMap, type MapPick, type WorkMapPoint, visibleStationMarks, progressTargetOf, type Brush, type ManualPhotoUpload, type MapEditSend, type TraceUpload, type ServiceMapInReport, unitPinsOfDay, withMediaBounds, withPendingOf, approvingMapSend, approvingProgressSend, showsUnitPins, type MapMoreKey, stretchLinesOf, suggestDischarges, workMapStageGroups, workMapView, type DischargePin, type StationMark, type StretchRange, type UnitDischarge, type MapPhoto, type ManualProgressDraft, type WorkMapLine, type WorkMap, type WorkMapFilter, type WorkMapView } from '@lilachat/shared';
+import { addPhotoToProgress, definedStreetIdsOf, isShortSheet, expandLayerSheet, initialMapSheet, layerMapLinesOf, sheetForLayerPick, toggleLayersSheet, type LayerStreetSummary, type MapSheet, activeLayerOf, limaDayKey, workMapWorkFilter, viewWithLayers, visibleMarks, visibleObservations, type WorkMapMark, type WorkMapObservation, mapCardOf, mapPickAnchor, mapPickOnMap, type MapPick, type WorkMapPoint, visibleStationMarks, progressTargetOf, type Brush, type ManualPhotoUpload, type MapEditSend, type TraceUpload, type ServiceMapInReport, unitPinsOfDay, withMediaBounds, withPendingOf, approvingMapSend, approvingProgressSend, showsUnitPins, type MapMoreKey, stretchLinesOf, suggestDischarges, workMapStageGroups, workMapView, type DischargePin, type StationMark, type StretchRange, type UnitDischarge, type MapPhoto, type ManualProgressDraft, type WorkMapLine, type WorkMap, type WorkMapFilter, type WorkMapView } from '@lilachat/shared';
 import { Modal } from '../../../ui/Modal';
 import { useColores } from '../../../ui/tema';
 import { useMargenes } from '../../../ui/useMargenes';
@@ -16,7 +16,7 @@ import { WorkMapPanel } from './WorkMapPanel';
 import type { StreetDeleteSend } from './StreetDelete';
 import { ManualProgress, type PhotoAsset } from './ManualProgress';
 import { ProgressFeed } from './ProgressFeed';
-import type { TraceFile } from '../useDriveUpload';
+import { takeFieldPhoto, type TraceFile } from '../useDriveUpload';
 import { StreetScopes } from './StreetScopes';
 import { DeletedWork } from './DeletedWork';
 import { WorkMapSurface } from './WorkMapSurface';
@@ -203,7 +203,9 @@ export function WorkMapBoard(props: BoardProps) {
   const discharges = pista.suggestion.units.length ? <WorkMapDischarges map={map} serviceId={props.serviceId} suggestion={pista.suggestion} send={progressSend} ranges={pista.ranges} onRange={pista.onRange} /> : null;
   const primeCoat = editMap && props.mapPhotos?.length ? <PrimeCoatSuggestions map={map} photos={props.mapPhotos} onRecord={(id, draft) => openStreet(id, true, draft)} /> : null;
   // José 28/11 (design ma05): «Avances» with Hoy / Semana / Todo; an admin undoes any record there.
-  const feed = editMap && byApprove.list ? <ProgressFeed map={map} list={byApprove.list} admin={Boolean(props.admin)} onUndo={(id) => byApprove.undo(id).then((failure) => { if (!failure) props.reload?.(); return failure; })} /> : null;
+  const { uploadPhoto } = props;
+  const addPhoto = editMap && uploadPhoto ? (id: string) => addPhotoToProgress({ take: takeFieldPhoto, upload: uploadPhoto, send: editMap, progressId: id }) : undefined;
+  const feed = editMap && byApprove.list ? <ProgressFeed map={map} list={byApprove.list} admin={Boolean(props.admin)} onAddPhoto={addPhoto} onUndo={(id) => byApprove.undo(id).then((failure) => { if (!failure) props.reload?.(); return failure; })} /> : null;
   const top = discharges || primeCoat || feed ? <View className="gap-5">{feed}{discharges}{primeCoat}</View> : null;
   const more = (key: MapMoreKey) => {
     if (key === 'share' || key === 'export') setSide(key);

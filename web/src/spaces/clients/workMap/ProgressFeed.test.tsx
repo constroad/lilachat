@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
-import { workMapOf, type ByApproveList, type WorkMap } from '@lilachat/shared';
+import { PHOTO_ADD_FAILED, PHOTO_ADDED, workMapOf, type ByApproveList, type WorkMap } from '@lilachat/shared';
 import { ProgressFeed } from './ProgressFeed';
 
 /** Design ma05 on the web: every record by Hoy / Semana / Todo; none waits for approval (José 28/11). */
@@ -73,5 +73,31 @@ describe('ProgressFeed (ma05)', () => {
   it('an empty period says so', () => {
     render(<ProgressFeed map={{ ...map, progress: [] }} list={{ total: 0, items: [] }} admin={false} onUndo={vi.fn()} today={TODAY} />);
     expect(screen.getByText('No hay avances en este periodo.')).toBeTruthy();
+  });
+
+  it('«Agregar foto» on a record uploads the photo and shows its count; a failure says try again', async () => {
+    // Arrange
+    const onAddPhoto = vi.fn().mockResolvedValueOnce({ ok: false, message: PHOTO_ADD_FAILED }).mockResolvedValueOnce({ ok: true, progressId: 'a2', photos: 1, message: PHOTO_ADDED });
+    render(<ProgressFeed map={map} list={list} admin={false} onUndo={vi.fn()} onAddPhoto={onAddPhoto} today={TODAY} />);
+    const file = new File(['x'], 'avance.jpg', { type: 'image/jpeg' });
+    expect(screen.queryByTestId('avance-fotos-a2')).toBeNull();
+    // Act: the first try fails
+    fireEvent.change(screen.getByTestId('agregar-foto-archivo-a2'), { target: { files: [file] } });
+    // Assert
+    expect(await screen.findByTestId('agregar-foto-error-a2')).toHaveTextContent(PHOTO_ADD_FAILED);
+    // Act: again
+    fireEvent.change(screen.getByTestId('agregar-foto-archivo-a2'), { target: { files: [file] } });
+    // Assert
+    expect(await screen.findByTestId('avance-fotos-a2')).toHaveTextContent('1 foto');
+    expect(onAddPhoto).toHaveBeenLastCalledWith('a2', file);
+    expect(screen.queryByTestId('agregar-foto-error-a2')).toBeNull();
+  });
+
+  it('an undone record or one without a page offers no «Agregar foto»; a record with photos shows them', () => {
+    render(<ProgressFeed map={map} list={{ total: 2, items: [{ ...list.items[0]!, photos: 2 }, list.items[1]!] }} admin={false} onUndo={vi.fn()} onAddPhoto={vi.fn()} today={TODAY} />);
+    fireEvent.click(screen.getByTestId('avances-rango-todo'));
+    expect(screen.getByTestId('avance-fotos-a2')).toHaveTextContent('2 fotos');
+    expect(screen.getByTestId('agregar-foto-a2')).toHaveTextContent('Agregar foto');
+    expect(screen.queryByTestId('agregar-foto-r1')).toBeNull();
   });
 });

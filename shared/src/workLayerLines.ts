@@ -5,22 +5,22 @@ import { streetWidthExpression } from './workLineWidth.js';
 
 /**
  * The map drawn by layer (design ma01, José 28/11: «¿por qué sigue mostrándose líneas punteadas?»).
- * Every street of the work is a faint solid neutral band; the selected layer paints its planned
- * stretches solid and translucent in ITS color with the street's % beside them, and what is done
- * solid and opaque on top. Every line is as wide as the street (José 28/11: no dashes, «el ancho de
- * la calle»). PURE: the web and the APK paint what this returns.
+ * Every street of the work is a faint solid neutral band; every stretch defined and not built yet
+ * is the bright orange, opaque (José 28/11: grey was lost on the dark map), with the street's %
+ * beside it, and what is done is the work's color on top. Every line is as wide as the street
+ * (José 28/11: no dashes, «el ancho de la calle»). PURE: the web and the APK paint what this returns.
  */
 export type LayerMapLines = { base: WorkMapLine[]; planned: WorkMapLine[]; done: WorkMapLine[]; labels: StationMark[] };
 
 /** MapLibre paints hex, not tokens: a slate that reads on the light and the dark basemap. */
 export const LAYER_BASE_COLOR = '#64748b';
-/** A street drawn with no work painted yet (José 28/11): a bright orange that reads on the light and the dark basemap. */
+/** Defined and not built yet, a whole street or a section (José 28/11): a bright orange that reads on the light and the dark basemap. */
 export const STREET_DEFINED_COLOR = '#FF6A00';
-export const STREET_DEFINED_LEGEND = 'Calle sin trabajo';
 const BASE_OPACITY = 0.35;
 /** The neutral base is faint; a defined street with no work is opaque, both as wide as the street. */
 export const LAYER_BASE_PAINT = { 'line-color': ['get', 'color'], 'line-width': streetWidthExpression(2), 'line-opacity': ['case', ['==', ['get', 'color'], STREET_DEFINED_COLOR], 1, BASE_OPACITY] };
-export const LAYER_PLANNED_PAINT = { 'line-color': ['get', 'color'], 'line-width': streetWidthExpression(4), 'line-opacity': 0.4 };
+/** What is still to build: the orange, opaque, under what is done. */
+export const LAYER_PLANNED_PAINT = { 'line-color': ['get', 'color'], 'line-width': streetWidthExpression(4), 'line-opacity': 1 };
 /** The stretch being recorded or painted (Registrar avance, the brush): solid and as wide as the street. */
 export const WORK_MAP_STRETCH_PAINT = { 'line-color': ['get', 'color'], 'line-width': streetWidthExpression(6), 'line-opacity': 0.6 };
 /** What is done: the layer's color, opaque, over the planned band. */
@@ -58,18 +58,25 @@ export function layerLabelsOf(map: Pick<WorkMap, 'streets'>, rows: readonly Pick
 
 type LayerLinesInput = { map: WorkMap; view: WorkMapView; filter: WorkMapFilter; workId: string | null; rows: readonly Pick<LayerStreetSummary, 'streetId' | 'percentText'>[]; /** The layer's switch in «Ver» is off. */ hidden: boolean };
 
-/** What the board draws: without a layer (no works yet) only the neutral streets and what is done. */
-export function layerMapLinesOf(input: LayerLinesInput): LayerMapLines {
-  const base = baseLinesOf(input.map, input.view);
-  if (!input.workId) return { base, planned: [], done: input.view.done, labels: [] };
-  if (input.hidden) return { base, planned: [], done: [], labels: [] };
-  const color = input.map.works.find((work) => work.id === input.workId)?.color ?? LAYER_BASE_COLOR;
-  const layer = workMapView(input.map, { ...input.filter, workId: input.workId });
-  return { base, planned: layer.planned.map((line) => ({ ...line, color, workId: input.workId ?? undefined })), done: layer.done, labels: layerLabelsOf(input.map, input.rows) };
+const pendingOf = (lines: readonly WorkMapLine[], workId?: string): WorkMapLine[] => lines.map((line) => ({ ...line, color: STREET_DEFINED_COLOR, ...(workId ? { workId } : {}) }));
+
+/** Without a layer: every defined stretch orange (a street with no scope is already orange in the base) and what is done. */
+function allWorksLinesOf(input: LayerLinesInput, base: WorkMapLine[]): LayerMapLines {
+  const scoped = new Set(input.map.scopes.map((scope) => scope.streetId));
+  return { base, planned: pendingOf(input.view.planned.filter((line) => scoped.has(line.streetId))), done: input.view.done, labels: [] };
 }
 
-/** The layer sheet's legend (design ma01). */
-export const LAYER_LEGEND = { done: 'Hecho', planned: 'Planificado' } as const;
+/** What the board draws: the layer's stretches still to build orange, its done stretches over them. */
+export function layerMapLinesOf(input: LayerLinesInput): LayerMapLines {
+  const base = baseLinesOf(input.map, input.view);
+  if (!input.workId) return allWorksLinesOf(input, base);
+  if (input.hidden) return { base, planned: [], done: [], labels: [] };
+  const layer = workMapView(input.map, { ...input.filter, workId: input.workId });
+  return { base, planned: pendingOf(layer.planned, input.workId), done: layer.done, labels: layerLabelsOf(input.map, input.rows) };
+}
+
+/** The layer sheet's legend (design ma01): done in the work's colour, the rest in the map's orange. */
+export const LAYER_LEGEND = { done: 'Hecho', planned: 'Pendiente de ejecución', plannedColor: STREET_DEFINED_COLOR } as const;
 
 /** The peek's link to the street rows: «Ver 4 calles» or, open, «Ocultar calles». */
 export const layerStreetsToggle = (count: number, expanded: boolean): string => (expanded ? 'Ocultar calles' : `Ver ${count === 1 ? '1 calle' : `${count} calles`}`);

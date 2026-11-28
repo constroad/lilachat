@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { definedLegendEntries, mapLegendEntries, mapMoreItems, workChoiceLabel, workChoicesOf, isPavingWork, showsUnitPins } from './workMapMenu.js';
+import { mapLegendEntries, mapMoreItems, workChoiceLabel, workChoicesOf, isPavingWork, showsUnitPins } from './workMapMenu.js';
 
 /** José 09/11: the actions were piled up; the rest goes under «Más», the works in a select, the legend folds. */
 const view = { works: [{ id: 'w1', name: 'Base granular', color: '#a16207', percent: 100 }, { id: 'w2', name: 'Imprimación', color: '#2563eb', percent: 41.5 }] };
@@ -64,20 +64,25 @@ describe('the work select', () => {
 });
 
 describe('the legend', () => {
-  it('each work and the stretch still to build, never «Por aprobar» (José 28/11)', () => {
+  it('each work and the stretch still to build in the bright orange, never «Por aprobar» (José 28/11)', () => {
     // Act
     const entries = mapLegendEntries(view);
     // Assert
     expect(entries.map((entry) => entry.kind)).toEqual(['work', 'work', 'todo']);
-    expect(entries[2]).toEqual({ key: 'todo', kind: 'todo', label: 'Pendiente de ejecución', color: null });
+    expect(entries[2]).toEqual({ key: 'todo', kind: 'todo', label: 'Pendiente de ejecución', color: '#FF6A00' });
     expect(entries.some((entry) => /aprobar/i.test(entry.label))).toBe(false);
   });
-});
 
-describe('the legend of the defined streets', () => {
-  it('names the orange street with no work only when there is one', () => {
-    expect(definedLegendEntries(2)).toEqual([{ key: 'defined', kind: 'defined', label: 'Calle sin trabajo', color: '#FF6A00' }]);
-    expect(definedLegendEntries(0)).toEqual([]);
+  it('streets drawn with no work yet show only the orange pending entry', () => {
+    // Act
+    const entries = mapLegendEntries({ works: [] }, 2);
+    // Assert
+    expect(entries).toEqual([{ key: 'todo', kind: 'todo', label: 'Pendiente de ejecución', color: '#FF6A00' }]);
+  });
+
+  it('no works and no streets: no legend', () => {
+    expect(mapLegendEntries({ works: [] })).toEqual([]);
+    expect(mapLegendEntries({ works: [] }, 0)).toEqual([]);
   });
 });
 

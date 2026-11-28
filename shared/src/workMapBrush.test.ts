@@ -25,7 +25,7 @@ const MAP: WorkMap = {
 describe('stageCardsOf', () => {
   it('sums streets, metres and m² of each stage, its percent and the days its work was approved', () => {
     const { cards } = stageCardsOf(MAP);
-    expect(cards[0]).toMatchObject({ id: 'e1', name: 'Etapa 1', streets: [{ id: 's1', name: 'Av. Los Incas', lengthM: 200 }, { id: 's2', name: 'Jr. Los Pinos', lengthM: 100 }], lengthM: 300, areaM2: 1600, line: '2 calles · 300 m · 1 600 m²', days: 'Jornadas del 12 nov al 14 nov' });
+    expect(cards[0]).toMatchObject({ id: 'e1', name: 'Etapa 1', streets: [{ id: 's1', name: 'Av. Los Incas', lengthM: 200 }, { id: 's2', name: 'Jr. Los Pinos', lengthM: 100 }], lengthM: 300, areaM2: 1600, line: '2 calles · 300 m · 1\u202F600 m²', days: 'Jornadas del 12 nov al 14 nov' });
     expect(cards[0].percent).toBe(60);
   });
 

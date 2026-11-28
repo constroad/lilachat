@@ -3,7 +3,7 @@ import { Pressable, ScrollView, Text, TextInput, useWindowDimensions, View } fro
 import { randomUUID } from 'expo-crypto';
 import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
 import { Camera, Crosshair, Hand, Map as MapIcon, X } from 'lucide-react-native';
-import { GPS_UNAVAILABLE, MANUAL_NOTE_MAX, RECORD_ADD_NOTE, RECORD_NOTE_PLACEHOLDER, layerDraftFor, manualEndFromGps, pickManualWork, progressPreviewOf, RECORD_CHANGE, RECORD_PHOTO_AND_SEND, RECORD_SEND, RECORD_TO_ME, RECORD_WHOLE, RECORD_WITHOUT_PHOTO, recordAtPercent, streetPercentOf, recordDropAt, recordHint, recordTitle, recordMapOf, recordProblem, recordSummary, recordWholeStreet, runManualProgress, youAreOn, type GpsStreet, type ManualPhotoUpload, type ManualProgressDraft, type MapEditSend, type StreetEnd, type WorkManualProgressRequest, type WorkMap, type WorkMapPoint, type WorkMapWork } from '@lilachat/shared';
+import { GPS_UNAVAILABLE, MANUAL_NOTE_MAX, recordedProgressIdOf, RECORD_ADD_NOTE, RECORD_NOTE_PLACEHOLDER, layerDraftFor, manualEndFromGps, pickManualWork, progressPreviewOf, RECORD_CHANGE, RECORD_PHOTO_AND_SEND, RECORD_SEND, RECORD_TO_ME, RECORD_WHOLE, RECORD_WITHOUT_PHOTO, recordAtPercent, streetPercentOf, recordDropAt, recordHint, recordTitle, recordMapOf, recordProblem, recordSummary, recordWholeStreet, runManualProgress, youAreOn, type GpsStreet, type ManualPhotoUpload, type ManualProgressDraft, type MapEditSend, type StreetEnd, type WorkManualProgressRequest, type WorkMap, type WorkMapPoint, type WorkMapWork } from '@lilachat/shared';
 import type { CapturedShot } from '../../../chat/camara/cameraRequests';
 import { useColores } from '../../../ui/tema';
 import { useDisposicion } from '../../../ui/useDisposicion';
@@ -25,7 +25,9 @@ const OUTLINE_BUTTON = 'h-11 flex-1 flex-row items-center justify-center gap-2 r
 /** A chip of the pickers: 44 dp, as the field chips (José 28/11: «los botones son inmensos»). */
 const PICKER_CHIP = 'h-11 max-w-full flex-row items-center gap-2 rounded-xl';
 
-export type RecordScreenProps = { map: WorkMap; streetId: string; send: MapEditSend; uploadPhoto?: ManualPhotoUpload<CapturedShot>; initial?: ManualProgressDraft; /** The layer picked on opening (ma01), when the street carries it. */ workId?: string | null; located: GpsStreet | null; onChangeStreet: () => void; onClose: () => void; onAnswer: (answer: { ok: true; message: string }) => void };
+/** The record made: its id when Portal answered it (not when it went to the phone's queue), and whether a photo went with it. */
+export type RecordAnswer = { ok: true; message: string; progressId: string | null; withPhoto: boolean };
+export type RecordScreenProps = { map: WorkMap; streetId: string; send: MapEditSend; uploadPhoto?: ManualPhotoUpload<CapturedShot>; initial?: ManualProgressDraft; /** The layer picked on opening (ma01), when the street carries it. */ workId?: string | null; located: GpsStreet | null; onChangeStreet: () => void; onClose: () => void; onAnswer: (answer: RecordAnswer) => void };
 
 /** The work (one chip per work the street carries) and the street with «Cambiar» (design ma04). */
 function Pickers(props: { works: WorkMapWork[]; workId: string | null; streetName: string; onWork: (workId: string) => void; onChangeStreet: () => void }) {
@@ -123,7 +125,7 @@ function useRecord(props: RecordScreenProps) {
   const send = async (evidence: Evidence) => {
     const via = queued ? queued(evidence.shots) : props.send;
     const sent = await runManualProgress({ map: props.map, streetId: props.streetId, lengthM, draft: { ...draft, photoIds: [...draft.photoIds, ...evidence.photoIds] }, entryId, send: via, now: new Date() });
-    if (sent.ok) props.onAnswer({ ok: true, message: sent.message });
+    if (sent.ok) props.onAnswer({ ok: true, message: sent.message, progressId: recordedProgressIdOf(sent), withPhoto: draft.photoIds.length + evidence.photoIds.length + evidence.shots.length > 0 });
     else setAnswer(sent);
   };
   const submit = async (withPhoto: boolean) => {

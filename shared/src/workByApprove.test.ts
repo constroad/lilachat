@@ -52,6 +52,15 @@ describe('byApproveOf', () => {
     expect(list.items[3]?.rejectNote).toBe('mal medido');
   });
 
+  it('reads how many photos a record has, as a count or as its ids (José 28/11: «Agregar foto»)', () => {
+    // Arrange
+    const raw = { avances: [{ avanceId: 'a1', estado: 'pendiente', fotos: 2 }, { avanceId: 'a2', estado: 'pendiente', fotoIds: ['m1', 'm2', 'm3'] }, { avanceId: 'a3', estado: 'pendiente', fotos: 'x' }] };
+    // Act
+    const items = byApproveOf(raw).items;
+    // Assert
+    expect(items.map((one) => one.photos)).toEqual([2, 3, 0]);
+  });
+
   it('reads it wrapped as the door hands it over, and tolerates nothing or wrong fields', () => {
     // Arrange
     const wrong = { avances: [{ avanceId: 'a9', estado: 'pendiente', calleId: 7, desdeM: -3, hastaM: 'x', propio: 'si' }] };

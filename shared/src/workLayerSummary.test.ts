@@ -41,7 +41,7 @@ describe('layerSummaryOf', () => {
     expect(summary.unit).toBe('m²');
     expect(summary.doneQty).toBe(120 * 6 + 410 * 7);
     expect(summary.totalQty).toBeCloseTo(total);
-    expect(summary.headline).toBe('3 590 de 5 801 m²');
+    expect(summary.headline).toBe('3\u202F590 de 5\u202F801 m²');
     expect(summary.percent).toBe(62);
     expect(summary.percentText).toBe('62 %');
     expect(summary.kicker).toBe('IMPRIMACIÓN');
@@ -54,9 +54,9 @@ describe('layerSummaryOf', () => {
     const rows = layerSummaryOf(MAP, 'imp', null)!.streets;
     // Assert
     expect(rows.map((row) => [row.name, row.amount, row.percentText])).toEqual([
-      ['Jr. Progreso', '720 de 1 704 m²', '42 %'],
-      ['Av. El Descanso', '2 870 de 2 870 m²', '100 %'],
-      ['Jr. Monje', '0 de 1 227 m²', '0 %'],
+      ['Jr. Progreso', '720 de 1\u202F704 m²', '42 %'],
+      ['Av. El Descanso', '2\u202F870 de 2\u202F870 m²', '100 %'],
+      ['Jr. Monje', '0 de 1\u202F227 m²', '0 %'],
     ]);
   });
 
@@ -152,7 +152,7 @@ describe('layerSummaryOf', () => {
     // Act
     const summary = layerSummaryOf(MAP, 'car', null)!;
     // Assert
-    expect(summary.headline).toBe('0 de 1 704 m²');
+    expect(summary.headline).toBe('0 de 1\u202F704 m²');
     expect(summary.percentText).toBe('0 %');
   });
 });

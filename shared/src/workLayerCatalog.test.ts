@@ -52,13 +52,13 @@ describe('layerMetradoOf', () => {
   it('adds length and length × width, and says how many streets have no width', () => {
     const metrado = layerMetradoOf(MAP);
     expect(metrado).toMatchObject({ streets: 3, lengthM: 638, areaM2: 2931, missingWidth: 1 });
-    expect(metrado.line).toBe('3 calles · 638 m · 2 931 m² · sin ancho en 1 calle');
+    expect(metrado.line).toBe('3 calles · 638 m · 2\u202F931 m² · sin ancho en 1 calle');
   });
   it('leaves m² out when no street has width', () => {
     expect(layerMetradoOf({ streets: [{ id: 'a', name: 'A', line, lengthM: 100 }, { id: 'b', name: 'B', line, lengthM: 50 }] }).line).toBe('2 calles · 150 m · sin ancho en 2 calles');
   });
   it('says one street in singular and zero for a map without streets', () => {
-    expect(layerMetradoOf({ streets: [MAP.streets[0]] }).line).toBe('1 calle · 284 m · 1 704 m²');
+    expect(layerMetradoOf({ streets: [MAP.streets[0]] }).line).toBe('1 calle · 284 m · 1\u202F704 m²');
     expect(layerMetradoOf({ streets: [] }).line).toBe('0 calles · 0 m');
   });
 });
@@ -192,8 +192,8 @@ describe('layerPlanOf', () => {
 describe('layerStreetRowsOf', () => {
   it('gives each street its length, width and m², or says it has no width', () => {
     expect(layerStreetRowsOf(MAP)).toEqual([
-      { id: 's1', name: 'Jr. Progreso', detail: '284 m · ancho 6 m', area: '1 704 m²' },
-      { id: 's2', name: 'Jr. Monje', detail: '223 m · ancho 5,5 m', area: '1 227 m²' },
+      { id: 's1', name: 'Jr. Progreso', detail: '284 m · ancho 6 m', area: '1\u202F704 m²' },
+      { id: 's2', name: 'Jr. Monje', detail: '223 m · ancho 5,5 m', area: '1\u202F227 m²' },
       { id: 's3', name: 'Pje. San Valentín', detail: '131 m · sin ancho', area: null },
     ]);
   });

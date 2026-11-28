@@ -1,6 +1,6 @@
 import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { Camera, Crosshair, Hand, Map as MapIcon, X } from 'lucide-react';
-import { GPS_UNAVAILABLE, MANUAL_NOTE_MAX, RECORD_ADD_NOTE, RECORD_NOTE_PLACEHOLDER, layerDraftFor, manualEndFromGps, pickManualWork, progressPreviewOf, RECORD_CHANGE, RECORD_PHOTO_AND_SEND, RECORD_SEND, RECORD_TO_ME, RECORD_WHOLE, RECORD_WITHOUT_PHOTO, RECORD_PERCENT_LABEL, cleanDecimalText, decimalOf, decimalTextFollows, recordAtPercent, streetPercentOf, recordDropAt, recordHint, recordMapOf, recordProblem, recordSummary, recordTitle, recordWholeStreet, runManualProgress, youAreOn, type GpsStreet, type ManualPhotoUpload, type ManualProgressDraft, type MapEditSend, type StreetEnd, type WorkMap, type WorkMapPoint, type WorkMapWork } from '@lilachat/shared';
+import { GPS_UNAVAILABLE, MANUAL_NOTE_MAX, recordedProgressIdOf, RECORD_ADD_NOTE, RECORD_NOTE_PLACEHOLDER, layerDraftFor, manualEndFromGps, pickManualWork, progressPreviewOf, RECORD_CHANGE, RECORD_PHOTO_AND_SEND, RECORD_SEND, RECORD_TO_ME, RECORD_WHOLE, RECORD_WITHOUT_PHOTO, RECORD_PERCENT_LABEL, cleanDecimalText, decimalOf, decimalTextFollows, recordAtPercent, streetPercentOf, recordDropAt, recordHint, recordMapOf, recordProblem, recordSummary, recordTitle, recordWholeStreet, runManualProgress, youAreOn, type GpsStreet, type ManualPhotoUpload, type ManualProgressDraft, type MapEditSend, type StreetEnd, type WorkMap, type WorkMapPoint, type WorkMapWork } from '@lilachat/shared';
 import { DrivePhotoInput } from '../ServiceDriveWeb';
 import type { PickerHandle } from '../../../chat/camera/cameraRequests';
 import { lazyChunk } from '../../../ui/lazyChunk';
@@ -13,7 +13,9 @@ type Answer = { ok: boolean; message: string } | null;
 const STREET_ONLY = { workId: null, fromM: 0, toM: 0 };
 /** A chip of the pickers: 44 px, wrapped so «Cambiar» is never cut (José 28/11). */
 const PICKER_CHIP = 'flex h-11 min-w-0 max-w-full items-center gap-2 rounded-xl';
-export type RecordScreenProps = { map: WorkMap; streetId: string; send: MapEditSend; uploadPhoto?: ManualPhotoUpload<File>; initial?: ManualProgressDraft; /** The layer picked on opening (ma01), when the street carries it. */ workId?: string | null; located: GpsStreet | null; onChangeStreet: () => void; onClose: () => void; onAnswer: (answer: { ok: true; message: string }) => void };
+/** The record made: its id when Portal answered it, and whether a photo went with it (José 28/11: «Agregar foto» later). */
+export type RecordAnswer = { ok: true; message: string; progressId: string | null; withPhoto: boolean };
+export type RecordScreenProps = { map: WorkMap; streetId: string; send: MapEditSend; uploadPhoto?: ManualPhotoUpload<File>; initial?: ManualProgressDraft; /** The layer picked on opening (ma01), when the street carries it. */ workId?: string | null; located: GpsStreet | null; onChangeStreet: () => void; onClose: () => void; onAnswer: (answer: RecordAnswer) => void };
 
 /** The work (one chip per work the street carries) and the street with «Cambiar» (design ma04). */
 function Pickers(props: { works: WorkMapWork[]; workId: string | null; streetName: string; onWork: (workId: string) => void; onChangeStreet: () => void }) {
@@ -77,7 +79,7 @@ function PercentControl(props: { percent: number; onPercent: (percent: number) =
     <div className="flex items-center gap-2">
       <input type="range" min={0} max={100} step={0.1} aria-label={RECORD_PERCENT_LABEL} data-testid="avance-porcentaje-slider" value={props.percent} onChange={(event) => props.onPercent(Number(event.target.value))} className="h-11 min-w-0 flex-1 accent-primary" />
       <label className="flex h-11 shrink-0 items-center gap-1 rounded-xl border border-outline/25 bg-surface px-2 text-[15px] font-semibold text-on-surface focus-within:border-primary">
-        <input inputMode="decimal" aria-label={RECORD_PERCENT_LABEL} data-testid="avance-porcentaje" value={text} onChange={(event) => typed(event.target.value)} className="w-14 bg-transparent text-right outline-none" />%
+        <input inputMode="decimal" aria-label={RECORD_PERCENT_LABEL} data-testid="avance-porcentaje" value={text} onFocus={(event) => event.currentTarget.select()} onChange={(event) => typed(event.target.value)} className="w-14 bg-transparent text-right outline-none" />%
       </label>
     </div>
   );
@@ -111,7 +113,7 @@ function useRecord(props: RecordScreenProps) {
     setBusy('send');
     const sent = await runManualProgress({ map: props.map, streetId: props.streetId, lengthM, draft: { ...draft, photoIds: [...draft.photoIds, ...photoIds] }, entryId, send: props.send, now: new Date() });
     setBusy(null);
-    if (sent.ok) props.onAnswer({ ok: true, message: sent.message });
+    if (sent.ok) props.onAnswer({ ok: true, message: sent.message, progressId: recordedProgressIdOf(sent), withPhoto: draft.photoIds.length + photoIds.length > 0 });
     else setAnswer(sent);
   };
   /** The photo taken: to the service's Drive first, then the progress with its id. */

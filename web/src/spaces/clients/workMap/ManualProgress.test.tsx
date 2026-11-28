@@ -78,6 +78,17 @@ describe('ManualProgress (ma04)', () => {
     expect((screen.getByTestId('avance-porcentaje') as HTMLInputElement).value).toBe('50');
   });
 
+  it('focusing the % selects it, so typing replaces the 0 instead of adding to it', () => {
+    // Arrange
+    render(<ManualProgress map={mapOf()} streetId="s1" send={vi.fn<MapEditSend>()} onDone={vi.fn()} />);
+    const field = screen.getByTestId('avance-porcentaje') as HTMLInputElement;
+    // Act
+    fireEvent.focus(field);
+    // Assert
+    expect([field.selectionStart, field.selectionEnd]).toEqual([0, field.value.length]);
+    expect(field.value.length).toBeGreaterThan(0);
+  });
+
   it('a % before where the work stopped keeps the ring there; a decimal typed with a comma stays', () => {
     render(<ManualProgress map={mapOf()} streetId="s1" send={vi.fn<MapEditSend>()} onDone={vi.fn()} />);
     fireEvent.change(screen.getByTestId('avance-porcentaje'), { target: { value: '10' } });
@@ -144,5 +155,30 @@ describe('ManualProgress (ma04)', () => {
     fireEvent.click(screen.getByTestId('avance-manual-enviar'));
     expect(await screen.findByTestId('avance-manual-respuesta')).toHaveTextContent(MANUAL_SENT);
     expect(send.mock.calls[0]![0]).toMatchObject({ photo_ids: [] });
+  });
+
+  it('after «Registrar sin foto» the answer offers «Agregar foto» for that record (José 28/11)', async () => {
+    // Arrange
+    const send = vi.fn<MapEditSend>(async (request) => (request.kind === 'work_progress_photo' ? { ok: true, message: '', data: { avanceId: 'p5', fotos: 1 } } : { ok: true, message: MANUAL_SENT, data: { avanceId: 'p5', estado: 'pendiente' } }));
+    const uploadPhoto = vi.fn<ManualPhotoUpload<File>>(async () => ({ ok: true, mediaId: MEDIA }));
+    render(<ManualProgress map={mapOf()} streetId="s1" send={send} uploadPhoto={uploadPhoto} onDone={vi.fn()} />);
+    fireEvent.click(screen.getByTestId('avance-toda-la-calle'));
+    // Act
+    fireEvent.click(screen.getByTestId('avance-sin-foto'));
+    await screen.findByTestId('avance-manual-respuesta');
+    fireEvent.change(screen.getByTestId('agregar-foto-archivo-p5'), { target: { files: [new File(['x'], 'a.jpg', { type: 'image/jpeg' })] } });
+    // Assert
+    await waitFor(() => expect(send.mock.calls.at(-1)?.[0]).toMatchObject({ kind: 'work_progress_photo', progress_id: 'p5', photo_ids: [MEDIA] }));
+    expect(await screen.findByTestId('avance-fotos-p5')).toHaveTextContent('1 foto');
+  });
+
+  it('a record sent with its photo offers no «Agregar foto»', async () => {
+    const send = vi.fn<MapEditSend>(async () => ({ ok: true, message: MANUAL_SENT, data: { avanceId: 'p6' } }));
+    const uploadPhoto = vi.fn<ManualPhotoUpload<File>>(async () => ({ ok: true, mediaId: MEDIA }));
+    render(<ManualProgress map={mapOf()} streetId="s1" send={send} uploadPhoto={uploadPhoto} onDone={vi.fn()} />);
+    fireEvent.click(screen.getByTestId('avance-toda-la-calle'));
+    fireEvent.change(screen.getByTestId('avance-foto-archivo'), { target: { files: [new File(['x'], 'a.jpg', { type: 'image/jpeg' })] } });
+    await screen.findByTestId('avance-manual-respuesta');
+    expect(screen.queryByTestId('agregar-foto-p6')).toBeNull();
   });
 });

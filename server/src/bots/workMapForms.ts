@@ -33,6 +33,8 @@ export type WorkMapFormInput =
   | { kind: 'work_by_approve' }
   /** José 28/11: the caller's own progress, deleted while still pending (Portal checks both). */
   | { kind: 'work_undo'; progressId: string }
+  /** José 28/11: photos of the service's Drive added to a record already made (1 to 6, any member). */
+  | { kind: 'work_progress_photo'; progressId: string; photoIds: string[] }
   /** «Editar croquis» (José 19/11): Portal's croquis editor link of the service, 12 h. */
   | { kind: 'service_croquis' }
   | { kind: 'work_resolve'; progressId: string; decision: 'aprobar' | 'rechazar'; note: string | null }
@@ -89,6 +91,16 @@ function resolveInputOf(raw: Record<string, unknown>): WorkMapFormInput | null {
   const note = typeof raw.note === 'string' ? raw.note.trim() : '';
   if (!progressId || typeof raw.decision !== 'string' || !DECISIONS.has(raw.decision) || note.length > RESOLVE_NOTE_MAX) return null;
   return { kind: 'work_resolve', progressId, decision: raw.decision as 'aprobar' | 'rechazar', note: note || null };
+}
+
+/** Portal's `agregar_foto_a_avance_de_obra` takes 1 to 6 files per record. */
+const RECORD_PHOTOS_MAX = 6;
+
+function progressPhotoInputOf(raw: Record<string, unknown>): WorkMapFormInput | null {
+  const progressId = idOf(raw.progress_id);
+  if (!progressId || !Array.isArray(raw.photo_ids) || !raw.photo_ids.every((one) => typeof one === 'string' && MEDIA_ID.test(one))) return null;
+  const photoIds = [...new Set(raw.photo_ids as string[])];
+  return photoIds.length && photoIds.length <= RECORD_PHOTOS_MAX ? { kind: 'work_progress_photo', progressId, photoIds } : null;
 }
 
 const RESTORE_KEYS: Array<[string, RestoreTarget]> = [['street_id', 'calleId'], ['scope_id', 'tramoId'], ['stage_id', 'etapaId'], ['tag_id', 'etiquetaId']];
@@ -164,6 +176,7 @@ export function workMapFormInputOf(raw: Record<string, unknown>): WorkMapFormInp
   if (raw.kind === 'work_stage_delete' || raw.kind === 'work_tag_delete') return deleteInputOf(raw);
   if (raw.kind === 'work_deleted' || raw.kind === 'work_pending' || raw.kind === 'work_by_approve' || raw.kind === 'service_croquis') return { kind: raw.kind };
   if (raw.kind === 'work_undo') return idOf(raw.progress_id) ? { kind: 'work_undo', progressId: idOf(raw.progress_id) } : null;
+  if (raw.kind === 'work_progress_photo') return progressPhotoInputOf(raw);
   if (raw.kind === 'work_resolve') return resolveInputOf(raw);
   if (raw.kind === 'work_progress_link') return progressLinkInputOf(raw);
   if (raw.kind === 'work_import') return importInputOf(raw);
@@ -173,7 +186,7 @@ export function workMapFormInputOf(raw: Record<string, unknown>): WorkMapFormInp
 }
 
 /** The kinds the door opens; restore and the deleted list since agentes checks their service (890b02e). */
-const FORM_KINDS = new Set(['work_scope', 'work_scope_delete', 'work_stage', 'work_tag', 'work_stage_edit', 'work_tag_edit', 'work_stage_delete', 'work_tag_delete', 'work_restore', 'work_deleted', 'work_pending', 'work_by_approve', 'work_undo', 'work_resolve', 'work_progress_link', 'work_import', 'work_progress_pdf', 'work_map_in_report', 'service_croquis']);
+const FORM_KINDS = new Set(['work_scope', 'work_scope_delete', 'work_stage', 'work_tag', 'work_stage_edit', 'work_tag_edit', 'work_stage_delete', 'work_tag_delete', 'work_restore', 'work_deleted', 'work_pending', 'work_by_approve', 'work_undo', 'work_progress_photo', 'work_resolve', 'work_progress_link', 'work_import', 'work_progress_pdf', 'work_map_in_report', 'service_croquis']);
 export const isWorkMapFormKind = (kind: unknown): boolean => typeof kind === 'string' && FORM_KINDS.has(kind);
 
 /** Narrows the door's union to these kinds. */
@@ -215,6 +228,7 @@ export function workMapFormPrepared(serviceId: string, input: WorkMapFormInput):
     case 'work_pending': return { form: formOf('avances_pendientes_de_obra', 'Avances por aprobar', 'Ver'), context: { servicioId: serviceId } };
     case 'work_by_approve': return { form: formOf('avances_por_aprobar_de_obra', 'Avances por aprobar', 'Ver'), context: { servicioId: serviceId } };
     case 'work_undo': return { form: formOf('deshacer_avance_de_obra', 'Deshacer avance', 'Deshacer'), context: { servicioId: serviceId, avanceId: input.progressId } };
+    case 'work_progress_photo': return { form: formOf('agregar_foto_a_avance_de_obra', 'Agregar foto al avance', 'Agregar'), context: { servicioId: serviceId, avanceId: input.progressId, fotoIds: input.photoIds } };
     case 'service_croquis': return { form: formOf('abrir_croquis_de_servicio', 'Croquis del servicio', 'Abrir'), context: { servicioId: serviceId } };
     // Portal's schema is strict and takes no service: the progress already names it.
     case 'work_resolve': return { form: formOf('resolver_avance_de_obra', 'Aprobar o rechazar avance', input.decision === 'aprobar' ? 'Aprobar' : 'Rechazar'), context: { avanceId: input.progressId, decision: input.decision, ...(input.note ? { nota: input.note } : {}) } };

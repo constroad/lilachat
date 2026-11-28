@@ -50,10 +50,13 @@ function WorkRowView(props: { row: WorkRow; map: WorkMap; send: MapEditSend; onB
   const actions = useLayerActions({ kind: 'works', id: row.id, name: row.name, layers: props.map.works, send: props.send });
   return (
     <View testID={`trabajo-fila-${row.id}`} className="rounded-2xl border-[1.5px] border-outline/15 bg-surface px-3 py-2.5">
+      {/* The name takes the whole row (José 28/11: it was cut after a few letters); the actions go under it. */}
       <View className="flex-row items-center gap-3">
         <Text className="w-5 text-center font-mono text-[13px] font-bold text-on-surface-variant">{row.order}</Text>
         <View className="h-3 w-8 rounded-full" style={{ backgroundColor: row.color }} />
-        <View className="flex-1"><Text numberOfLines={1} className="text-[15px] font-semibold text-on-surface">{row.name}</Text><Text className="font-mono text-[13px] text-on-surface-variant">{row.line}</Text></View>
+        <View className="flex-1"><Text testID={`trabajo-nombre-${row.id}`} numberOfLines={2} className="text-[15px] font-semibold text-on-surface">{row.name}</Text><Text numberOfLines={1} className="font-mono text-[13px] text-on-surface-variant">{row.line}</Text></View>
+      </View>
+      <View className="mt-1.5 flex-row items-center justify-end gap-2">
         {row.editable ? actions.icons : null}
         <BrushButton testID={`trabajo-brocha-${row.id}`} label="Pintar" onPress={props.onBrush} />
       </View>

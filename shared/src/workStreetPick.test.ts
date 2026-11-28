@@ -115,7 +115,7 @@ describe('what the picked street shows (side-by-side audit 07/11)', () => {
   it('the net area is length times width, and waits for both', () => {
     const draft = tapStreetDraft(tapStreetDraft(tapStreetDraft(EMPTY_STREET, at(100)).draft, at(320)).draft, at(0)).draft;
     expect(streetDraftArea(draft)).toBeNull();
-    expect(streetDraftArea({ ...draft, widthM: 6 })).toBe('1 920 m²');
+    expect(streetDraftArea({ ...draft, widthM: 6 })).toBe('1\u202F920 m²');
     expect(streetDraftArea({ ...EMPTY_STREET, widthM: 6 })).toBeNull();
     expect(streetDraftArea({ ...draft, widthM: 0 })).toBeNull();
   });

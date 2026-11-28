@@ -1,6 +1,7 @@
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ChannelLinks, MapEditSend, MapPhoto, TraceUpload, UnitDischarge, WorkMap, WorkMapView } from '@lilachat/shared';
+import { STREET_DEFINED_COLOR } from '@lilachat/shared';
 import { ServiceMapWeb } from './ServiceMapWeb';
 import type { ProgressSend } from './workMap/WorkMapDischarges';
 import type { StreetSend } from './workMap/workProgressSender';
@@ -216,9 +217,9 @@ describe('ServiceMapWeb', () => {
     expect(screen.queryByTestId('capa-ver-calles')).toBeNull();
     fireEvent.click(screen.getByTestId('mapa-hoja-asa'));
     expect(screen.getByTestId('capa-calle-s1')).toBeInTheDocument();
-    expect(screen.getByTestId('capa-leyenda')).toHaveTextContent(/Hecho.*Planificado/);
-    // The map: the layer planned in ITS colour with its %, every street a neutral base, no grey dashes.
-    expect(canvas.dataset.planned?.split(' ').every((color) => color === '#c08a1e')).toBe(true);
+    expect(screen.getByTestId('capa-leyenda')).toHaveTextContent(/Hecho.*Pendiente de ejecución/);
+    // The map: what the layer still has to build in the bright orange with its %, every street a neutral base, no grey dashes.
+    expect(canvas.dataset.planned?.split(' ').every((color) => color === STREET_DEFINED_COLOR)).toBe(true);
     expect(canvas.dataset.labels).toContain('%');
     expect(canvas.dataset.base).toContain('#64748b');
     // «Más» keeps what left the foot of the map

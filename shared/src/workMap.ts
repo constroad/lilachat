@@ -97,7 +97,10 @@ export function workMapRequest(link: string, serviceId: string): string | null {
 }
 
 export const percentLabel = (percent: number) => `${String(percent).replace('.', ',')} %`;
-export const metersLabel = (meters: number) => `${String(Math.round(meters)).replace(/\B(?=(\d{3})+$)/g, ' ')} m`;
+/** A narrow no-break space between thousands: «1 279 m» never splits across two lines (José 28/11). */
+export const THOUSANDS_SEPARATOR = '\u202F';
+export const groupThousands = (value: number): string => String(Math.round(value)).replace(/\B(?=(\d{3})+$)/g, THOUSANDS_SEPARATOR);
+export const metersLabel = (meters: number) => `${groupThousands(meters)} m`;
 
 /** The figure over the map; a work without stretches has nothing to add up yet. */
 export const workMapHeadline = (view: Pick<WorkMapView, 'percent' | 'doneM' | 'totalM'>) =>

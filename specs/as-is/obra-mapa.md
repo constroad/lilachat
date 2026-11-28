@@ -493,9 +493,7 @@ Motores puros, con test, usados por web y APK:
     último pendiente (`deshacer_avance_de_obra`); un admin, cualquier registro con id que cuente
     (`resolver_avance_de_obra` «rechazar» con la nota «Deshecho desde el mapa.»;
     `undoRequestOf`). El id de lo aprobado sale del `_id` del detalle (`WorkMapProgress.id`).
-  - Foto después: el modelo lo permite (`evidenceMediaIds` del registro) pero no hay herramienta que
-    agregue fotos a un avance ya creado; reenviar con el mismo `entradaId` responde `ya_marcada` sin
-    tocarlo. Falta en Portal (ver §6).
+  - Foto después: desde el 28/11, `agregar_foto_a_avance_de_obra` (ver la entrada «Agregar foto»).
   - Lo que hace falta en Portal para que el avance de un miembro llegue al enlace del cliente: ver §6.
 - **28/11** Las partidas del servicio son trabajos sin paso manual (José, Pachacamac - Resanes:
   imprimación y colocación las tuvo que crear a mano). Causa: `worksFrom` (`shared/src/workMap.ts`)
@@ -519,6 +517,48 @@ Motores puros, con test, usados por web y APK:
   `streetWidthExpression(2)`), en claro y oscuro (`definedStreetIdsOf`, `baseLinesOf` en
   `shared/src/workLayerLines.ts`). La leyenda del mapa suma «Calle sin trabajo» en naranja cuando hay
   alguna (`definedLegendEntries`, `workMapMenu.ts`), también sin trabajos creados.
+- **28/11** QA del OTA d0fbdca7 (web y APK):
+  - **Pendiente de ejecución = naranja.** Toda calle o sección definida y aún no ejecutada se pinta
+    `STREET_DEFINED_COLOR` (#FF6A00, la única constante), opaca y del ancho de la calle; lo ejecutado
+    sigue en el color del trabajo, encima. Antes lo planificado iba en el color del trabajo a 0,4 y
+    se veía gris (en oscuro, ni se notaba). `LAYER_PLANNED_PAINT` pasa a opacidad 1; `layerMapLinesOf`
+    da `planned` en naranja con un trabajo elegido (sus tramos) y también sin él (todos los tramos
+    definidos; una calle sin tramo ya es naranja en la base). Una sección pinta solo sus metros.
+  - Leyenda: «Pendiente de ejecución» con muestra naranja (`mapLegendEntries(view, definedStreets)`,
+    que también sale sin trabajos si hay calles definidas); se quitó «Calle sin trabajo»
+    (`definedLegendEntries`, `STREET_DEFINED_LEGEND`): era el mismo naranja. La hoja del trabajo dice
+    «Hecho · Pendiente de ejecución» (`LAYER_LEGEND.plannedColor`).
+  - Hoja «Trabajos»: el nombre usa el ancho de la fila (hasta 2 líneas; en APK las acciones bajan a
+    una segunda fila, en web se envuelven cuando no caben). Los miles llevan espacio fino que no
+    corta (U+202F, `THOUSANDS_SEPARATOR`/`groupThousands` en `workMap.ts`, también `workMapCards`):
+    «1 279 m» ya no se parte entre líneas.
+  - «Registrar avance»: el % se selecciona entero al enfocarlo (APK `selectTextOnFocus`, web
+    `onFocus` → `select()`); escribir reemplaza el «0» (antes «0» + «50» = 500 → 100 %).
+  - Teclado: «Registrar sin foto» queda bajo el teclado; el botón principal sigue visible y el pie
+    hace scroll. Se deja así (no es trivial sin agrandar nada).
+- **28/11** «Agregar foto» a un avance ya registrado (José: «debería marcarlo y luego ya yo igual
+  podría subir la foto»). Herramienta nueva de Portal `agregar_foto_a_avance_de_obra { servicioId,
+  avanceId, fotoIds[1..6] }`, con confirmación, para cualquier miembro del servicio; solo archivos
+  activos del Drive del servicio; una foto repetida cuenta una vez; responde `{ avanceId, fotos }`.
+  Rechaza un avance deshecho, una obra cerrada o un avance/servicio ajeno; si cambió entretanto:
+  «El avance cambió mientras tanto: vuelve a intentarlo.». **Pendiente de que José la apruebe en
+  Agentes**: hasta entonces puede dar 502 o no existir.
+  - Puerta del mapa del server: `work_progress_photo { progress_id, photo_ids }` →
+    `agregar_foto_a_avance_de_obra` con el servicio de la puerta (`server/src/bots/workMapForms.ts`).
+    Nunca directo a Portal. **El server debe desplegarse antes del OTA.**
+  - Puro (`shared/src/workProgressPhoto.ts`): `workProgressPhotoRequest` (sin repetidas, máx. 6),
+    `progressPhotoResultOf` (lee `{ avanceId, fotos }` directo o envuelto; deja pasar las negativas
+    de Portal, todo lo demás —502, herramienta ausente— es «No se pudo agregar la foto; inténtalo de
+    nuevo.»), `sendProgressPhoto` (un error de la puerta se registra con `console.warn` y nunca se
+    lanza), `addPhotoToProgress` (la misma cámara que «Tomar foto y registrar» —sello y compresión—,
+    la subida al Drive, luego la herramienta), `recordedProgressIdOf`, `afterPhotoAdd`, `photosLabel`.
+  - «Avances»: cada registro con id que no esté deshecho (`FeedCard.photoable`) lleva «Agregar foto»
+    compacto y, con fotos, «N fotos» (`FeedCard.photos` de `fotos`/`fotoIds` de
+    `avances_por_aprobar_de_obra` cuando Portal los manda, o el total que respondió la herramienta;
+    `feedPhotoCount`). Componentes `AddProgressPhoto` (APK y web).
+  - Tras «Registrar sin foto» la confirmación ofrece «Agregar foto» cuando Portal respondió el
+    `avanceId` (`RecordAnswer.progressId`). En el APK dentro de un servicio el avance va a la cola del
+    teléfono y no hay id todavía: ahí la foto se agrega desde «Avances» cuando el registro aparece.
 - **28/11** Auditoría stitch-fidelity de ma01 tras las quejas de José (botones grandes, botones
   sobre las capas, «Capas y leyenda» abierta y enorme, líneas punteadas fuera de «Editar croquis»).
   Auditoría: `design/stitch/auditorias/ma01-mapa-capas.md` (16 diferencias del revisor independiente
@@ -627,8 +667,8 @@ usa los filtros del mapa («Sale lo que ves»).
     `src/repositories/service-partida-progress.repository.ts:44` (`deleteOne` con `status: 'pending'`): hoy solo borran lo
     pendiente propio; con registros aprobados el autor ya no podría deshacer. Debe aceptar lo propio
     aprobado (y recomputar la partida).
-  - Foto después: no hay herramienta para sumar `evidenceMediaIds` a un avance existente; hace falta
-    una nueva (p. ej. `agregar_foto_a_avance_de_obra { servicioId, avanceId, fotoIds }`) que José apruebe.
+  - Foto después: Portal ya tiene `agregar_foto_a_avance_de_obra`; falta que José la apruebe en
+    Agentes. Sin verificar en vivo (solo tests).
   - Mientras tanto la cola sin señal del APK (`manualProgressJobs.ts`) envía sin la puerta del mapa:
     el registro de un admin hecho sin señal queda pendiente en Portal.
 - **Servicio sin calles** con el caso real de Globofast: solo tests del motor, sin

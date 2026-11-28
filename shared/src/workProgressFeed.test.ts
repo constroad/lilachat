@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { workMapOf, type WorkMap } from './workMap.js';
 import type { ByApproveList } from './workByApprove.js';
-import { FEED_PILL, FEED_RANGES, feedCounts, feedInRange, feedSummaryOf, feedWhen, progressFeedOf } from './workProgressFeed.js';
+import { FEED_PILL, FEED_RANGES, feedCounts, feedInRange, feedPhotoCount, feedSummaryOf, feedWhen, progressFeedOf } from './workProgressFeed.js';
 
 /** Design ma05 (José 28/11): every progress of the work, today, this week or all, with its state. */
 const line = [{ lat: -12, lng: -77 }, { lat: -12, lng: -76.997 }];
@@ -80,6 +80,28 @@ describe('ma05: the feed', () => {
   it('a progress without stretch or of a work gone still reads', () => {
     const odd: ByApproveList = { total: 1, items: [{ id: 'x', state: 'pendiente', date: '', streetId: null, fromM: null, toM: null, workId: 'gone', quantity: 12, author: null, own: true, rejectNote: null }] };
     expect(progressFeedOf({ ...mapOf(), progress: [] }, odd, TODAY)[0]).toMatchObject({ title: 'Trabajo · Calle sin nombre', stretch: '', meters: '12 m', when: '', undoable: false });
+  });
+});
+
+describe('the photos of a record (José 28/11: «Agregar foto»)', () => {
+  it('carries the count Portal sent, 0 for a done record, and what was just added wins', () => {
+    // Arrange
+    const withPhotos: ByApproveList = { total: 1, items: [{ ...list.items[0]!, photos: 2 }] };
+    // Act
+    const cards = progressFeedOf(mapOf(), withPhotos, TODAY);
+    // Assert
+    expect(cards.find((card) => card.id === 'a2')?.photos).toBe(2);
+    expect(cards.filter((card) => card.state === 'aprobado').every((card) => card.photos === 0)).toBe(true);
+    expect(feedPhotoCount(cards[0]!, {})).toBe(cards[0]!.photos);
+    expect(feedPhotoCount({ id: 'a2', photos: 2 }, { a2: 3 })).toBe(3);
+    expect(feedPhotoCount({ id: 'a2', photos: 2 }, { a2: 1 })).toBe(2);
+  });
+
+  it('only a record Portal named can take a photo', () => {
+    const cards = progressFeedOf(mapOf(), list, TODAY);
+    expect(cards.find((card) => card.id === 'a2')?.photoable).toBe(true);
+    expect(cards.find((card) => card.id === 'r1')?.photoable).toBe(false);
+    expect(cards.filter((card) => card.id.startsWith('aprobado-')).every((card) => !card.photoable)).toBe(true);
   });
 });
 

@@ -239,14 +239,16 @@ describe('labels', () => {
   it('writes figures the Peruvian way, without a locale the phone may lack', () => {
     expect(percentLabel(61.5)).toBe('61,5 %');
     expect(percentLabel(100)).toBe('100 %');
-    expect(metersLabel(1300.4)).toBe('1 300 m');
+    expect(metersLabel(1300.4)).toBe('1\u202F300 m');
+    expect(metersLabel(1279)).not.toMatch(/\d \d/);
+    expect(metersLabel(1234567)).toBe('1\u202F234\u202F567 m');
     expect(metersLabel(820)).toBe('820 m');
   });
 });
 
 describe('workMapHeadline', () => {
   it('reads the figures, and says so when no stretch is defined yet', () => {
-    expect(workMapHeadline({ percent: 61.5, doneM: 800, totalM: 1300 })).toBe('61,5 % · 800 m de 1 300 m');
+    expect(workMapHeadline({ percent: 61.5, doneM: 800, totalM: 1300 })).toBe('61,5 % · 800 m de 1\u202F300 m');
     expect(workMapHeadline({ percent: 0, doneM: 0, totalM: 0 })).toBe('Sin tramos definidos');
   });
 });

@@ -34,13 +34,13 @@ function Latest(props: { latest: LayerLatest }) {
   );
 }
 
-/** «Hecho · Planificado» in the layer's colour: opaque and translucent, no dashes (José 28/11). */
+/** «Hecho» in the layer's colour, «Pendiente de ejecución» in the map's orange, no dashes (José 28/11). */
 function Legend(props: { color: string }) {
   return (
     <p data-testid="capa-leyenda" className="flex items-center gap-2 text-[13px] text-on-surface-variant">
       <span aria-hidden className="h-1.5 w-5 rounded-full ring-1 ring-on-surface/40" style={{ backgroundColor: props.color }} />{LAYER_LEGEND.done}
       <span aria-hidden>·</span>
-      <span aria-hidden className="h-1.5 w-5 rounded-full" style={{ backgroundColor: props.color, opacity: 0.4 }} />{LAYER_LEGEND.planned}
+      <span aria-hidden className="h-1.5 w-5 rounded-full ring-1 ring-on-surface/40" style={{ backgroundColor: LAYER_LEGEND.plannedColor }} />{LAYER_LEGEND.planned}
     </p>
   );
 }

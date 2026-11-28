@@ -1,13 +1,15 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { Check, ChevronRight, X } from 'lucide-react-native';
-import { layerRecordMap, locateRecordStreet, type RecordLocation, progressPreviewOf, RECORD_LOCATING, RECORD_WHICH_STREET, recordStageOf, recordStreetChoices, recordTitle, type ManualPhotoUpload, type ManualProgressDraft, type MapEditSend, type WorkMap } from '@lilachat/shared';
+import { addPhotoToProgress, layerRecordMap, locateRecordStreet, type RecordLocation, progressPreviewOf, RECORD_LOCATING, RECORD_WHICH_STREET, recordStageOf, recordStreetChoices, recordTitle, type ManualPhotoUpload, type ManualProgressDraft, type MapEditSend, type ProgressPhotoResult, type WorkMap } from '@lilachat/shared';
 import type { CapturedShot } from '../../../chat/camara/cameraRequests';
 import { Modal } from '../../../ui/Modal';
 import { useColores } from '../../../ui/tema';
 import { useMargenes } from '../../../ui/useMargenes';
 import { readGpsOnce } from './useGpsWalk';
-import { RecordScreen } from './RecordProgress';
+import { takeFieldPhoto } from '../useDriveUpload';
+import { AddProgressPhoto } from './AddProgressPhoto';
+import { RecordScreen, type RecordAnswer } from './RecordProgress';
 import { WorkMapSurface } from './WorkMapSurface';
 
 export type PhotoAsset = CapturedShot;
@@ -53,11 +55,13 @@ function StreetChooser(props: { map: WorkMap; problem: string | null; locating: 
   );
 }
 
-function Sent(props: { message: string; onDone: () => void }) {
+/** The answer; a record sent without a photo offers «Agregar foto» right there (José 28/11). */
+function Sent(props: { message: string; addPhoto?: { id: string; add: () => Promise<ProgressPhotoResult | null> }; onDone: () => void }) {
   const colors = useColores();
   return (
     <View className="flex-1 justify-center gap-4 p-6">
       <View className="flex-row items-start gap-2"><Check size={22} color={colors.primary} /><Text testID="avance-manual-respuesta" className="flex-1 text-[17px] font-semibold text-on-surface">{props.message}</Text></View>
+      {props.addPhoto ? <AddProgressPhoto id={props.addPhoto.id} photos={0} add={props.addPhoto.add} /> : null}
       <Pressable onPress={props.onDone} className="h-12 items-center justify-center rounded-xl border border-outline/20"><Text className="text-[15px] font-semibold text-on-surface">Listo</Text></Pressable>
     </View>
   );
@@ -75,9 +79,13 @@ export function ManualProgress(props: Props) {
   const [picked, setPicked] = useState<string | null>(props.streetId);
   const [choosing, setChoosing] = useState(false);
   const [sent, setSent] = useState<string | null>(null);
+  const [recorded, setRecorded] = useState<RecordAnswer | null>(null);
   const stage = recordStageOf({ picked, located, choosing, sent });
-  const body = stage.kind === 'sent' ? <Sent message={stage.message} onDone={props.onDone} />
-    : stage.kind === 'record' ? <RecordScreen key={stage.streetId} map={props.map} streetId={stage.streetId} send={props.send} uploadPhoto={props.uploadPhoto} initial={stage.streetId === props.streetId ? props.initial : undefined} located={stage.located} workId={props.workId ?? null} onChangeStreet={() => setChoosing(true)} onClose={props.onDone} onAnswer={(answer) => setSent(answer.message)} />
+  const answered = (answer: RecordAnswer) => { setRecorded(answer); setSent(answer.message); };
+  const { uploadPhoto, send } = props;
+  const later = recorded?.progressId && !recorded.withPhoto && uploadPhoto ? { id: recorded.progressId, add: () => addPhotoToProgress({ take: takeFieldPhoto, upload: uploadPhoto, send, progressId: recorded.progressId! }) } : undefined;
+  const body = stage.kind === 'sent' ? <Sent message={stage.message} addPhoto={later} onDone={props.onDone} />
+    : stage.kind === 'record' ? <RecordScreen key={stage.streetId} map={props.map} streetId={stage.streetId} send={props.send} uploadPhoto={props.uploadPhoto} initial={stage.streetId === props.streetId ? props.initial : undefined} located={stage.located} workId={props.workId ?? null} onChangeStreet={() => setChoosing(true)} onClose={props.onDone} onAnswer={answered} />
       : <StreetChooser map={layerMap} problem={stage.problem} locating={stage.locating} onPick={(id) => { setPicked(id); setChoosing(false); }} onClose={props.onDone} />;
   return (
     <Modal visible animationType="slide" onRequestClose={props.onDone}>

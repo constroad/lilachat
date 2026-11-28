@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Camera, TriangleAlert } from 'lucide-react';
-import { FEED_EMPTY, FEED_RANGES, FEED_SUMMARY_KICKER, FEED_TITLE, feedCounts, feedInRange, feedSummaryOf, limaDayKey, progressFeedOf, type ByApproveList, type FeedCard, type FeedRange, type WorkMap } from '@lilachat/shared';
+import { FEED_EMPTY, FEED_RANGES, FEED_SUMMARY_KICKER, FEED_TITLE, feedCounts, feedInRange, feedSummaryOf, limaDayKey, progressFeedOf, type ByApproveList, type FeedCard, type FeedRange, type ProgressPhotoResult, type WorkMap } from '@lilachat/shared';
+import { AddProgressPhoto } from './AddProgressPhoto';
 import { UndoProgress } from './PendingProgress';
 
 const KICKER = 'text-[11px] font-bold uppercase tracking-[0.12em] text-on-surface-variant';
@@ -35,7 +36,7 @@ function Summary(props: { cards: FeedCard[]; label: string }) {
 }
 
 /** One progress: its work and street, chainages, metres, when and who; only an undone one has a pill. */
-function FeedRow(props: { card: FeedCard; onUndo: (id: string) => Promise<string | null> }) {
+function FeedRow(props: { card: FeedCard; onUndo: (id: string) => Promise<string | null>; onAddPhoto?: AddPhoto }) {
   const { card } = props;
   const figures = [card.stretch, card.meters, card.area].filter(Boolean).join(' · ');
   return (
@@ -50,12 +51,15 @@ function FeedRow(props: { card: FeedCard; onUndo: (id: string) => Promise<string
         {card.pill ? <span data-testid={`avance-estado-${card.id}`} className="self-start rounded-md border border-error/40 bg-error/10 px-2 py-1 text-[11px] font-bold text-error">{card.pill}</span> : null}
       </div>
       {card.rejectNote ? <p className="flex items-center gap-2 rounded-xl border border-error/30 bg-error/5 p-3 text-[14px] text-error"><TriangleAlert size={16} className="shrink-0" />Nota: {card.rejectNote}</p> : null}
+      <AddProgressPhoto id={card.id} photos={card.photos} add={card.photoable && props.onAddPhoto ? (file) => props.onAddPhoto!(card.id, file) : undefined} />
       {card.undoable && card.toM !== null ? <UndoProgress id={card.id} toM={card.toM} onUndo={props.onUndo} /> : null}
     </li>
   );
 }
 
-type FeedProps = { map: WorkMap; list: ByApproveList | null; /** An admin undoes any record; anyone else, their own. */ admin: boolean; onUndo: (id: string) => Promise<string | null>; /** Today in Lima; a test fixes it. */ today?: string };
+/** «Agregar foto» on one record: the photo taken, uploaded to the Drive, then Portal's tool. */
+type AddPhoto = (id: string, file: File) => Promise<ProgressPhotoResult | null>;
+type FeedProps = { map: WorkMap; list: ByApproveList | null; /** An admin undoes any record; anyone else, their own. */ admin: boolean; onUndo: (id: string) => Promise<string | null>; onAddPhoto?: AddPhoto; /** Today in Lima; a test fixes it. */ today?: string };
 
 /** «Avances» (design ma05, José 28/11): every record, by Hoy / Semana / Todo; none waits for approval. */
 export function ProgressFeed(props: FeedProps) {
@@ -68,7 +72,7 @@ export function ProgressFeed(props: FeedProps) {
       <p className={KICKER}>{FEED_TITLE}</p>
       <RangeTabs range={range} counts={feedCounts(cards, today)} onRange={setRange} />
       <Summary cards={shown} label={FEED_RANGES.find((option) => option.id === range)?.label ?? ''} />
-      {shown.length ? <ul className="space-y-3">{shown.map((card) => <FeedRow key={card.id} card={card} onUndo={props.onUndo} />)}</ul> : <p className="text-[13px] text-on-surface-variant">{FEED_EMPTY}</p>}
+      {shown.length ? <ul className="space-y-3">{shown.map((card) => <FeedRow key={card.id} card={card} onUndo={props.onUndo} onAddPhoto={props.onAddPhoto} />)}</ul> : <p className="text-[13px] text-on-surface-variant">{FEED_EMPTY}</p>}
     </section>
   );
 }

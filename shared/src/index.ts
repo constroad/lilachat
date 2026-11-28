@@ -275,6 +275,7 @@ export * from './workBrushQueue.js';
 export * from './workAvanceMode.js';
 export * from './workAvanceManual.js';
 export * from './workLayerLines.js';
+export * from './workProgressPhoto.js';
 export * from './workMapSheet.js';
 export * from './workLayerCatalog.js';
 export * from './workMapStations.js';

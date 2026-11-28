@@ -29,7 +29,7 @@ export function RecordPercent(props: { percent: number; onPercent: (percent: num
         </View>
       </GestureDetector>
       <View className="h-11 flex-row items-center gap-1 rounded-xl border border-outline/25 bg-surface px-2">
-        <DecimalInput testID="avance-porcentaje" accessibilityLabel={RECORD_PERCENT_LABEL} value={props.percent} onValue={(value) => { if (value !== null) props.onPercent(value); }} className="w-14 text-right text-[15px] font-semibold text-on-surface" />
+        <DecimalInput testID="avance-porcentaje" accessibilityLabel={RECORD_PERCENT_LABEL} selectTextOnFocus value={props.percent} onValue={(value) => { if (value !== null) props.onPercent(value); }} className="w-14 text-right text-[15px] font-semibold text-on-surface" />
         <Text className="text-[15px] font-semibold text-on-surface">%</Text>
       </View>
     </View>

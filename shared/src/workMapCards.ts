@@ -1,6 +1,7 @@
 import { compareNames } from './compareText.js';
 import type { ViewableFile } from './fileViewer.js';
 import { distanceMeters } from './liveLocation.js';
+import { groupThousands } from './workMap.js';
 import { OBSERVATION_COLORS, registeredLine, STATUS_PILLS } from './observations.js';
 import { markLabel, markName, type MarkPoint, type WorkMapMark, type WorkMapMarkShape } from './workMapMarks.js';
 import type { WorkMapObservation, WorkMapObservationPhoto } from './workMapObservations.js';
@@ -44,13 +45,12 @@ export const SAME_POINT_RADIUS_M = 3;
 export const MARK_CARD_PHOTOS_MAX = 6;
 
 const comma = (value: number, decimals: number) => value.toFixed(decimals).replace('.', ',');
-const grouped = (value: number) => String(Math.round(value)).replace(/\B(?=(\d{3})+$)/g, ' ');
 
 /** «35 m» under a kilometre, «1,2 km» from there (José 19/11). */
 export const distanceLabel = (meters: number): string => (Math.round(meters) < KM ? `${Math.round(meters)} m` : `${comma(meters / KM, 1)} km`);
 
 /** A size: under a metre with its decimal (a manhole cover is not «0 m»), else whole metres. */
-const sizeNumber = (meters: number): string => (meters < 1 ? comma(meters, 1) : grouped(meters));
+const sizeNumber = (meters: number): string => (meters < 1 ? comma(meters, 1) : groupThousands(meters));
 const sizeLength = (meters: number): string => (meters < KM ? `${sizeNumber(meters)} m` : distanceLabel(meters));
 
 const midpoint = (a: MarkPoint, b: MarkPoint): MarkPoint => ({ lat: (a.lat + b.lat) / 2, lng: (a.lng + b.lng) / 2 });

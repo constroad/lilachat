@@ -1,7 +1,7 @@
 import { Suspense, useEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from 'react';
 import { lazyChunk } from '../../../ui/lazyChunk';
 import { Paintbrush, Undo2 } from 'lucide-react';
-import { definedStreetIdsOf, isShortSheet, collapseSheet, expandLayerSheet, initialMapSheet, layerMapLinesOf, sheetForLayerPick, toggleLayersSheet, type LayerStreetSummary, type MapSheet, activeLayerOf, limaDayKey, workMapWorkFilter, viewWithLayers, visibleMarks, visibleObservations, mapCardOf, mapPickAnchor, type MapPick, type WorkMapPoint, visibleStationMarks, brushTitle, progressTargetOf, type ManualPhotoUpload, type MapEditSend, type TraceUpload, type ServiceMapInReport, unitPinsOfDay, withMediaBounds, undoableOf, withPendingOf, approvingMapSend, approvingProgressSend, showsUnitPins, type DischargePin, type MapMoreKey, stretchLinesOf, suggestDischarges, workMapStageGroups, workMapView, type UnitDischarge, type WorkMap, type WorkMapFilter, type StretchRange, type MapPhoto, type ManualProgressDraft } from '@lilachat/shared';
+import { addPhotoToProgress, definedStreetIdsOf, isShortSheet, collapseSheet, expandLayerSheet, initialMapSheet, layerMapLinesOf, sheetForLayerPick, toggleLayersSheet, type LayerStreetSummary, type MapSheet, activeLayerOf, limaDayKey, workMapWorkFilter, viewWithLayers, visibleMarks, visibleObservations, mapCardOf, mapPickAnchor, type MapPick, type WorkMapPoint, visibleStationMarks, brushTitle, progressTargetOf, type ManualPhotoUpload, type MapEditSend, type TraceUpload, type ServiceMapInReport, unitPinsOfDay, withMediaBounds, undoableOf, withPendingOf, approvingMapSend, approvingProgressSend, showsUnitPins, type DischargePin, type MapMoreKey, stretchLinesOf, suggestDischarges, workMapStageGroups, workMapView, type UnitDischarge, type WorkMap, type WorkMapFilter, type StretchRange, type MapPhoto, type ManualProgressDraft } from '@lilachat/shared';
 import { WorkMapDischarges, type ProgressSend } from './WorkMapDischarges';
 import { WorkMapExport } from './WorkMapExport';
 import { ShareProgress } from './ShareProgress';
@@ -239,7 +239,9 @@ export function WorkMapBoard(props: BoardProps) {
   const discharges = pista.suggestion.units.length ? <WorkMapDischarges map={map} serviceId={props.serviceId} suggestion={pista.suggestion} send={progressSend} ranges={pista.ranges} onRange={pista.onRange} /> : null;
   const primeCoat = editMap && props.mapPhotos?.length ? <PrimeCoatSuggestions map={map} photos={props.mapPhotos} onRecord={(id, draft) => openStreet(id, true, draft)} /> : null;
   // José 28/11 (design ma05): «Avances» with Hoy / Semana / Todo; an admin undoes any record there.
-  const feed = editMap && byApprove.list ? <ProgressFeed map={map} list={byApprove.list} admin={Boolean(props.admin)} onUndo={(id) => byApprove.undo(id).then((failure) => { if (!failure) props.reload?.(); return failure; })} /> : null;
+  const { uploadPhoto } = props;
+  const addPhoto = editMap && uploadPhoto ? (id: string, file: File) => addPhotoToProgress({ take: async () => ({ shot: file }), upload: uploadPhoto, send: editMap, progressId: id }) : undefined;
+  const feed = editMap && byApprove.list ? <ProgressFeed map={map} list={byApprove.list} admin={Boolean(props.admin)} onAddPhoto={addPhoto} onUndo={(id) => byApprove.undo(id).then((failure) => { if (!failure) props.reload?.(); return failure; })} /> : null;
   const top = discharges || primeCoat || feed ? <div className="space-y-5">{feed}{discharges}{primeCoat}</div> : null;
   const streetPanel = streetId ? <StreetScopes key={`${streetId}|${recordingStart}|${recordDraft?.fromM}-${recordDraft?.toM}`} map={map} streetId={streetId} send={editMap} uploadPhoto={props.uploadPhoto} startRecording={recordingStart} recordDraft={recordDraft} onBack={() => openStreet(null)} /> : null;
   const deletedPanel = seeingDeleted && editMap ? <DeletedWork map={map} send={editMap} onClose={() => setSeeingDeleted(false)} /> : null;

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { workMapView, type WorkMap } from './workMap.js';
-import { definedStreetIdsOf, LAYER_BASE_COLOR, LAYER_BASE_PAINT, layerMapLinesOf, STATION_MIN_ZOOM, STREET_DEFINED_COLOR, STREET_DEFINED_LEGEND } from './workLayerLines.js';
+import { definedStreetIdsOf, LAYER_BASE_COLOR, LAYER_BASE_PAINT, LAYER_LEGEND, LAYER_PLANNED_PAINT, layerMapLinesOf, STATION_MIN_ZOOM, STREET_DEFINED_COLOR } from './workLayerLines.js';
 import { streetWidthExpression } from './workLineWidth.js';
 import { isShortSheet, collapseSheet, initialMapSheet, expandLayerSheet, sheetForLayerPick, toggleLayersSheet } from './workMapSheet.js';
 import { colorLuminance, lineHaloOf, LINE_HALO_COLOR, workMapCollection } from './workMap.js';
@@ -18,12 +18,12 @@ const view = workMapView(MAP);
 const rows = [{ streetId: 'a', percentText: '37 %' }];
 
 describe('the map by layer', () => {
-  it('every street of the work is a thin neutral base, the layer planned in ITS color with its %', () => {
+  it('every street of the work is a thin neutral base, the layer still to build orange, done in ITS color with its %', () => {
     // Act
     const lines = layerMapLinesOf({ map: MAP, view, filter: {}, workId: 'imp', rows, hidden: false });
     // Assert
     expect(lines.base.map((line) => [line.streetId, line.color])).toEqual([['a', LAYER_BASE_COLOR], ['b', LAYER_BASE_COLOR], ['c', STREET_DEFINED_COLOR]]);
-    expect(lines.planned.map((line) => [line.streetId, line.color])).toEqual([['a', '#d97706']]);
+    expect(lines.planned.map((line) => [line.streetId, line.color])).toEqual([['a', STREET_DEFINED_COLOR]]);
     expect(lines.done.map((line) => [line.streetId, line.workId, line.color])).toEqual([['a', 'imp', '#d97706']]);
     expect(lines.labels).toEqual([expect.objectContaining({ streetId: 'a', label: '37 %' })]);
   });
@@ -34,11 +34,33 @@ describe('the map by layer', () => {
     expect(lines.done.some((line) => line.workId === 'asf')).toBe(false);
   });
 
-  it('a layer switched off draws only the base; without works the done lines stay and nothing is dashed', () => {
+  it('a layer switched off draws only the base', () => {
     expect(layerMapLinesOf({ map: MAP, view, filter: {}, workId: 'imp', rows, hidden: true })).toMatchObject({ planned: [], done: [], labels: [] });
+  });
+
+  it('without a layer every defined stretch is orange under what is done; a bare street stays in the base', () => {
+    // Act
     const bare = layerMapLinesOf({ map: MAP, view, filter: {}, workId: null, rows: [], hidden: false });
-    expect(bare.planned).toEqual([]);
+    // Assert
+    expect(bare.planned.map((line) => [line.streetId, line.color])).toEqual([['a', STREET_DEFINED_COLOR], ['b', STREET_DEFINED_COLOR]]);
     expect(bare.done).toBe(view.done);
+  });
+
+  it('a section of a street is orange only along its metres (José 28/11: sections of a street)', () => {
+    // Arrange
+    const section: WorkMap = { ...MAP, scopes: [{ id: 's1', streetId: 'a', fromM: 0, toM: 50, workIds: ['imp'] }] };
+    // Act
+    const lines = layerMapLinesOf({ map: section, view: workMapView(section), filter: {}, workId: 'imp', rows: [], hidden: false });
+    // Assert
+    expect(lines.planned).toHaveLength(1);
+    expect(lines.planned[0]?.color).toBe(STREET_DEFINED_COLOR);
+    expect(lines.planned[0]?.coordinates.at(-1)?.[0]).toBeLessThan(-76.999);
+  });
+
+  it('what is still to build is opaque and as wide as the street, in light and dark', () => {
+    expect(LAYER_PLANNED_PAINT['line-opacity']).toBe(1);
+    expect(LAYER_PLANNED_PAINT['line-width']).toEqual(streetWidthExpression(4));
+    expect(LAYER_LEGEND).toEqual({ done: 'Hecho', planned: 'Pendiente de ejecución', plannedColor: '#FF6A00' });
   });
 
   it('a defined street with no work painted is bright orange, opaque and as wide as the street', () => {
@@ -53,7 +75,6 @@ describe('the map by layer', () => {
     expect(STREET_DEFINED_COLOR).toBe('#FF6A00');
     expect(LAYER_BASE_PAINT['line-width']).toEqual(streetWidthExpression(2));
     expect(LAYER_BASE_PAINT['line-opacity']).toEqual(['case', ['==', ['get', 'color'], STREET_DEFINED_COLOR], 1, 0.35]);
-    expect(STREET_DEFINED_LEGEND).toBe('Calle sin trabajo');
   });
 
   it('without streets nothing is defined', () => {

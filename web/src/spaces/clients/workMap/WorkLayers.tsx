@@ -62,9 +62,10 @@ function WorkRowView(props: { row: WorkRow; on: boolean; onBrush: () => void; ac
     <li data-testid={`trabajo-fila-${row.id}`} className={`flex flex-wrap items-center gap-x-3 gap-y-0 rounded-xl border-[1.5px] bg-surface px-3 py-2.5 ${props.on ? 'border-primary' : 'border-outline/15'}`}>
       <span className="w-5 shrink-0 text-center font-mono text-[12px] font-bold text-on-surface-variant">{row.order}</span>
       <span aria-hidden className="h-3 w-8 shrink-0 rounded-full" style={{ backgroundColor: row.color }} />
-      <div className="min-w-0 flex-1"><p className="truncate text-[14px] font-semibold text-on-surface">{row.name}</p><p className="font-mono text-[12px] text-on-surface-variant">{row.line}</p></div>
-      {props.actions}
-      <button type="button" data-testid={`trabajo-brocha-${row.id}`} aria-pressed={props.on} onClick={props.onBrush} className={brushClass(props.on)}><Paintbrush size={14} />{props.on ? 'Pintando' : 'Pintar'}</button>
+      {/* The name takes the free width; the actions wrap under it before the name is cut (José 28/11: it was cut after a few letters). */}
+      <div className="min-w-0 flex-1 basis-40"><p data-testid={`trabajo-nombre-${row.id}`} className="line-clamp-2 break-words text-[14px] font-semibold text-on-surface">{row.name}</p><p className="font-mono text-[12px] text-on-surface-variant">{row.line}</p></div>
+      <div className="ml-auto flex shrink-0 items-center gap-2">{props.actions}
+      <button type="button" data-testid={`trabajo-brocha-${row.id}`} aria-pressed={props.on} onClick={props.onBrush} className={brushClass(props.on)}><Paintbrush size={14} />{props.on ? 'Pintando' : 'Pintar'}</button></div>
     </li>
   );
 }

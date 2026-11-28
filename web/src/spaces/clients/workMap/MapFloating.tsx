@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { Eye, X } from 'lucide-react';
-import { definedLegendEntries, mapLegendEntries, type WorkMapView } from '@lilachat/shared';
+import { mapLegendEntries, type WorkMapView } from '@lilachat/shared';
 
 /**
  * What floats over the map (José 20/11, design mapa-v2): on a computer one segmented group
@@ -25,16 +25,15 @@ export const MapToolGroup = (props: { children: ReactNode }) => (
   <div role="group" aria-label="Herramientas del mapa" data-testid="mapa-herramientas" className="pointer-events-auto flex shrink-0 items-center divide-x divide-outline/15 rounded-xl border border-outline/15 bg-surface shadow-md">{props.children}</div>
 );
 
-/** «Convenciones» floating at the foot of the map: each work, what is still to build, what waits. */
+/** «Convenciones» floating at the foot of the map: each work and, in orange, what is still to build. */
 export function MapLegendCard(props: { view: WorkMapView; /** Streets drawn with no work painted yet. */ defined?: number }) {
-  const defined = definedLegendEntries(props.defined ?? 0);
-  if (!props.view.works.length && !defined.length) return null;
+  const entries = mapLegendEntries(props.view, props.defined);
+  if (!entries.length) return null;
   return (
     <div data-testid="mapa-leyenda" className="pointer-events-auto flex max-w-full flex-wrap items-center gap-x-3 gap-y-1 rounded-xl border border-outline/15 bg-surface px-3 py-2 text-[12px] shadow-md">
-      {[...(props.view.works.length ? mapLegendEntries(props.view) : []), ...defined].map((entry) => (
+      {entries.map((entry) => (
         <span key={entry.key} className="flex items-center gap-1.5">
-          {entry.kind === 'todo' ? <span aria-hidden className="h-1.5 w-4 rounded-full bg-on-surface-variant/35" />
-            : <span aria-hidden className="h-1.5 w-4 rounded-full ring-1 ring-on-surface/40" style={{ backgroundColor: entry.color ?? undefined }} />}
+          <span aria-hidden data-testid={`mapa-leyenda-${entry.kind}`} className="h-1.5 w-4 rounded-full ring-1 ring-on-surface/40" style={{ backgroundColor: entry.color }} />
           <span className={entry.kind === 'work' ? 'font-semibold text-on-surface' : 'text-on-surface-variant'}>{entry.label}</span>
         </span>
       ))}

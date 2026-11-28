@@ -6,6 +6,7 @@ import type { WorkStreetDeleteRequest } from './workStreetDelete.js';
 import type { WorkDeletedRequest, WorkRestoreRequest } from './workDeleted.js';
 import type { WorkPendingRequest, WorkResolveRequest } from './workPending.js';
 import type { WorkByApproveRequest, WorkUndoRequest } from './workByApprove.js';
+import type { WorkProgressPhotoRequest } from './workProgressPhoto.js';
 import type { LayerDeleteRequest, LayerEditRequest } from './workLayerEdit.js';
 import type { WorkManualProgressRequest } from './workManualProgress.js';
 import type { WorkProgressLinkRequest } from './workProgressLink.js';
@@ -163,7 +164,7 @@ export type PublishFormRequest = { kind: 'publish'; report_id: string; forms: nu
 export type RemovePhotoRequest = { kind: 'remove_photo'; report_id: string; photo_id: string; forms: number };
 /** «Terminar unidad» (José 19/11): the reviewed photos of a unit to the client's group, by Portal's `enviar_fotos_de_unidad`. */
 export type UnitAlbumRequest = { kind: 'unit_album'; report_id: string; tramo_id: string; fotos: string[]; forms: number };
-export type ReportFormRequest = SectionFormRequest | PublishFormRequest | RemovePhotoRequest | UnitAlbumRequest | DriveUploadRequest | WorkProgressRequest | WorkStreetRequest | WorkStreetDeleteRequest | ServiceLinkRequest | ServiceCroquisRequest | WorkScopeRequest | WorkScopeDeleteRequest | WorkStageRequest | WorkTagRequest | WorkRestoreRequest | WorkDeletedRequest | WorkManualProgressRequest | WorkProgressLinkRequest | WorkImportRequest | WorkProgressPdfRequest | WorkMapInReportRequest | PhotoPhaseRequest | LayerEditRequest | LayerDeleteRequest | WorkPendingRequest | WorkResolveRequest | WorkByApproveRequest | WorkUndoRequest | ObservationRegisterRequest | ObservationLiftRequest | AreaCreateRequest | AreaEditRequest | AreaRemoveRequest;
+export type ReportFormRequest = SectionFormRequest | PublishFormRequest | RemovePhotoRequest | UnitAlbumRequest | DriveUploadRequest | WorkProgressRequest | WorkStreetRequest | WorkStreetDeleteRequest | ServiceLinkRequest | ServiceCroquisRequest | WorkScopeRequest | WorkScopeDeleteRequest | WorkStageRequest | WorkTagRequest | WorkRestoreRequest | WorkDeletedRequest | WorkManualProgressRequest | WorkProgressLinkRequest | WorkImportRequest | WorkProgressPdfRequest | WorkMapInReportRequest | PhotoPhaseRequest | LayerEditRequest | LayerDeleteRequest | WorkPendingRequest | WorkResolveRequest | WorkByApproveRequest | WorkUndoRequest | WorkProgressPhotoRequest | ObservationRegisterRequest | ObservationLiftRequest | AreaCreateRequest | AreaEditRequest | AreaRemoveRequest;
 
 /** What `POST …/reports/forms` takes to open a section: its path, the report once it exists, and what this app can draw. */
 export function sectionFormRequest(document: FieldDocument, path: SectionPath, place?: DevicePlace | null, clientKey?: string, sealed?: boolean): SectionFormRequest {

@@ -24,6 +24,8 @@ export type ByApproveProgress = {
   author: string | null;
   own: boolean;
   rejectNote: string | null;
+  /** Photos Portal reports on it, when it does (José 28/11: «Agregar foto»). */
+  photos?: number;
 };
 export type ByApproveList = { total: number; items: ByApproveProgress[] };
 export type WorkByApproveRequest = { kind: 'work_by_approve'; forms: number };
@@ -44,6 +46,7 @@ const objectOf = (raw: unknown): Raw => (raw && typeof raw === 'object' ? (raw a
 const textOf = (raw: unknown): string => (typeof raw === 'string' ? raw.trim() : '');
 const meterOf = (raw: unknown): number | null => (typeof raw === 'number' && Number.isFinite(raw) && raw >= 0 ? raw : null);
 const countOf = (raw: unknown): number => (typeof raw === 'number' && Number.isFinite(raw) ? raw : 0);
+const photosOf = (one: Raw): number => (Array.isArray(one.fotoIds) ? one.fotoIds.length : Math.max(0, countOf(one.fotos)));
 
 function progressOf(one: Raw): ByApproveProgress | null {
   const id = textOf(one.avanceId);
@@ -61,6 +64,7 @@ function progressOf(one: Raw): ByApproveProgress | null {
     author: textOf(one.autor) || null,
     own: one.propio === true,
     rejectNote: textOf(one.notaRechazo) || null,
+    photos: photosOf(one),
   };
 }
 

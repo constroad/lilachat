@@ -27,7 +27,7 @@ describe('LayerSheet', () => {
     render(<LayerSheet summary={layer.summary!} latest={layer.latest} onRecord={onRecord} />);
     fireEvent.click(screen.getByTestId('capa-registrar'));
     // Assert
-    expect(screen.getByTestId('mapa-avance').textContent).toContain('720 de 1 704 m²');
+    expect(screen.getByTestId('mapa-avance').textContent).toContain('720 de 1\u202F704 m²');
     expect(screen.getByTestId('mapa-avance').textContent).toContain('42 %');
     expect(screen.getByTestId('capa-calle-s1')).toBeTruthy();
     expect(screen.queryByTestId('capa-por-aprobar')).toBeNull();

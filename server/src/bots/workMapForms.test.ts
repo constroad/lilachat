@@ -211,6 +211,33 @@ describe('progress to approve and undo, through the member\'s door', () => {
   });
 });
 
+/** José 28/11: record the progress now, add its photo later (Portal's agregar_foto_a_avance_de_obra). */
+describe('a photo added to a record, through the door', () => {
+  const PHOTO = 'a'.repeat(24);
+  const OTHER = 'b'.repeat(24);
+
+  it('asks Portal with the service of the door, the record and its Drive photos, a repeated one once', () => {
+    // Act
+    const prepared = workMapFormPrepared(SERVICE, workMapFormInputOf({ kind: 'work_progress_photo', progress_id: ' p9 ', photo_ids: [PHOTO, OTHER, PHOTO] })!);
+    // Assert
+    expect(isWorkMapFormKind('work_progress_photo')).toBe(true);
+    expect(prepared.form.id).toBe('agregar_foto_a_avance_de_obra');
+    expect(prepared.form.submitLabel).toBe('Agregar');
+    expect(prepared.context).toEqual({ servicioId: SERVICE, avanceId: 'p9', fotoIds: [PHOTO, OTHER] });
+  });
+
+  it('refuses no record, no photos, more than six or an id that is not a Drive file', () => {
+    // Arrange
+    const seven = Array.from({ length: 7 }, (_, index) => String(index).padStart(24, '0'));
+    // Act / Assert
+    expect(workMapFormInputOf({ kind: 'work_progress_photo', photo_ids: [PHOTO] })).toBeNull();
+    expect(workMapFormInputOf({ kind: 'work_progress_photo', progress_id: 'p9', photo_ids: [] })).toBeNull();
+    expect(workMapFormInputOf({ kind: 'work_progress_photo', progress_id: 'p9', photo_ids: seven })).toBeNull();
+    expect(workMapFormInputOf({ kind: 'work_progress_photo', progress_id: 'p9', photo_ids: ['../etc'] })).toBeNull();
+    expect(workMapFormInputOf({ kind: 'work_progress_photo', progress_id: 'p9' })).toBeNull();
+  });
+});
+
 /** José 19/11: «Editar croquis» opens Portal's croquis editor of the service. */
 describe('the service croquis, through the door', () => {
   it('asks Portal\'s abrir_croquis_de_servicio with only the service', () => {

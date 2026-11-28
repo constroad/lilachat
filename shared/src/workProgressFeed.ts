@@ -29,6 +29,9 @@ export type FeedCard = {
   /** «Deshacer»: the caller's newest pending one of its street and work; for an admin, any that counts. */
   undoable: boolean;
   toM: number | null;
+  /** Photos on it; «Agregar foto» only on a record Portal named that was not undone. */
+  photos: number;
+  photoable: boolean;
 };
 export type FeedSummary = { meters: string; area: string | null; count: string };
 
@@ -55,7 +58,7 @@ export function feedWhen(date: string, today: string): string {
   return day === shiftDay(today, -1) ? 'Ayer' : dayOf(day);
 }
 
-type CardBase = { id: string; state: FeedState; date: string; streetId: string | null; workId: string | null; fromM: number | null; toM: number | null; quantity: number; author: string | null; rejectNote: string | null };
+type CardBase = { id: string; state: FeedState; date: string; streetId: string | null; workId: string | null; fromM: number | null; toM: number | null; quantity: number; author: string | null; rejectNote: string | null; photos: number };
 
 function cardOf(map: Pick<WorkMap, 'streets' | 'works'>, base: CardBase, today: string, undoable: Set<string>): FeedCard {
   const street = map.streets.find((one) => one.id === base.streetId);
@@ -80,13 +83,15 @@ function cardOf(map: Pick<WorkMap, 'streets' | 'works'>, base: CardBase, today: 
     rejectNote: base.rejectNote,
     undoable: undoable.has(base.id),
     toM: base.toM,
+    photos: base.photos,
+    photoable: base.state !== 'rechazado' && !base.id.startsWith(UNNAMED_PREFIX),
   };
 }
 
-const fromByApprove = (one: ByApproveProgress): CardBase => ({ id: one.id, state: one.state, date: one.date, streetId: one.streetId, workId: one.workId, fromM: one.fromM, toM: one.toM, quantity: one.quantity, author: one.author, rejectNote: one.rejectNote });
+const fromByApprove = (one: ByApproveProgress): CardBase => ({ id: one.id, state: one.state, date: one.date, streetId: one.streetId, workId: one.workId, fromM: one.fromM, toM: one.toM, quantity: one.quantity, author: one.author, rejectNote: one.rejectNote, photos: one.photos ?? 0 });
 /** A done record Portal sent without its id: listed, never undone. */
 const UNNAMED_PREFIX = 'aprobado-';
-const fromApproved = (one: WorkMapProgress, index: number): CardBase => ({ id: one.id ?? `${UNNAMED_PREFIX}${one.streetId}-${one.workId}-${index}`, state: 'aprobado', date: one.date, streetId: one.streetId, workId: one.workId, fromM: one.fromM, toM: one.toM, quantity: 0, author: null, rejectNote: null });
+const fromApproved = (one: WorkMapProgress, index: number): CardBase => ({ id: one.id ?? `${UNNAMED_PREFIX}${one.streetId}-${one.workId}-${index}`, state: 'aprobado', date: one.date, streetId: one.streetId, workId: one.workId, fromM: one.fromM, toM: one.toM, quantity: 0, author: null, rejectNote: null, photos: 0 });
 
 /** What «Deshacer» may take back: the caller's own pending ones, and for an admin every record with an id that counts. */
 function undoableOf(bases: CardBase[], list: ByApproveList | null, admin: boolean): Set<string> {
@@ -125,3 +130,7 @@ export function feedSummaryOf(cards: readonly FeedCard[]): FeedSummary {
   const area = areas.length ? metersLabel(areas.reduce((total, one) => total + one, 0)).slice(0, -2) : null;
   return { meters: metersLabel(meters).slice(0, -2), area, count: `${counted.length} avance${counted.length === 1 ? '' : 's'}` };
 }
+
+/** What the record shows: Portal's count, or the total the tool just answered when it is higher. */
+export const feedPhotoCount = (card: Pick<FeedCard, 'id' | 'photos'>, added: Readonly<Record<string, number>>): number =>
+  Math.max(card.photos, added[card.id] ?? 0);

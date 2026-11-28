@@ -1,6 +1,6 @@
 import { Suspense, useMemo, useRef, useState } from 'react';
 import { Camera, Crosshair, Hand, Map as MapIcon, X } from 'lucide-react';
-import { GPS_UNAVAILABLE, MANUAL_NOTE_MAX, RECORD_ADD_NOTE, RECORD_NOTE_PLACEHOLDER, manualDraftFor, manualEndFromGps, pickManualWork, progressPreviewOf, RECORD_CHANGE, RECORD_PENDING_NOTE, RECORD_PHOTO_AND_SEND, RECORD_SEND, RECORD_TO_ME, RECORD_WHOLE, RECORD_WITHOUT_PHOTO, recordDropAt, recordHint, recordMapOf, recordProblem, recordSummary, recordTitle, recordWholeStreet, runManualProgress, youAreOn, type GpsStreet, type ManualPhotoUpload, type ManualProgressDraft, type MapEditSend, type StreetEnd, type WorkMap, type WorkMapPoint, type WorkMapWork } from '@lilachat/shared';
+import { GPS_UNAVAILABLE, MANUAL_NOTE_MAX, RECORD_ADD_NOTE, RECORD_NOTE_PLACEHOLDER, layerDraftFor, manualEndFromGps, pickManualWork, progressPreviewOf, RECORD_CHANGE, RECORD_PENDING_NOTE, RECORD_PHOTO_AND_SEND, RECORD_SEND, RECORD_TO_ME, RECORD_WHOLE, RECORD_WITHOUT_PHOTO, recordDropAt, recordHint, recordMapOf, recordProblem, recordSummary, recordTitle, recordWholeStreet, runManualProgress, youAreOn, type GpsStreet, type ManualPhotoUpload, type ManualProgressDraft, type MapEditSend, type StreetEnd, type WorkMap, type WorkMapPoint, type WorkMapWork } from '@lilachat/shared';
 import { DrivePhotoInput } from '../ServiceDriveWeb';
 import type { PickerHandle } from '../../../chat/camera/cameraRequests';
 import { lazyChunk } from '../../../ui/lazyChunk';
@@ -11,7 +11,7 @@ const OUTLINE_BUTTON = 'flex h-12 flex-1 items-center justify-center gap-2 round
 
 type Answer = { ok: boolean; message: string } | null;
 const STREET_ONLY = { workId: null, fromM: 0, toM: 0 };
-export type RecordScreenProps = { map: WorkMap; streetId: string; send: MapEditSend; uploadPhoto?: ManualPhotoUpload<File>; initial?: ManualProgressDraft; located: GpsStreet | null; onChangeStreet: () => void; onClose: () => void; onAnswer: (answer: { ok: true; message: string }) => void };
+export type RecordScreenProps = { map: WorkMap; streetId: string; send: MapEditSend; uploadPhoto?: ManualPhotoUpload<File>; initial?: ManualProgressDraft; /** The layer picked on opening (ma01), when the street carries it. */ workId?: string | null; located: GpsStreet | null; onChangeStreet: () => void; onClose: () => void; onAnswer: (answer: { ok: true; message: string }) => void };
 
 /** The work (one chip per work the street carries) and the street with «Cambiar» (design ma04). */
 function Pickers(props: { works: WorkMapWork[]; workId: string | null; streetName: string; onWork: (workId: string) => void; onChangeStreet: () => void }) {
@@ -62,7 +62,7 @@ function Summary(props: { draft: ManualProgressDraft; lengthM: number; widthM?: 
 function useRecord(props: RecordScreenProps) {
   const street = props.map.streets.find((one) => one.id === props.streetId);
   const lengthM = street?.lengthM ?? 0;
-  const start = useMemo(() => manualDraftFor(props.map, props.streetId), [props.map, props.streetId]);
+  const start = useMemo(() => layerDraftFor(props.map, props.streetId, props.workId ?? null), [props.map, props.streetId, props.workId]);
   const [draft, setDraft] = useState<ManualProgressDraft>(props.initial ?? start.draft);
   const [drops, setDrops] = useState(0);
   const [entryId] = useState(() => crypto.randomUUID());

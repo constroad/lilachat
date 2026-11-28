@@ -1,7 +1,7 @@
 import { Suspense, useEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from 'react';
 import { lazyChunk } from '../../../ui/lazyChunk';
 import { Paintbrush, Route, TrendingUp, Undo2, X } from 'lucide-react';
-import { viewWithLayers, visibleMarks, visibleObservations, mapCardOf, mapPickAnchor, type MapPick, type WorkMapPoint, bareLinesOf, visibleStationMarks, brushLinesOf, brushTitle, progressTargetOf, type Brush, type ManualPhotoUpload, type MapEditSend, type TraceUpload, type ServiceMapInReport, unitPinsOfDay, withMediaBounds, pendingLinesOf, byApproveLinesOf, pendingCountOf, undoableOf, withPendingOf, showsUnitPins, type DischargePin, type PendingProgress, type MapMoreKey, stretchLinesOf, suggestDischarges, workMapStageGroups, workMapView, type UnitDischarge, type WorkMap, type WorkMapFilter, type StretchRange, type MapPhoto, type ManualProgressDraft } from '@lilachat/shared';
+import { activeLayerOf, limaDayKey, workMapWorkFilter, viewWithLayers, visibleMarks, visibleObservations, mapCardOf, mapPickAnchor, type MapPick, type WorkMapPoint, bareLinesOf, visibleStationMarks, brushLinesOf, brushTitle, progressTargetOf, type Brush, type ManualPhotoUpload, type MapEditSend, type TraceUpload, type ServiceMapInReport, unitPinsOfDay, withMediaBounds, pendingLinesOf, byApproveLinesOf, pendingCountOf, undoableOf, withPendingOf, showsUnitPins, type DischargePin, type PendingProgress, type MapMoreKey, stretchLinesOf, suggestDischarges, workMapStageGroups, workMapView, type UnitDischarge, type WorkMap, type WorkMapFilter, type StretchRange, type MapPhoto, type ManualProgressDraft } from '@lilachat/shared';
 import { WorkMapDischarges, type ProgressSend } from './WorkMapDischarges';
 import { WorkMapExport } from './WorkMapExport';
 import { ShareProgress } from './ShareProgress';
@@ -27,6 +27,8 @@ import { AvanceTop, useAvanceMode } from './AvanceMode';
 import { NewLayer } from './NewLayer';
 import { AvancePanel } from './AvancePanel';
 import { ServiceCroquisButton } from './ServiceCroquis';
+import { LayerChips } from './LayerChips';
+import { LayerSheet } from './LayerSheet';
 
 const WorkMapCanvas = lazyChunk(() => import('./WorkMapCanvas'));
 
@@ -212,16 +214,20 @@ export function WorkMapBoard(props: BoardProps) {
   const brushing = useBrush(map, props.editMap);
   const brushLines = useMemo(() => linesFor(map, brushing.brush), [map, brushing.brush]);
   const closeLayers = () => { setLayers(null); brushing.setBrush(null); };
-  const avance = useAvanceMode(map);
+  const avance = useAvanceMode(map, filter);
   // «Nueva capa» (ma03): opened from «Trabajos» or from «Modo Avance», where the new layer is picked.
   const [newLayer, setNewLayer] = useState<'map' | 'avance' | null>(null);
   const [recordingStart, setRecordingStart] = useState(false);
   const [recordDraft, setRecordDraft] = useState<ManualProgressDraft | undefined>(undefined);
   // «Registrar avance» (ma04): the street it opens on, or null for the GPS to pick it.
-  const [recording, setRecording] = useState<{ streetId: string | null } | null>(null);
+  const [recording, setRecording] = useState<{ streetId: string | null; workId: string | null } | null>(null);
+  // Design ma01: the active layer (the first until one is picked) drives the sheet and «Registrar».
+  const [chosenLayer, setChosenLayer] = useState<string | null>(null);
+  // The work picked in the map's select is the active layer too, so the sheet and the map agree.
+  const layer = useMemo(() => activeLayerOf(map, byApprove.list, filter.workId ?? chosenLayer, limaDayKey(new Date()), filter), [map, byApprove.list, filter, chosenLayer]);
   const target = useMemo(() => progressTargetOf(map), [map]);
   const openStreet = (id: string | null, record = false, draft?: ManualProgressDraft) => { setRecordingStart(record); setRecordDraft(draft); setStreetId(id); };
-  const record = () => setRecording({ streetId: target.kind === 'street' ? target.streetId : null });
+  const record = () => setRecording({ streetId: target.kind === 'street' ? target.streetId : null, workId: layer.workId });
   // No street to frame: the map frames the photos and the units (Portal via José 09/11).
   const view = useMemo(() => withMediaBounds(workMapView(map, filter), props.mapPhotos ?? NO_MAP_PHOTOS, props.discharges ?? NO_DISCHARGES), [map, filter, props.mapPhotos, props.discharges]);
   const groups = useMemo(() => workMapStageGroups(map, view), [map, view]);
@@ -266,9 +272,13 @@ export function WorkMapBoard(props: BoardProps) {
   };
   const newLayerPanel = newLayer && props.editMap ? <NewLayer map={map} send={props.editMap} onCreated={layerCreated} onClose={() => setNewLayer(null)} /> : null;
   const other = newLayerPanel ?? avancePanel ?? deletedPanel ?? layersPanel ?? sidePanel ?? streetPanel;
-  const panel = other ?? <WorkMapPanel view={view} groups={groups} filter={filter} badge={props.badge} top={top} items={picks.items} layers={layersNode} scrolls={wide} deleteStreet={props.deleteStreet} onOpenStreet={(id) => openStreet(id)} />;
+  const onLayerRecord = props.editMap && target.kind !== 'none' ? record : undefined;
+  const layerHead = layer.summary ? <LayerSheet summary={layer.summary} latest={layer.latest} badge={props.badge} onRecord={onLayerRecord} /> : undefined;
+  const panel = other ?? <WorkMapPanel head={layerHead} view={view} groups={groups} filter={filter} badge={props.badge} top={top} items={picks.items} layers={layersNode} scrolls={wide} deleteStreet={props.deleteStreet} onOpenStreet={(id) => openStreet(id)} />;
   // A phone: the map takes the screen and the panel is a sheet over it, open on demand (José 20/11).
-  const [sheet, setSheet] = useState(false);
+  // Design ma01: the sheet opens with the map when there are layers; a chip opens it too.
+  const [sheet, setSheet] = useState(() => props.map.works.length > 0);
+  const pickLayer = (id: string) => { setChosenLayer(id); setSheet(true); if (filter.workId) setFilter(workMapWorkFilter(filter, id)); };
   const [legendOpen, setLegendOpen] = useState(false);
   const sheetShown = wide || sheet || Boolean(other);
   const showLayers = () => {
@@ -291,6 +301,7 @@ export function WorkMapBoard(props: BoardProps) {
   const tools: ToolProps = { pageUrl, expanded, layersOpen: wide ? mapLayers.open : sheet && mapLayers.open, onLayersPanel: showLayers, onPick: pick, draws: Boolean(props.onDraw), edits: Boolean(props.editMap), admin: Boolean(props.admin && props.editMap), onRecord: props.editMap && target.kind !== 'none' ? () => { setSide(null); record(); } : undefined, onAvance: props.editMap ? openAvance : undefined, croquis: editMap ? (className) => <ServiceCroquisButton send={editMap} title={props.title} onDone={() => props.reload?.()} className={className} /> : undefined };
   const days = mapDays.options.length ? <MapDayChips options={mapDays.options} day={mapDays.day} onDay={mapDays.setDay} /> : null;
   const notice = props.notice ? <p role="status" data-testid="mapa-aviso" className="pointer-events-auto rounded-xl border border-primary/30 bg-surface px-3 py-2 text-[13px] font-semibold text-on-surface shadow-md">{props.notice}</p> : null;
+  const layerChips = <LayerChips testPrefix="mapa-capa" chips={layer.chips} onPick={pickLayer} />;
   const filters = <MapFilters map={map} view={view} filter={filter} onFilter={setFilter} />;
   const legend = <MapLegendCard view={view} waiting={waiting} />;
   return (
@@ -306,6 +317,7 @@ export function WorkMapBoard(props: BoardProps) {
           {brushing.brush || avance.on ? null : wide ? (
             <>
               <div data-testid="mapa-flotante" className="pointer-events-none absolute inset-x-4 top-4 z-10 flex flex-col items-start gap-2">
+                <div className="w-full min-w-0">{layerChips}</div>
                 <div className="flex w-full min-w-0 items-start gap-2">{days ? <div className="min-w-0 shrink">{days}</div> : null}<WideTools {...tools} /></div>
                 {filters}
                 {notice}
@@ -315,6 +327,7 @@ export function WorkMapBoard(props: BoardProps) {
           ) : (
             <>
               <div data-testid="mapa-flotante" className="pointer-events-none absolute inset-x-3 top-3 z-10 flex flex-col gap-2">
+                {layerChips}
                 {days}
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex min-w-0 flex-1 flex-col items-start gap-2">{filters}{notice}</div>
@@ -332,7 +345,7 @@ export function WorkMapBoard(props: BoardProps) {
       </div>
       {photoLayer.viewer}
       {picks.viewer}
-      {props.editMap && recording ? <ManualProgress map={map} streetId={recording.streetId} send={props.editMap} uploadPhoto={props.uploadPhoto} onDone={() => { setRecording(null); byApprove.reload(); }} /> : null}
+      {props.editMap && recording ? <ManualProgress map={map} streetId={recording.streetId} send={props.editMap} uploadPhoto={props.uploadPhoto} workId={recording.workId} onDone={() => { setRecording(null); byApprove.reload(); }} /> : null}
     </div>
   );
 }

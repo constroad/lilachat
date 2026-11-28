@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
-import { ArrowLeft, Check, Plus, Pointer } from 'lucide-react';
-import { AVANCE_NO_WORKS, AVANCE_PICK_STREET, AVANCE_TITLE, avanceChipsOf, avanceHint, avancePickedWork, avanceTargetOf, brushLinesOf, stretchLineOf, streetAtTap, type AvanceChip, type WorkMap, type WorkMapLine, type WorkMapPoint } from '@lilachat/shared';
-import { NewLayerButton } from './WorkLayers';
+import { ArrowLeft, Pointer } from 'lucide-react';
+import { AVANCE_PICK_STREET, AVANCE_TITLE, avanceChipsOf, avanceHint, avancePickedWork, avanceTargetOf, brushLinesOf, stretchLineOf, streetAtTap, type WorkMap, type WorkMapFilter, type WorkMapLine, type WorkMapPoint } from '@lilachat/shared';
+import { LayerChips } from './LayerChips';
 
 /** The work's stretches in its colour and the tapped street on top, in the stretch colour. */
 function linesOf(map: WorkMap, workId: string | null, streetId: string | null): WorkMapLine[] {
@@ -12,13 +12,13 @@ function linesOf(map: WorkMap, workId: string | null, streetId: string | null): 
 }
 
 /** «Modo Avance» (design av-01, José 27/11): on or off, the picked work and the tapped street. */
-export function useAvanceMode(map: WorkMap) {
+export function useAvanceMode(map: WorkMap, /** The board's stage and day cut: the chips' % as everywhere else. */ filter: WorkMapFilter) {
   const [on, setOn] = useState(false);
   const [chosen, setChosen] = useState<string | null>(null);
   const [streetId, setStreetId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const workId = avancePickedWork(map, chosen);
-  const chips = useMemo(() => avanceChipsOf(map, workId), [map, workId]);
+  const chips = useMemo(() => avanceChipsOf(map, workId, filter), [map, workId, filter]);
   const lines = useMemo(() => linesOf(map, workId, streetId), [map, workId, streetId]);
   const target = on && workId && streetId ? avanceTargetOf(map, streetId, workId) : null;
   const tap = (place: WorkMapPoint) => {
@@ -33,29 +33,6 @@ export function useAvanceMode(map: WorkMap) {
 
 export type AvanceModeState = ReturnType<typeof useAvanceMode>;
 
-function WorkChips(props: { chips: AvanceChip[]; onPick: (id: string) => void; onNewLayer: () => void }) {
-  if (!props.chips.length) {
-    return (
-      <div data-testid="avance-sin-trabajos" className="pointer-events-auto space-y-2 rounded-2xl bg-surface p-3 shadow-md">
-        <p className="text-[13px] text-on-surface">{AVANCE_NO_WORKS}</p>
-        <NewLayerButton testId="trabajo-nueva" label="Agregar trabajo" onClick={props.onNewLayer} />
-      </div>
-    );
-  }
-  return (
-    <div role="group" aria-label="Trabajos" className="pointer-events-auto -mx-3 flex gap-2 overflow-x-auto px-3 pb-1">
-      {props.chips.map((chip) => (
-        <button key={chip.id} type="button" data-testid={`avance-trabajo-${chip.id}`} aria-pressed={chip.selected} onClick={() => props.onPick(chip.id)} className={`flex h-14 shrink-0 items-center gap-2 rounded-full border px-5 text-[15px] font-semibold text-on-surface shadow-md ${chip.selected ? 'border-primary bg-primary/15' : 'border-outline/15 bg-surface hover:bg-background'}`}>
-          <span aria-hidden className="h-3 w-3 rounded-full" style={{ backgroundColor: chip.color }} />
-          {chip.label}
-          {chip.selected ? <Check size={16} className="text-primary" /> : null}
-        </button>
-      ))}
-      <button type="button" data-testid="avance-trabajo-nuevo" onClick={props.onNewLayer} className="flex h-14 shrink-0 items-center gap-2 rounded-full border border-dashed border-primary/50 bg-surface px-5 text-[15px] font-semibold text-primary shadow-md hover:bg-background"><Plus size={16} />Trabajo</button>
-    </div>
-  );
-}
-
 /** Over the map in «Modo Avance»: «Salir», the strip of works and what to tap. */
 export function AvanceTop(props: { mode: AvanceModeState; title: string; /** «+ Trabajo» opens «Nueva capa» (ma03). */ onNewLayer: () => void }) {
   const { mode } = props;
@@ -69,7 +46,7 @@ export function AvanceTop(props: { mode: AvanceModeState; title: string; /** «+
           <p className="text-lg font-extrabold text-on-surface">{AVANCE_TITLE}</p>
         </div>
       </div>
-      <WorkChips chips={mode.chips} onPick={mode.pick} onNewLayer={props.onNewLayer} />
+      <LayerChips testPrefix="avance-trabajo" chips={mode.chips} onPick={mode.pick} onNewLayer={props.onNewLayer} />
       {mode.workId ? (
         <p data-testid="avance-pista" role={mode.error ? 'alert' : undefined} className={`pointer-events-auto flex items-center gap-3 self-start rounded-full bg-surface/95 px-4 py-2.5 text-[13px] font-semibold shadow-md backdrop-blur ${mode.error ? 'text-error' : 'text-on-surface'}`}>
           <Pointer size={18} className="shrink-0 text-primary" />{mode.error ?? avanceHint(workName)}

@@ -67,8 +67,9 @@ describe('ServiceMapWeb', () => {
     expect(await screen.findByTestId('mapa-lienzo')).toBeInTheDocument();
     expect(map).toHaveBeenCalledWith(target);
     expect(askServer).toHaveBeenCalledWith('/service-work-map', { jwt: 'jwt-1', body: { link: url, serviceId } });
-    expect(screen.getByTestId('mapa-avance')).toHaveTextContent('40 %');
-    expect(screen.getByTestId('mapa-avance')).toHaveTextContent('400 m de 1 000 m');
+    // Design ma01: the head is the first layer's sheet; without widths it counts metres.
+    expect(screen.getByTestId('mapa-avance')).toHaveTextContent('67 %');
+    expect(screen.getByTestId('mapa-avance')).toHaveTextContent('400 de 600 m');
   });
 
   it('lists the streets under their stage, says where each stage is and where the map is cut (design o-01)', async () => {
@@ -79,7 +80,8 @@ describe('ServiceMapWeb', () => {
     const first = await screen.findByText('Etapa 1 · En ejecución');
     expect(first.closest('section')).toContainElement(screen.getByTestId('mapa-calle-s1'));
     expect(screen.getByText('Etapa 2 · Por iniciar').closest('section')).toContainElement(screen.getByTestId('mapa-calle-s2'));
-    expect(screen.getByTestId('mapa-barra-trabajos').children).toHaveLength(1);
+    expect(screen.getByTestId('mapa-capa-hoja')).toHaveTextContent('BASE');
+    expect(screen.getByTestId('mapa-capa-base')).toHaveTextContent('Base 67 %');
     expect(screen.getByTestId('mapa-corte-pie')).toHaveTextContent('Corte: Hasta hoy');
   });
 
@@ -125,6 +127,9 @@ describe('ServiceMapWeb', () => {
     // Arrange
     showMap();
     await screen.findByTestId('mapa-lienzo');
+    // Design ma01: with layers the sheet opens with the map; its ✕ closes it.
+    expect(screen.getByTestId('mapa-panel')).toHaveAttribute('data-open', 'true');
+    fireEvent.click(screen.getByTestId('mapa-hoja-cerrar'));
     expect(screen.getByTestId('mapa-panel')).toHaveAttribute('data-open', 'false');
     // Act
     fireEvent.click(screen.getByTestId('mapa-capas-abrir'));
@@ -160,7 +165,7 @@ describe('ServiceMapWeb', () => {
     fireEvent.click(screen.getByTestId('mapa-trabajo-base'));
     fireEvent.change(screen.getByTestId('mapa-corte'), { target: { value: '2026-11-01' } });
     // Assert
-    expect(screen.getByTestId('mapa-avance')).toHaveTextContent('100 m de 600 m');
+    expect(screen.getByTestId('mapa-calle-s1')).toHaveTextContent('0+100');
     expect(screen.getByTestId('mapa-trabajo')).toHaveTextContent('Base');
     expect(within(screen.getByTestId('mapa-corte')).getByRole('option', { name: 'Hasta el 1 nov' })).toBeInTheDocument();
   });
@@ -193,11 +198,12 @@ describe('ServiceMapWeb', () => {
     showMap();
     fireEvent.click(await screen.findByTestId('mapa-trabajo'));
     fireEvent.click(screen.getByTestId('mapa-trabajo-asfalto'));
-    expect(screen.getByTestId('mapa-avance')).toHaveTextContent('0 %');
+    // The picked work is the active layer too (ma01).
+    expect(screen.getByTestId('mapa-avance')).toHaveTextContent('0 de 400 m');
     fireEvent.click(screen.getByTestId('mapa-trabajo'));
     expect(within(screen.getByTestId('mapa-trabajo-lista')).getAllByRole('option')).toHaveLength(3);
     fireEvent.click(screen.getByTestId('mapa-trabajo-todos'));
-    expect(screen.getByTestId('mapa-avance')).toHaveTextContent('40 %');
+    expect(screen.getByTestId('mapa-avance')).toHaveTextContent('400 de 600 m');
   });
 
   it('a stage narrows the streets', async () => {

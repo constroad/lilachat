@@ -107,9 +107,10 @@ function GroupTitle(props: { group: StageGroup }) {
  * the streets under their stage, and the day the map is cut at. Admins see the units of the
  * runway control report on top (`o-07`).
  */
-export function WorkMapPanel(props: { view: WorkMapView; groups: StageGroup[]; filter: WorkMapFilter; badge?: ReactNode; top?: ReactNode; /** «Dibujos» and «Observaciones» (José 19/11). */ items?: ReactNode; /** «Capas y leyenda» first, the progress under it (design cc-04). */ layers?: ReactNode; scrolls: boolean; deleteStreet?: StreetDeleteSend; /** «Ver tramos» (o-03). */ onOpenStreet?: (streetId: string) => void }) {
+export function WorkMapPanel(props: { /** The active layer's sheet (ma01): it replaces the head, on top. */ head?: ReactNode; view: WorkMapView; groups: StageGroup[]; filter: WorkMapFilter; badge?: ReactNode; top?: ReactNode; /** «Dibujos» and «Observaciones» (José 19/11). */ items?: ReactNode; /** «Capas y leyenda» first, the progress under it (design cc-04). */ layers?: ReactNode; scrolls: boolean; deleteStreet?: StreetDeleteSend; /** «Ver tramos» (o-03). */ onOpenStreet?: (streetId: string) => void }) {
   const scroll = props.scrolls ? 'min-h-0 flex-1 overflow-y-auto' : '';
-  const head = props.groups.length || !props.items ? <PanelHead view={props.view} groups={props.groups} badge={props.badge} /> : <BareHead badge={props.badge} />;
+  const layerHead = props.head ? <div className="shrink-0 border-b border-outline/15 bg-surface p-4 md:p-5">{props.head}</div> : null;
+  const head = layerHead ? null : props.groups.length || !props.items ? <PanelHead view={props.view} groups={props.groups} badge={props.badge} /> : <BareHead badge={props.badge} />;
   const body = (
     <div className={`bg-background px-4 pb-4 md:px-5 ${props.layers ? '' : scroll}`}>
       {props.top ? <div className="pt-4">{props.top}</div> : null}
@@ -125,7 +126,7 @@ export function WorkMapPanel(props: { view: WorkMapView; groups: StageGroup[]; f
   return (
     <>
       {/* «Avance de la obra» closes the panel, under the lists (design mapa-v2-escritorio, José 20/11). */}
-      {props.layers ? <div className={scroll}>{props.layers}{body}{head}</div> : <>{body}{head}</>}
+      {props.layers ? <div className={scroll}>{props.layers}{layerHead}{body}{head}</div> : <>{layerHead}{body}{head}</>}
       <p data-testid="mapa-corte-pie" className="shrink-0 border-t border-outline/15 bg-surface px-4 py-2.5 text-right font-mono text-[12px] text-on-surface-variant md:px-5">Corte: {workMapCutChip(props.filter)}</p>
     </>
   );

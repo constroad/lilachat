@@ -1,7 +1,7 @@
 import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Check, ChevronRight, X } from 'lucide-react';
-import { locateRecordStreet, type RecordLocation, progressPreviewOf, RECORD_LOCATING, RECORD_WHICH_STREET, recordStageOf, recordStreetChoices, type ManualPhotoUpload, type ManualProgressDraft, type MapEditSend, type WorkMap } from '@lilachat/shared';
+import { layerRecordMap, locateRecordStreet, type RecordLocation, progressPreviewOf, RECORD_LOCATING, RECORD_WHICH_STREET, recordStageOf, recordStreetChoices, type ManualPhotoUpload, type ManualProgressDraft, type MapEditSend, type WorkMap } from '@lilachat/shared';
 import { lazyChunk } from '../../../ui/lazyChunk';
 import { readGpsOnce } from './useGpsWalk';
 import { RecordScreen } from './RecordProgress';
@@ -57,18 +57,20 @@ function Sent(props: { message: string; onDone: () => void }) {
 }
 
 /** `streetId`: the street it opens on; null lets the GPS pick it. `initial`: already filled (#253). */
-type Props = { map: WorkMap; streetId: string | null; send: MapEditSend; uploadPhoto?: ManualPhotoUpload<File>; initial?: ManualProgressDraft; onDone: () => void };
+type Props = { map: WorkMap; streetId: string | null; send: MapEditSend; uploadPhoto?: ManualPhotoUpload<File>; initial?: ManualProgressDraft; /** The layer it opens on (ma01 «Registrar avance de <capa>»). */ workId?: string | null; onDone: () => void };
 
 /** «Registrar avance» (design ma04, José 28/11): a full screen over the map; it waits for an admin's approval. */
 export function ManualProgress(props: Props) {
-  const located = useLocatedStreet(props.map);
+  // From a layer (ma01) the GPS and «¿En qué calle?» look only at that layer's streets.
+  const layerMap = useMemo(() => layerRecordMap(props.map, props.workId ?? null), [props.map, props.workId]);
+  const located = useLocatedStreet(layerMap);
   const [picked, setPicked] = useState<string | null>(props.streetId);
   const [choosing, setChoosing] = useState(false);
   const [sent, setSent] = useState<string | null>(null);
   const stage = recordStageOf({ picked, located, choosing, sent });
   const body = stage.kind === 'sent' ? <Sent message={stage.message} onDone={props.onDone} />
-    : stage.kind === 'record' ? <RecordScreen key={stage.streetId} map={props.map} streetId={stage.streetId} send={props.send} uploadPhoto={props.uploadPhoto} initial={stage.streetId === props.streetId ? props.initial : undefined} located={stage.located} onChangeStreet={() => setChoosing(true)} onClose={props.onDone} onAnswer={(answer) => setSent(answer.message)} />
-      : <StreetChooser map={props.map} problem={stage.problem} locating={stage.locating} onPick={(id) => { setPicked(id); setChoosing(false); }} onClose={props.onDone} />;
+    : stage.kind === 'record' ? <RecordScreen key={stage.streetId} map={props.map} streetId={stage.streetId} send={props.send} uploadPhoto={props.uploadPhoto} initial={stage.streetId === props.streetId ? props.initial : undefined} located={stage.located} workId={props.workId ?? null} onChangeStreet={() => setChoosing(true)} onClose={props.onDone} onAnswer={(answer) => setSent(answer.message)} />
+      : <StreetChooser map={layerMap} problem={stage.problem} locating={stage.locating} onPick={(id) => { setPicked(id); setChoosing(false); }} onClose={props.onDone} />;
   // On the body: a transformed ancestor (the sheet's slide) would trap a fixed layer inside it.
   return createPortal(<div role="dialog" aria-modal="true" aria-label="Registrar avance" className="fixed inset-0 z-[60] flex flex-col bg-background">{body}</div>, document.body);
 }

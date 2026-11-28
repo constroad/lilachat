@@ -75,7 +75,7 @@ function PhotoLayers({ photos }: { photos: PhotoLayersProps }) {
  * and the field photos. A switch only hides what the map draws; the figures stay those of the filter.
  */
 export function MapLayersPanel(props: PanelProps) {
-  const rows = useMemo(() => layerRowsOf(props.view, props.map.marks ?? [], props.map.observations ?? [], props.map.works), [props.view, props.map]);
+  const rows = useMemo(() => layerRowsOf(props.view, props.map.marks ?? [], props.map.observations ?? [], props.map, props.filter), [props.view, props.map, props.filter]);
   const on = (group: MapLayerGroup, key: string) => isLayerOn(props.layers, group, key);
   return (
     <View testID="mapa-capas" className="mb-2">

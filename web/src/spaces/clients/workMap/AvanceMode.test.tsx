@@ -15,9 +15,10 @@ const MAP: WorkMap = {
 };
 const ON_STREET = { lat: -12, lng: -76.9995 };
 const OFF_STREET = { lat: -12.01, lng: -76.9995 };
+const NO_FILTER = {};
 
 function Harness(props: { map: WorkMap; send: MapEditSend; onUndo?: (id: string) => Promise<string | null>; undoable?: ReturnType<typeof byApproveOf>['items'][number]; onNewLayer?: () => void }) {
-  const mode = useAvanceMode(props.map);
+  const mode = useAvanceMode(props.map, NO_FILTER);
   return (
     <>
       <button type="button" data-testid="mapa-modo-avance" onClick={mode.open} />

@@ -382,6 +382,37 @@ Motores puros, con test, usados por web y APK:
   diseño: sin «Campo / Oficina», escala ni «Configuración de trazado»; las calles no se destildan
   una a una (todas o la brocha); en el APK «Crear capa» va al final de la hoja, no fijo; una calle
   con tramos parciales recibe la capa en sus tramos, no en los huecos.
+- **28/11** «Mapa por capas» como ma01 (web y APK; prototipo aprobado de Portal
+  `claude.ai/artifact/L8iULepUHhNJukC7MJkpF9`). Sobre el mapa, primera fila flotante: un chip por capa
+  (trabajo) con su punto de color, nombre COMPLETO y % (`LayerChips.tsx`, extraído de la tira de «Modo
+  Avance», que ahora usa el mismo componente; la fila se desliza, los chips miden su texto). Tocar un
+  chip la hace la capa activa y abre la hoja; sin elegir, la activa es la primera. La hoja abre sola
+  con el mapa cuando hay capas (antes solo con «Capas») y su cabeza «Avance de la obra» la reemplaza
+  la de la capa (`LayerSheet.tsx`; las tarjetas de calle con «Ver tramos» y borrar siguen debajo):
+  «IMPRIMACIÓN», «3 590 de 6 325 m²» y «57 %», barra, una fila por calle de esa capa con «hecho de
+  total» y %, «Último: hoy 10:42 · Jr. Progreso +46 m» con «por aprobar» aparte, y «Registrar avance
+  de <capa>», que abre ma04 con esa capa elegida (si la calle la lleva) y el GPS y «¿En qué calle?»
+  solo entre sus calles (`layerRecordMap`, `layerDraftFor`); «Registrar» del pie también usa la capa
+  activa. Motor puro `shared/src/workLayerSummary.ts` (`activeLayerOf`, `layerSummaryOf`,
+  `layerChipsOf`, `layerLatestOf`): área aprobada / área planificada por tramo (ancho del tramo o de la
+  calle); los tramos que se pisan cuentan una vez, al ancho mayor; avance fuera del tramo y
+  repavimentos no cuentan. Si algún tramo de la capa no tiene ancho, toda la capa va en metros y lo
+  dice («En metros: 2 calles sin ancho»). Lo por aprobar (`avances_por_aprobar_de_obra`, menos lo
+  ya aprobado) va rayado en la barra, después de lo aprobado, y no suma al %. «Último» toma lo
+  aprobado y lo pendiente de esa capa (lo rechazado no); la hora sale solo si la fecha la trae (en
+  hora de Lima), si no «hoy» / «ayer» / «28 nov». **Un solo % por capa** (José 28/11: nunca dos %
+  distintos): `shared/src/workLayerPercent.ts` › `layerPercentOf` (m² si toda la capa tiene ancho,
+  metros si no; lo por aprobar nunca suma; con el filtro del mapa en vigor: etapa y corte «Hasta el…»,
+  vía `layerScopeOf`, como «Capas» hacía antes) es la única fuente del %
+  de una capa y lo leen los chips y la hoja de ma01, los chips de «Modo Avance» (`avanceChipsOf`) y
+  las filas de trabajos de «Capas y leyenda» (`layerRowsOf`, que ahora recibe el mapa); un test
+  comprueba que los tres coinciden. El trabajo elegido en el selector del mapa es también la capa
+  activa (y tocar un chip con un trabajo filtrado cambia el filtro). Tablet y
+  teléfono girado (APK, `useDisposicion().amplia`): el panel pasa a columna de 400 dp junto al mapa;
+  la web ancha ya lo tenía a la derecha, ahora con la capa arriba. Diferencias con el diseño: sin
+  «Campo / Oficina», escala ni «Configuración de trazado»; sin leyenda «Hecho / Planificado» en la
+  hoja; las filas de calle van en m² (el diseño las mostraba en m); la barra inferior «Mapa / Capas /
+  Avances» no existe (siguen «Capas» y la lista ma05 del panel).
 - **20/11** Rediseño aprobado `mapa-v2` (web y APK): cabecera de una fila en Mapa, mapa a pantalla,
   días y corte flotando, «Compartir avance» y «Pantalla completa» dentro de «Más», panel como hoja
   en el teléfono. Auditorías: `design/stitch/auditorias/mapa-v2-movil.md` y `mapa-v2-escritorio.md`.
@@ -397,6 +428,7 @@ Motores puros, con test, usados por web y APK:
 | o-05 trabajos | Implementado (brocha) | `WorkLayers.tsx`, `LayerActions.tsx` |
 | o-06 registrar avance | Implementado | `ManualProgress.tsx` |
 | av-01 modo avance | Implementado web y APK (27/11) | `AvanceMode.tsx`, `AvancePanel.tsx`, `shared/src/workAvanceMode.ts` |
+| ma01 mapa por capas | Implementado web y APK (28/11) | `LayerChips.tsx`, `LayerSheet.tsx`, `WorkMapBoard.tsx`, `shared/src/workLayerSummary.ts` |
 | o-07 avance por unidades | Implementado; falta «Ancho útil» y botón fijo en APK (auditoría 08/11, no verificado si se cerró) | `WorkMapDischarges.tsx` |
 | o-08 avance parcial y enlace | Implementado | `ShareProgress.tsx`, `PdfAction.tsx` |
 | o-09 vista del cliente | **No es de Lilachat**: página pública de Portal; le falta «Línea de tiempo» y filtro por etapa (según spec) | sin referencia en código |

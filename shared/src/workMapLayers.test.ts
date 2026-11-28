@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { isLayerOn, layerRowsOf, NO_HIDDEN_LAYERS, toggleLayer, viewWithLayers, visibleMarks, visibleObservations } from './workMapLayers.js';
-import type { WorkMapView } from './workMap.js';
+import type { WorkMap, WorkMapView } from './workMap.js';
 import type { WorkMapMark } from './workMapMarks.js';
 import type { WorkMapObservation } from './workMapObservations.js';
 
@@ -9,6 +9,14 @@ const view = {
   works: [{ id: 'w1', name: 'Corte y demolición', color: '#f97316', percent: 10 }, { id: 'w2', name: 'Imprimación', color: '#3b82f6', percent: 0 }],
   done: [{ streetId: 's1', workId: 'w1', color: '#f97316', coordinates: [[0, 0], [1, 1]] }, { streetId: 's1', workId: 'w2', color: '#3b82f6', coordinates: [[0, 0], [1, 1]] }],
 } as unknown as WorkMapView;
+/** The job behind the view: the first work went 10 m of 100 (the one % of a layer, `layerPercentOf`). */
+const LAYER_MAP: WorkMap = {
+  streets: [{ id: 's1', name: 'Jr. Lima', line: [{ lat: -12, lng: -77 }, { lat: -12, lng: -76.999 }], lengthM: 100 }],
+  scopes: [{ id: 'c1', streetId: 's1', fromM: 0, toM: 100, workIds: ['w1', 'w2'] }],
+  progress: [{ streetId: 's1', workId: 'w1', fromM: 0, toM: 10, date: '2026-11-20', rework: false }],
+  works: view.works.map(({ id, name, color }) => ({ id, name, color })),
+  stages: [],
+};
 const point = { kind: 'point', point: { lat: -12, lng: -77 } } as unknown as WorkMapMark['shape'];
 const marks: WorkMapMark[] = [{ id: 'm1', type: 'otro', shape: point }, { id: 'm2', type: 'otro', shape: point }, { id: 'm3', type: 'giba', shape: point }];
 const observation = (id: string, status: WorkMapObservation['status']): WorkMapObservation => ({ id, text: 'Bache', status, photos: [] });
@@ -51,18 +59,18 @@ describe('visible marks and observations', () => {
 
 describe('layerRowsOf', () => {
   it('lists the works with color and progress, the drawings by type and the observations by state', () => {
-    const rows = layerRowsOf(view, marks, observations);
+    const rows = layerRowsOf(view, marks, observations, LAYER_MAP);
     expect(rows.works.map((work) => `${work.name} ${work.percent}`)).toEqual(['Corte y demolición 10', 'Imprimación 0']);
     expect(rows.marks.map((group) => `${group.label} ${group.count}`)).toEqual(['Otro 2', 'Giba 1']);
     expect(rows.marks[0]?.color).toMatch(/^#/);
     expect(rows.observations).toEqual([{ key: 'open', label: 'Pendientes', count: 2 }, { key: 'resolved', label: 'Levantadas', count: 1 }]);
   });
   it('lists a work no street carries yet, at 0 % and unassigned (José 27/11: «creé 2 trabajos y no se ven»)', () => {
-    const all = [...view.works, { id: 'w3', name: 'Carpeta asfáltica', color: '#16a34a' }];
-    const rows = layerRowsOf(view, [], [], all);
+    const map = { ...LAYER_MAP, works: [...LAYER_MAP.works, { id: 'w3', name: 'Carpeta asfáltica', color: '#16a34a' }] };
+    const rows = layerRowsOf(view, [], [], map);
     expect(rows.works.map((work) => `${work.name} ${work.percent} ${work.assigned}`)).toEqual(['Corte y demolición 10 true', 'Imprimación 0 true', 'Carpeta asfáltica 0 false']);
   });
   it('drops an empty group of observations', () => {
-    expect(layerRowsOf(view, [], []).observations).toEqual([]);
+    expect(layerRowsOf(view, [], [], LAYER_MAP).observations).toEqual([]);
   });
 });

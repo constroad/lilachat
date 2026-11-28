@@ -1,5 +1,5 @@
-import { metersLabel, percentLabel, stationLabel, workMapView, type WorkMap } from './workMap.js';
-import { layerRowsOf } from './workMapLayers.js';
+import { metersLabel, percentLabel, stationLabel, type WorkMap, type WorkMapFilter } from './workMap.js';
+import { layerPercentOf } from './workLayerPercent.js';
 import { brushRequests } from './workMapBrush.js';
 import { manualProblem, manualStartOf, sendWorkManualProgress, workManualProgressRequest, MANUAL_NO_LENGTH, type WorkManualProgressRequest } from './workManualProgress.js';
 import { sendWorkScope, type MapEditSend, type WorkScopeRequest } from './workScopeDraft.js';
@@ -31,10 +31,12 @@ export const avanceHint = (workName: string) => `Toca una calle para marcar su a
 export const avanceAlready = (doneM: number, workName: string) => `Esta calle ya va en ${metersLabel(doneM)} de ${workName}.`;
 export const avanceStartsLater = (fromM: number) => `El trabajo empieza en la progresiva ${stationLabel(fromM)} de esta calle.`;
 
-/** The strip of works (design av-01): each one with its percent, as «Capas» counts it. */
-export function avanceChipsOf(map: WorkMap, selectedId: string | null): AvanceChip[] {
-  const rows = layerRowsOf(workMapView(map), [], [], map.works).works;
-  return rows.map((row) => ({ id: row.id, name: row.name, color: row.color, percent: row.percent, label: `${row.name} ${percentLabel(row.percent)}`, selected: row.id === selectedId }));
+/** The strip of works (design av-01): each one with `layerPercentOf`, the one percent of a layer. */
+export function avanceChipsOf(map: WorkMap, selectedId: string | null, filter: WorkMapFilter = {}): AvanceChip[] {
+  return map.works.map((work) => {
+    const percent = layerPercentOf(map, work.id, filter);
+    return { id: work.id, name: work.name, color: work.color, percent, label: `${work.name} ${percentLabel(percent)}`, selected: work.id === selectedId };
+  });
 }
 
 /** The picked work while it exists; otherwise the first one, so the mode opens ready. */

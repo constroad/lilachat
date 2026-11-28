@@ -29,7 +29,7 @@ export function LayerChips(props: ChipsProps) {
     ) : null;
   }
   return (
-    <ScrollView horizontal keyboardShouldPersistTaps="handled" showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingHorizontal: 12 }}>
+    <ScrollView horizontal style={{ flexGrow: 0 }} keyboardShouldPersistTaps="handled" showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingHorizontal: 12 }}>
       {props.chips.map((chip) => (
         <Pressable key={chip.id} testID={`${props.testPrefix}-${chip.id}`} accessibilityRole="button" accessibilityState={{ selected: chip.selected }} onPress={() => props.onPick(chip.id)} className={`h-14 flex-row items-center gap-2 rounded-full border px-5 ${chip.selected ? 'border-primary bg-primary/15' : 'border-outline/15 bg-surface'}`} style={MAP_SHADOW}>
           <View className="h-3 w-3 rounded-full" style={{ backgroundColor: chip.color }} />

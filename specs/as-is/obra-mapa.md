@@ -403,6 +403,23 @@ Motores puros, con test, usados por web y APK:
   «Campo / Oficina», escala, «Configuración de trazado» ni «Paso 1 de 2» (no hay paso 2); el ancho va
   en cada fila (no está en el prototipo); la etiqueta con el largo sobre cada línea no se dibuja
   (solo el número).
+- **28/11** «Registrar avance de <capa>» (ma04) con el mapa en blanco en el teléfono de José
+  («No carga el mapa y encima los botones son inmensos»). **Causa, con evidencia** (emulador, build
+  publicado 0.1.193, espacio Test, «Jr. Cárcamo» de 183 m): el volcado de `uiautomator` daba la fila
+  de chips (`ScrollView horizontal`) en [0,288][1080,1397] (1109 px) y el pie en [0,1397][1080,2337];
+  el `mapa-lienzo` de la pantalla no existía (alto 0). React Native da `flexGrow: 1` a todo
+  ScrollView: la fila crecía y se comía la mitad del alto libre, y el pie (alto por contenido) el
+  resto. No era la cámara: `progressPreviewOf` encuadra una calle de 7 m con el mínimo de ~110 m
+  (`withMinimumSpan`) y `recordMapOf` da el aro aunque la capa no esté en la calle (test nuevo).
+  **Arreglo** (APK y web): los chips van envueltos (`flex-wrap`, sin ScrollView), 44 dp, texto
+  15 px, «Cambiar» siempre entero; la pista pasa a la barra de arriba en `on-surface-variant` (sin
+  franja clara en oscuro); botones de contorno 44 dp; «Tomar foto y registrar» 52 dp en
+  `bg-primary` / `on-primary`; «Registrar sin foto» y la nota más chicos; el pie llega a 40 % del
+  alto en el teléfono y el resto es mapa; el punto de la capa lleva borde (un color casi negro como
+  #111827 se ve en oscuro). Candado `app/src/test/scrollLeavesRoomForMap.test.ts`: todo ScrollView
+  horizontal junto a un hermano `flex-1`, o raíz de un componente, declara `flexGrow: 0` (se añadió
+  a `LayerChips`, `MapDays`, `ObservationParts` y `ReportItemsView`). Verificado en el emulador: la
+  causa (build publicado). El arreglo: solo por tests y tsc (el build de desarrollo no tenía sesión).
 - **28/11** «Mapa por capas» como ma01 (web y APK; prototipo aprobado de Portal
   `claude.ai/artifact/L8iULepUHhNJukC7MJkpF9`). Sobre el mapa, primera fila flotante: un chip por capa
   (trabajo) con su punto de color, nombre COMPLETO y % (`LayerChips.tsx`, extraído de la tira de «Modo

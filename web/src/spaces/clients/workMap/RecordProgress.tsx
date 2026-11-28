@@ -7,28 +7,31 @@ import { lazyChunk } from '../../../ui/lazyChunk';
 import { readGpsOnce } from './useGpsWalk';
 
 const WorkMapCanvas = lazyChunk(() => import('./WorkMapCanvas'));
-const OUTLINE_BUTTON = 'flex h-12 flex-1 items-center justify-center gap-2 rounded-xl border border-outline/25 bg-surface text-[15px] font-semibold text-on-surface disabled:opacity-60';
+const OUTLINE_BUTTON = 'flex h-11 flex-1 items-center justify-center gap-2 rounded-xl border border-outline/25 bg-surface text-[15px] font-semibold text-on-surface disabled:opacity-60';
 
 type Answer = { ok: boolean; message: string } | null;
 const STREET_ONLY = { workId: null, fromM: 0, toM: 0 };
+/** A chip of the pickers: 44 px, wrapped so «Cambiar» is never cut (José 28/11). */
+const PICKER_CHIP = 'flex h-11 min-w-0 max-w-full items-center gap-2 rounded-xl';
 export type RecordScreenProps = { map: WorkMap; streetId: string; send: MapEditSend; uploadPhoto?: ManualPhotoUpload<File>; initial?: ManualProgressDraft; /** The layer picked on opening (ma01), when the street carries it. */ workId?: string | null; located: GpsStreet | null; onChangeStreet: () => void; onClose: () => void; onAnswer: (answer: { ok: true; message: string }) => void };
 
 /** The work (one chip per work the street carries) and the street with «Cambiar» (design ma04). */
 function Pickers(props: { works: WorkMapWork[]; workId: string | null; streetName: string; onWork: (workId: string) => void; onChangeStreet: () => void }) {
   return (
-    <div className="flex gap-2 overflow-x-auto px-3 py-2">
+    <div data-testid="avance-selectores" className="flex flex-wrap gap-2 px-3 py-2">
       {props.works.map((work) => {
         const on = work.id === props.workId;
         return (
-          <button key={work.id} type="button" aria-pressed={on} data-testid={`avance-manual-trabajo-${work.id}`} onClick={() => props.onWork(work.id)} className={`flex h-12 shrink-0 items-center gap-2 rounded-xl border-[1.5px] px-4 text-[16px] font-bold ${on ? 'border-primary bg-primary/10 text-primary' : 'border-outline/20 bg-surface text-on-surface'}`}>
-            <span aria-hidden className="h-3.5 w-3.5 rounded-sm" style={{ backgroundColor: work.color }} />{work.name}
+          <button key={work.id} type="button" aria-pressed={on} data-testid={`avance-manual-trabajo-${work.id}`} onClick={() => props.onWork(work.id)} className={`${PICKER_CHIP} border-[1.5px] px-3 text-[15px] font-bold ${on ? 'border-primary bg-primary/10 text-primary' : 'border-outline/20 bg-surface text-on-surface'}`}>
+            {/* Ringed: a near-black layer (#111827) still shows its dot on the dark theme. */}
+            <span aria-hidden className="h-3.5 w-3.5 shrink-0 rounded-sm border border-outline/60" style={{ backgroundColor: work.color }} /><span className="truncate">{work.name}</span>
           </button>
         );
       })}
-      <div className="flex h-12 min-w-0 shrink-0 items-center gap-3 rounded-xl border border-outline/20 bg-surface-variant pl-4 pr-1">
-        <span aria-hidden className="h-2.5 w-2.5 rounded-full bg-en-linea" />
-        <span data-testid="avance-calle-nombre" className="truncate text-[16px] font-semibold text-on-surface">{props.streetName}</span>
-        <button type="button" data-testid="avance-cambiar-calle" onClick={props.onChangeStreet} className="h-11 px-3 text-[14px] font-bold uppercase text-primary underline">{RECORD_CHANGE}</button>
+      <div className={`${PICKER_CHIP} border border-outline/20 bg-surface-variant pl-3`}>
+        <span aria-hidden className="h-2.5 w-2.5 shrink-0 rounded-full bg-en-linea" />
+        <span data-testid="avance-calle-nombre" className="truncate text-[15px] font-semibold text-on-surface">{props.streetName}</span>
+        <button type="button" data-testid="avance-cambiar-calle" onClick={props.onChangeStreet} className="h-11 shrink-0 px-3 text-[14px] font-bold text-primary underline">{RECORD_CHANGE}</button>
       </div>
     </div>
   );
@@ -38,15 +41,15 @@ function Pickers(props: { works: WorkMapWork[]; workId: string | null; streetNam
 function Summary(props: { draft: ManualProgressDraft; lengthM: number; widthM?: number }) {
   const summary = recordSummary(props.draft, props.lengthM, props.widthM);
   return (
-    <div className="space-y-2">
+    <div className="space-y-1.5">
       <div className="flex items-end justify-between gap-3">
-        <p className="flex items-baseline gap-2"><span className="text-[13px] font-bold uppercase text-on-surface-variant">Avance:</span><b data-testid="avance-manual-metrado" className="text-[40px] leading-none text-on-surface">{summary.gain}</b></p>
+        <p className="flex items-baseline gap-2"><span className="text-[13px] font-bold uppercase text-on-surface-variant">Avance:</span><b data-testid="avance-manual-metrado" className="text-[28px] leading-none text-on-surface">{summary.gain}</b></p>
         <div className="text-right">
           <p className="text-[12px] font-bold uppercase text-on-surface-variant">Tramo</p>
-          <p data-testid="avance-manual-tramo" className="rounded-lg border border-outline/20 bg-surface-variant px-2 py-1 font-mono text-[17px] font-semibold text-on-surface">{summary.stretch}</p>
+          <p data-testid="avance-manual-tramo" className="rounded-lg border border-outline/20 bg-surface-variant px-2 py-0.5 font-mono text-[15px] font-semibold text-on-surface">{summary.stretch}</p>
         </div>
       </div>
-      <div aria-hidden className="flex h-2.5 overflow-hidden rounded-full bg-surface-variant">
+      <div aria-hidden className="flex h-2 overflow-hidden rounded-full bg-surface-variant">
         <span className="bg-primary" style={{ width: `${summary.donePct}%` }} />
         <span className="bg-warning" style={{ width: `${summary.newPct}%` }} />
       </div>
@@ -118,7 +121,7 @@ function RecordFoot(props: { record: ReturnType<typeof useRecord>; map: WorkMap;
     else void record.send([]);
   };
   return (
-    <div className="space-y-3">
+    <div className="space-y-2">
       <Summary draft={record.draft} lengthM={record.lengthM} widthM={record.street?.widthM} />
       <NoteField note={record.draft.note} onNote={(note) => record.change({ ...record.draft, note })} />
       <div className="flex gap-2">
@@ -127,11 +130,11 @@ function RecordFoot(props: { record: ReturnType<typeof useRecord>; map: WorkMap;
       </div>
       {record.answer ? <p role="alert" data-testid="avance-manual-error" className="text-[14px] font-semibold text-error">{record.answer.message}</p> : null}
       {props.canPhoto ? <DrivePhotoInput ref={camera} testId="avance-foto-archivo" onFile={(file) => void record.withPhoto(file)} /> : null}
-      <button type="button" data-testid="avance-manual-enviar" disabled={record.busy !== null} onClick={primary} className="flex h-16 w-full items-center justify-center gap-3 rounded-2xl bg-on-surface text-[18px] font-bold text-background disabled:opacity-60">
-        {props.canPhoto ? <Camera size={22} /> : null}{record.busy === 'send' ? 'Enviando…' : props.canPhoto ? RECORD_PHOTO_AND_SEND : RECORD_SEND}
+      <button type="button" data-testid="avance-manual-enviar" disabled={record.busy !== null} onClick={primary} className="flex h-[52px] w-full items-center justify-center gap-2 rounded-xl bg-primary text-[16px] font-bold text-on-primary disabled:opacity-60">
+        {props.canPhoto ? <Camera size={20} /> : null}{record.busy === 'send' ? 'Enviando…' : props.canPhoto ? RECORD_PHOTO_AND_SEND : RECORD_SEND}
       </button>
-      {props.canPhoto ? <button type="button" data-testid="avance-sin-foto" disabled={record.busy !== null} onClick={() => { if (!record.problem()) void record.send([]); }} className="h-11 w-full text-[14px] font-semibold text-on-surface-variant underline">{RECORD_WITHOUT_PHOTO}</button> : null}
-      <p className="text-center text-[12px] text-on-surface-variant">{RECORD_PENDING_NOTE}</p>
+      {props.canPhoto ? <button type="button" data-testid="avance-sin-foto" disabled={record.busy !== null} onClick={() => { if (!record.problem()) void record.send([]); }} className="h-9 w-full text-[13px] font-semibold text-on-surface-variant underline">{RECORD_WITHOUT_PHOTO}</button> : null}
+      <p className="text-center text-[11px] text-on-surface-variant">{RECORD_PENDING_NOTE}</p>
     </div>
   );
 }
@@ -145,11 +148,14 @@ export function RecordScreen(props: RecordScreenProps) {
   const workName = record.works.find((work) => work.id === record.draft.workId)?.name;
   return (
     <div data-testid="avance-manual" className="flex min-h-0 flex-1 flex-col">
-      <div className="flex items-center gap-2 border-b border-outline/15 bg-surface px-4 py-2">
-        <p data-testid="avance-titulo" className="min-w-0 flex-1 truncate text-[20px] font-bold text-on-surface">{recordTitle(workName ?? null)}</p>
+      {/* The hint lives in the top bar, on the surface token (José 28/11: no light banner on dark). */}
+      <div className="flex items-center gap-2 border-b border-outline/15 bg-surface px-4 py-1.5">
+        <div className="min-w-0 flex-1">
+          <p data-testid="avance-titulo" className="truncate text-[18px] font-bold text-on-surface">{recordTitle(workName ?? null)}</p>
+          {workName ? <p data-testid="avance-pista" className="flex items-center gap-1.5 text-[13px] text-on-surface-variant"><Hand size={14} className="shrink-0 text-warning" /><span className="truncate">{recordHint(workName)}</span></p> : null}
+        </div>
         <button type="button" data-testid="avance-cerrar" aria-label="Cerrar" onClick={props.onClose} className="flex h-11 w-11 items-center justify-center rounded-full text-on-surface"><X size={22} /></button>
       </div>
-      {workName ? <p data-testid="avance-pista" className="flex items-center gap-2 bg-on-surface px-4 py-3 text-[15px] text-background"><Hand size={18} className="shrink-0 text-warning" />{recordHint(workName)}</p> : null}
       <Pickers works={record.works} workId={record.draft.workId} streetName={record.street?.name ?? ''} onWork={(workId) => record.change(pickManualWork(props.map, props.streetId, record.draft, workId))} onChangeStreet={props.onChangeStreet} />
       <div className="flex min-h-0 flex-1 flex-col md:flex-row">
         <div className="relative min-h-[240px] flex-1 overflow-hidden bg-surface-variant">
@@ -158,7 +164,7 @@ export function RecordScreen(props: RecordScreenProps) {
           </Suspense>
           {props.located ? <p data-testid="avance-ubicado" className="pointer-events-none absolute right-3 top-3 rounded-xl border border-outline/20 bg-surface px-3 py-2 text-[14px] text-on-surface shadow-md">{youAreOn(props.located)}</p> : null}
         </div>
-        <div className="overflow-y-auto rounded-t-3xl bg-surface p-4 md:w-[380px] md:rounded-none">
+        <div className="max-h-[40dvh] overflow-y-auto rounded-t-3xl bg-surface p-3 md:max-h-none md:w-[380px] md:rounded-none">
           <RecordFoot record={record} map={props.map} streetId={props.streetId} canPhoto={Boolean(props.uploadPhoto)} />
         </div>
       </div>

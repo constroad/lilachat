@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { workMapOf, type WorkMap } from './workMap.js';
-import { GPS_OFF_STREET, GPS_WEAK } from './workManualProgress.js';
+import { WORK_MAP_MIN_FRAME_DEG, workMapOf, type WorkMap } from './workMap.js';
+import { GPS_OFF_STREET, GPS_WEAK, progressPreviewOf } from './workManualProgress.js';
 import { gpsStreetOf, locateRecordStreet, recordStageOf, recordStreetChoices, recordDropAt, recordHandleOf, recordHint, recordMapOf, recordProblem, recordStreetOf, recordSummary, recordTitle, recordWholeStreet, youAreOn } from './workProgressRecord.js';
 
 /** Design ma04 (José 28/11): the street by GPS, a ring dragged along its axis, a photo and send. */
@@ -114,6 +114,21 @@ describe('ma04: what it reads', () => {
     expect(shown.pending).toMatchObject([{ fromM: 100, toM: 120 }]);
     expect(shown.handles).toMatchObject([{ label: '0+166' }]);
     expect(recordMapOf(mapOf(), 'gone', draft, 0).handles).toEqual([]);
+  });
+
+  it('a 7 m street the layer is not on yet (José 28/11, «Jirón Lima parche 02»): framed wide enough, with its ring', () => {
+    // Arrange
+    const patch = [{ lat: -12.02, lng: -77 }, { lat: -12.02, lng: -76.99994 }];
+    const base = mapOf();
+    const map: WorkMap = { ...base, streets: [...base.streets, { ...base.streets[0]!, id: 's4', name: 'Jirón Lima parche 02', line: patch, lengthM: 7 }] };
+    // Act
+    const frame = progressPreviewOf(map, 's4', { workId: null, fromM: 0, toM: 0 }).view.bounds;
+    const shown = recordMapOf(map, 's4', { ...draft, fromM: 0, toM: 0 }, 0);
+    // Assert
+    expect(frame).not.toBeNull();
+    expect(frame![1][0] - frame![0][0]).toBeCloseTo(WORK_MAP_MIN_FRAME_DEG, 9);
+    expect(frame![1][1] - frame![0][1]).toBeCloseTo(WORK_MAP_MIN_FRAME_DEG, 9);
+    expect(shown.handles).toMatchObject([{ handle: 'end', label: '0+000', point: patch[0] }]);
   });
 });
 

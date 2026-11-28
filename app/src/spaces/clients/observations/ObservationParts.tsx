@@ -61,7 +61,7 @@ const isVideo = (mime: string) => mime.startsWith('video/');
 export function MediaRow(props: { media: readonly ObservationMedia[]; testID: string; onOpen: (index: number) => void }) {
   if (!props.media.length) return <Text className="text-[13px] text-on-surface-variant">Sin fotos ni videos.</Text>;
   return (
-    <ScrollView horizontal keyboardShouldPersistTaps="handled" showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
+    <ScrollView horizontal style={{ flexGrow: 0 }} keyboardShouldPersistTaps="handled" showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
       {props.media.map((one, index) => (
         <Tile key={one.url} testID={`${props.testID}-${index}`} label={`${isVideo(one.mime) ? 'Video' : 'Foto'} ${index + 1}`} image={isVideo(one.mime) ? one.thumbUrl : one.thumbUrl ?? one.url} video={isVideo(one.mime)} seconds={one.durationS} onPress={() => props.onOpen(index)} />
       ))}
@@ -91,7 +91,7 @@ export function CaptureButtons(props: { disabled: boolean; onTake: (kind: 'photo
 export function CapturedRow(props: { items: readonly CapturedEvidence[]; onRemove: (key: string) => void }) {
   if (!props.items.length) return null;
   return (
-    <ScrollView horizontal keyboardShouldPersistTaps="handled" showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
+    <ScrollView horizontal style={{ flexGrow: 0 }} keyboardShouldPersistTaps="handled" showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
       {props.items.map((one, index) => (
         <Tile key={one.file.key} testID={`evidencia-${index}`} label={`${isVideo(one.preview.mime) ? 'Video' : 'Foto'} ${index + 1}`} image={isVideo(one.preview.mime) ? undefined : one.preview.uri} video={isVideo(one.preview.mime)} seconds={one.preview.seconds} onRemove={() => props.onRemove(one.file.key)} />
       ))}

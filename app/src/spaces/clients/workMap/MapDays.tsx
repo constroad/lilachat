@@ -19,7 +19,7 @@ export function useMapDays(photos: MapPhoto[], units: UnitDischarge[]) {
 export function MapDayChips(props: { options: MapDayOption[]; day: string; onDay: (day: string) => void }) {
   if (!props.options.length) return null;
   return (
-    <ScrollView horizontal keyboardShouldPersistTaps="handled" showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingHorizontal: 12, paddingBottom: 4 }} testID="mapa-dias">
+    <ScrollView horizontal style={{ flexGrow: 0 }} keyboardShouldPersistTaps="handled" showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingHorizontal: 12, paddingBottom: 4 }} testID="mapa-dias">
       {props.options.map((option) => {
         const on = option.key === props.day;
         return (

@@ -57,6 +57,11 @@ describe('layerRowsOf', () => {
     expect(rows.marks[0]?.color).toMatch(/^#/);
     expect(rows.observations).toEqual([{ key: 'open', label: 'Pendientes', count: 2 }, { key: 'resolved', label: 'Levantadas', count: 1 }]);
   });
+  it('lists a work no street carries yet, at 0 % and unassigned (José 27/11: «creé 2 trabajos y no se ven»)', () => {
+    const all = [...view.works, { id: 'w3', name: 'Carpeta asfáltica', color: '#16a34a' }];
+    const rows = layerRowsOf(view, [], [], all);
+    expect(rows.works.map((work) => `${work.name} ${work.percent} ${work.assigned}`)).toEqual(['Corte y demolición 10 true', 'Imprimación 0 true', 'Carpeta asfáltica 0 false']);
+  });
   it('drops an empty group of observations', () => {
     expect(layerRowsOf(view, [], []).observations).toEqual([]);
   });

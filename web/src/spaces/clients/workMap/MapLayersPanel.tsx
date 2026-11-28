@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { isLayerOn, layerRowsOf, NO_HIDDEN_LAYERS, NO_WORKS_YET, toggleLayer, workMapStageFilter, type MapLayerGroup, type MapLayers, type ReportPhotoLayerRow, type WorkMap, type WorkMapFilter, type WorkMapView } from '@lilachat/shared';
+import { isLayerOn, layerRowsOf, NO_HIDDEN_LAYERS, NO_WORKS_YET, WORK_NOT_ASSIGNED, toggleLayer, workMapStageFilter, type MapLayerGroup, type MapLayers, type ReportPhotoLayerRow, type WorkMap, type WorkMapFilter, type WorkMapView } from '@lilachat/shared';
 import { KICKER } from './WorkMapPanel';
 
 /** The layers the map hides; everything starts on (José 19/11, design cc-04). */
@@ -75,7 +75,7 @@ function PhotoLayers({ photos }: { photos: PhotoLayersProps }) {
  * switch only hides what the map draws; the figures below stay those of the filter.
  */
 export function MapLayersPanel(props: PanelProps) {
-  const rows = useMemo(() => layerRowsOf(props.view, props.map.marks ?? [], props.map.observations ?? []), [props.view, props.map]);
+  const rows = useMemo(() => layerRowsOf(props.view, props.map.marks ?? [], props.map.observations ?? [], props.map.works), [props.view, props.map]);
   const on = (group: MapLayerGroup, key: string) => isLayerOn(props.layers, group, key);
   return (
     <div data-testid="mapa-capas" className="shrink-0 bg-surface">
@@ -86,7 +86,7 @@ export function MapLayersPanel(props: PanelProps) {
             <div key={work.id} className={ROW}>
               <Dot color={work.color} />
               <span className="min-w-0 flex-1 truncate text-[14px] font-semibold text-on-surface">{work.name}</span>
-              <span className="font-mono text-[13px] tabular-nums text-on-surface-variant">{`${work.percent} %`}</span>
+              <span className="font-mono text-[13px] tabular-nums text-on-surface-variant">{work.assigned ? `${work.percent} %` : WORK_NOT_ASSIGNED}</span>
               <Switch on={on('works', work.id)} label={`Mostrar ${work.name}`} testId={`capa-trabajo-${work.id}`} onToggle={() => props.onToggle('works', work.id)} />
             </div>
           ))}

@@ -1,6 +1,6 @@
 import { useMemo, useState, type ReactNode } from 'react';
 import { Pressable, Text, View } from 'react-native';
-import { isLayerOn, layerRowsOf, NO_HIDDEN_LAYERS, NO_WORKS_YET, toggleLayer, workMapStageFilter, type MapLayerGroup, type MapLayers, type ReportPhotoLayerRow, type WorkMap, type WorkMapFilter, type WorkMapView } from '@lilachat/shared';
+import { isLayerOn, layerRowsOf, NO_HIDDEN_LAYERS, NO_WORKS_YET, WORK_NOT_ASSIGNED, toggleLayer, workMapStageFilter, type MapLayerGroup, type MapLayers, type ReportPhotoLayerRow, type WorkMap, type WorkMapFilter, type WorkMapView } from '@lilachat/shared';
 import { Interruptor } from '../../../ui/Interruptor';
 import { KICKER } from './WorkMapPanel';
 
@@ -75,7 +75,7 @@ function PhotoLayers({ photos }: { photos: PhotoLayersProps }) {
  * and the field photos. A switch only hides what the map draws; the figures stay those of the filter.
  */
 export function MapLayersPanel(props: PanelProps) {
-  const rows = useMemo(() => layerRowsOf(props.view, props.map.marks ?? [], props.map.observations ?? []), [props.view, props.map]);
+  const rows = useMemo(() => layerRowsOf(props.view, props.map.marks ?? [], props.map.observations ?? [], props.map.works), [props.view, props.map]);
   const on = (group: MapLayerGroup, key: string) => isLayerOn(props.layers, group, key);
   return (
     <View testID="mapa-capas" className="mb-2">
@@ -87,7 +87,7 @@ export function MapLayersPanel(props: PanelProps) {
               <View className="h-3.5 w-3.5 rounded-full" style={{ backgroundColor: work.color }} />
               <View className="min-w-0 flex-1">
                 <Text className="text-[15px] font-semibold text-on-surface" numberOfLines={1}>{work.name}</Text>
-                <Text className="text-[12px] text-on-surface-variant">{`${work.percent} % de avance`}</Text>
+                <Text className="text-[12px] text-on-surface-variant">{work.assigned ? `${work.percent} % de avance` : WORK_NOT_ASSIGNED}</Text>
               </View>
               <Interruptor testID={`capa-trabajo-${work.id}`} value={on('works', work.id)} onValueChange={() => props.onToggle('works', work.id)} />
             </View>

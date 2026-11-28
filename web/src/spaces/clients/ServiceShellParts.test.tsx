@@ -76,7 +76,7 @@ describe('Ctrl+V in the Drive (design cc-05)', () => {
 });
 
 describe('«Capas y leyenda» (design cc-04)', () => {
-  const map = { streets: [], scopes: [], stages: [{ id: 'e1', name: 'Etapa 1' }], works: [], marks: [{ id: 'm1', type: 'giba', shape: { kind: 'point', point: { lat: -12, lng: -77 } } }], observations: [{ id: 'o1', text: 'Bache', status: 'open', photos: [] }] } as unknown as WorkMap;
+  const map = { streets: [], scopes: [], stages: [{ id: 'e1', name: 'Etapa 1' }], works: [{ id: 'w1', name: 'Imprimación', color: '#3b82f6' }], marks: [{ id: 'm1', type: 'giba', shape: { kind: 'point', point: { lat: -12, lng: -77 } } }], observations: [{ id: 'o1', text: 'Bache', status: 'open', photos: [] }] } as unknown as WorkMap;
   const view = { works: [{ id: 'w1', name: 'Imprimación', color: '#3b82f6', percent: 0 }] } as unknown as WorkMapView;
 
   it('a switch per work, drawing type and observation state; a stage chip filters', () => {

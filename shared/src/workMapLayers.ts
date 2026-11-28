@@ -3,7 +3,7 @@
  * color with a switch, the drawings by type, the observations by state. Everything starts on;
  * what is turned off leaves the map, never the data. PURE: web and APK.
  */
-import type { WorkMapView } from './workMap.js';
+import type { WorkMapView, WorkMapWork } from './workMap.js';
 import { markColor, type WorkMapMark } from './workMapMarks.js';
 import { markGroupsOf } from './workMapCards.js';
 import type { WorkMapObservation, WorkMapObservationStatus } from './workMapObservations.js';
@@ -34,16 +34,20 @@ export const visibleObservations = (observations: readonly WorkMapObservation[],
 const OBSERVATION_LABELS: Record<WorkMapObservationStatus, string> = { open: 'Pendientes', resolved: 'Levantadas' };
 
 export type LayerRows = {
-  works: Array<{ id: string; name: string; color: string; percent: number }>;
+  works: Array<{ id: string; name: string; color: string; percent: number; assigned: boolean }>;
   marks: Array<{ type: string; label: string; color: string; count: number }>;
   observations: Array<{ key: WorkMapObservationStatus; label: string; count: number }>;
 };
 
 /** The rows of the panel: what the map has, never an empty switch. */
-export function layerRowsOf(view: Pick<WorkMapView, 'works'>, marks: readonly WorkMapMark[], observations: readonly WorkMapObservation[]): LayerRows {
+/** `allWorks`: the job's works, also those no street carries yet (they list at 0 %). */
+export function layerRowsOf(view: Pick<WorkMapView, 'works'>, marks: readonly WorkMapMark[], observations: readonly WorkMapObservation[], allWorks?: readonly WorkMapWork[]): LayerRows {
   const counts = (['open', 'resolved'] as const).map((key) => ({ key, label: OBSERVATION_LABELS[key], count: observations.filter((one) => one.status === key).length }));
   return {
-    works: view.works.map((work) => ({ id: work.id, name: work.name, color: work.color, percent: work.percent })),
+    works: (allWorks ?? view.works).map((work) => {
+      const carried = view.works.find((one) => one.id === work.id);
+      return { id: work.id, name: work.name, color: work.color, percent: carried?.percent ?? 0, assigned: Boolean(carried) };
+    }),
     marks: markGroupsOf(marks).map((group) => ({ type: group.type, label: group.label, color: markColor(group.type), count: group.count })),
     observations: counts.filter((one) => one.count > 0),
   };
@@ -51,3 +55,5 @@ export function layerRowsOf(view: Pick<WorkMapView, 'works'>, marks: readonly Wo
 
 /** Without works the layers sheet showed only streets (José 27/11: «¿no deberían ser los trabajos?»). */
 export const NO_WORKS_YET = 'Aún no hay trabajos (imprimación, base, carpeta…). Créalos en ⋮ › Trabajos y asígnalos a las calles: aquí verás el avance de cada uno.';
+/** A work no street carries yet: it lists, but has no progress to tell. */
+export const WORK_NOT_ASSIGNED = 'Sin calles asignadas';

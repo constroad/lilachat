@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Check, Plus, Save, X } from 'lucide-react';
+import { Check, Pipette, Plus, Save, X } from 'lucide-react';
 import { createdOrRefusal, labelFormIdle, runLabelCreate, runScopeSave, sendWorkStage, sendWorkTag, toggleScopeWork, WORK_TAG_COLORS, workStageRequest, workTagRequest, type LabelForm, type MapEditSend, type ScopeDraft, type WorkMap } from '@lilachat/shared';
 import { KICKER } from './WorkMapPanel';
 
@@ -21,6 +21,10 @@ export function NewLabel(props: NewLabelProps) {
       {props.colors ? (
         <div role="radiogroup" aria-label="Color" className="mt-2 flex flex-wrap gap-2">
           {props.colors.map((one) => <button key={one} type="button" role="radio" aria-checked={color === one} aria-label={`Color ${one}`} data-testid={`${props.testId}-color-${one.slice(1)}`} onClick={() => set({ color: one })} className="grid h-8 w-8 place-items-center rounded-full border-2 border-outline/40 ring-offset-2 ring-offset-background aria-checked:ring-2 aria-checked:ring-primary" style={{ backgroundColor: one }}>{color === one ? <Check size={14} className="text-white" /> : null}</button>)}
+          <label title="Otro color" className="relative grid h-8 w-8 cursor-pointer place-items-center rounded-full border-2 border-dashed border-outline/60 text-primary">
+            <Pipette size={14} aria-hidden />
+            <input data-testid={`${props.testId}-color-otro`} type="color" aria-label="Otro color" value={color} onChange={(event) => set({ color: event.target.value })} className="absolute inset-0 h-full w-full cursor-pointer opacity-0" />
+          </label>
         </div>
       ) : null}
       {error ? <p role="alert" className="mt-2 text-[13px] font-semibold text-error">{error}</p> : null}

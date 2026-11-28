@@ -2,7 +2,8 @@ import { useState } from 'react';
 import { Pressable, Text, TextInput, View } from 'react-native';
 import { DecimalInput } from '../../../ui/DecimalInput';
 import { randomUUID } from 'expo-crypto';
-import { Check, Plus, Save } from 'lucide-react-native';
+import { Check, Pipette, Plus, Save } from 'lucide-react-native';
+import { ColorPicker } from '../../../ui/ColorPicker';
 import { createdOrRefusal, labelFormIdle, runLabelCreate, runScopeSave, sendWorkStage, sendWorkTag, toggleScopeWork, WORK_TAG_COLORS, workStageRequest, workTagRequest, type LabelForm, type MapEditSend, type ScopeDraft, type WorkMap } from '@lilachat/shared';
 import { useColores } from '../../../ui/tema';
 import { KICKER } from './WorkMapPanel';
@@ -19,6 +20,7 @@ export function NewLabel(props: NewLabelProps) {
   const [form, setForm] = useState<LabelForm>(() => labelFormIdle(props.colors?.[0]));
   const set = (next: Partial<LabelForm>) => setForm((before) => ({ ...before, ...next }));
   const { open, name, color, error, busy } = form;
+  const [picking, setPicking] = useState(false);
   if (!open) {
     return (
       <Pressable testID={`${props.testID}-nueva`} onPress={() => set({ open: true })} className={`${CHIP} border-dashed border-primary/40`}>
@@ -36,8 +38,12 @@ export function NewLabel(props: NewLabelProps) {
               {color === one ? <Check size={16} color="#ffffff" /> : null}
             </Pressable>
           ))}
+          <Pressable testID={`${props.testID}-color-otro`} accessibilityRole="radio" accessibilityLabel="Otro color" accessibilityState={{ checked: picking }} onPress={() => setPicking((open) => !open)} className={`h-10 w-10 items-center justify-center rounded-full border-2 border-dashed ${picking ? 'border-primary' : 'border-outline/60'}`}>
+            <Pipette size={16} color={palette.primary} />
+          </Pressable>
         </View>
       ) : null}
+      {props.colors && picking ? <ColorPicker testID={`${props.testID}-selector`} value={color} onChange={(hex) => set({ color: hex })} /> : null}
       {error ? <Text className="mt-2 text-[13px] font-semibold text-error">{error}</Text> : null}
       <View className="mt-2 flex-row gap-2">
         <Pressable onPress={() => setForm(labelFormIdle(color))} className="h-11 flex-1 items-center justify-center rounded-xl border border-outline/20"><Text className="text-[14px] font-semibold text-on-surface">Cancelar</Text></Pressable>

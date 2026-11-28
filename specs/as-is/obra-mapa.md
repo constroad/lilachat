@@ -281,6 +281,12 @@ Motores puros, con test, usados por web y APK:
 - **27/11** Trabajos: la paleta pasa de 8 a 16 colores (los 8 primeros en su orden) y cada color lleva
   borde, porque el casi negro no se veía en modo oscuro. «Capas y leyenda» muestra siempre la sección
   «Partidas (trabajos)»; sin trabajos, explica que se crean en ⋮ › Trabajos (`NO_WORKS_YET`).
+- **27/11** Selector de color libre para un trabajo: APK `ColorPicker` (`app/src/ui/ColorPicker.tsx`,
+  cuadro de saturación/brillo + barra de matiz en SVG, motor `shared/src/colorPick.ts`) tras el botón
+  «Otro color» (pipeta); web, el `<input type="color">` nativo en el mismo botón.
+- **27/11** «Capas»: lista TODOS los trabajos (`layerRowsOf(…, map.works)`), también los que aún no
+  tienen calles; esos dicen «Sin calles asignadas» (`WORK_NOT_ASSIGNED`). Antes solo salían los que
+  tenían tramos.
 - **27/11** Arreglo: la línea violeta no unía los dos aros. Causa: en el APK el aro arrastrado se
   queda donde lo soltó el dedo si su punto no cambia (el aro del inicio tenía la clave fija
   `start-0+000`); pasaba al soltarlo más allá del fin de la calle del mapa (se recorta al extremo) o

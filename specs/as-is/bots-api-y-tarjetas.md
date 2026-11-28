@@ -242,6 +242,11 @@ Montaje en `server/src/app.ts` (líneas 160–166): `/api/oauth`, `/api/bots/app
   `avances_por_aprobar_de_obra` con solo `{ servicioId }`; `work_undo` (`progress_id`) →
   `deshacer_avance_de_obra` con `{ servicioId, avanceId }` (Portal solo borra lo propio y pendiente).
   Sin `progress_id` válido es 400.
+- **28/11** `workMapForms.ts`: `work_progress_photo` (`progress_id`, `photo_ids` de 1 a 6 ids de
+  archivo del Drive, 24 hex; las repetidas cuentan una vez) → `agregar_foto_a_avance_de_obra` con
+  `{ servicioId, avanceId, fotoIds }` («Agregar foto» a un avance ya registrado; cualquier miembro).
+  Sin avance, sin fotos, más de 6 o un id que no es de archivo es 400. La herramienta espera la
+  aprobación de José en Agentes.
 
 ## 5. Diseños de Stitch relacionados
 

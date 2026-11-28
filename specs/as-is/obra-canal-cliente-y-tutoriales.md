@@ -127,6 +127,10 @@ Plan» (`channelTabsFor`, `checklistHoldsPending`); quien no tiene Checklist con
 - **Etapas del servicio** solo para admins del espacio (07/11, `ServiceStages`).
 - «Reporte de servicio» del cliente: página de Portal; Lilachat abre la sección del mapa
   con `?section=map` (`serviceMapPage`, `shared/src/serviceMap.ts`).
+- **Mapa: «Avances» y hoja** (28/11, detalle en `obra-mapa.md`). La lista «Avances» lee el historial de
+  Portal (`historial_de_avances_de_obra`): aprobado, pendiente y deshecho de 30 días, con autor, fotos y
+  «Deshacer» según `puedeDeshacer`; si no carga dice «No se pudo cargar el historial» con «Reintentar».
+  La X de la hoja del mapa va en su propia barra y ya no tapa la insignia de estado.
 - **Mapa de la obra: dibujos y observaciones** (19/11). Lee `workMapMarks` y `workObservations`
   del detalle de Portal (`shared/src/workMapMarks.ts`, `workMapObservations.ts`: lista blanca,
   solo fotos https, tope 200). Con dibujos u observaciones y sin calles igual hay mapa.

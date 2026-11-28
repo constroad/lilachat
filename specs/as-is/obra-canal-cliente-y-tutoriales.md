@@ -434,6 +434,7 @@ Un Control de imprimación con fotos ubicadas y dos días de avance aprobado (o-
 - **28/11** Mapa: «Nueva capa» con catálogo de capas y color fijo, «Todas las calles de la obra» y metrado (ma03) (detalle en `obra-mapa.md`).
 - **28/11** Mapa por capas (ma01): chips de capa con %, hoja de la capa con m², calles, «Último» y «Registrar avance de <capa>» (detalle en `obra-mapa.md`).
 - **28/11** Mapa: una fila de chips compactos, «Capas y leyenda» cerrada hasta su botón flotante, una sola acción «Registrar avance de <capa>», mapa por capa sin punteado gris, y «Marcar a mano» desde/hasta en Modo Avance (detalle en `obra-mapa.md`).
+- **28/11** Mapa, rondas 2 y 3: la vista previa de la capa se pliega a su acción, zoom sobre la hoja corta, chips con nombre recortado y desvanecido, capas casi negras con aro claro, y Modo Avance marca el % actual de la calle (detalle en `obra-mapa.md`).
 - **28/11** Mapa: «Marcar calles» (ma02) toca varias calles del mapa base, las numera en una lista y «Listo · N calles» las guarda de a una; «Una sola calle» sigue (detalle en `obra-mapa.md`).
 - **28/11** «Registrar avance de <capa>» mostraba el mapa vacío (la fila de chips crecía y dejaba el mapa en 0 de alto); arreglado y compactado en APK y web (detalle en `obra-mapa.md`).
 - **28/11** Mapa ronda 2: chips antes de «Más», vista previa chica de la capa, controles sobre la hoja, Modo Avance por color de capa y capas oscuras con borde (detalle en `obra-mapa.md`).

@@ -51,7 +51,7 @@ function Latest(props: { latest: LayerLatest }) {
 function Legend(props: { color: string }) {
   return (
     <View testID="capa-leyenda" className="flex-row items-center gap-2">
-      <View className="h-1 w-5 rounded-full" style={{ backgroundColor: props.color }} />
+      <View className="h-1.5 w-5 rounded-full border border-on-surface/40" style={{ backgroundColor: props.color }} />
       <Text className="text-[13px] text-on-surface-variant">{`${LAYER_LEGEND.done}  ·`}</Text>
       <View className="w-5 border-t-[3px] border-dashed" style={{ borderColor: props.color }} />
       <Text className="text-[13px] text-on-surface-variant">{LAYER_LEGEND.planned}</Text>

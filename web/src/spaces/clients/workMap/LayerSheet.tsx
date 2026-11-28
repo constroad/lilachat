@@ -45,7 +45,7 @@ function Latest(props: { latest: LayerLatest }) {
 function Legend(props: { color: string }) {
   return (
     <p data-testid="capa-leyenda" className="flex items-center gap-2 text-[13px] text-on-surface-variant">
-      <span aria-hidden className="h-1 w-5 rounded-full" style={{ backgroundColor: props.color }} />{LAYER_LEGEND.done}
+      <span aria-hidden className="h-1.5 w-5 rounded-full ring-1 ring-on-surface/40" style={{ backgroundColor: props.color }} />{LAYER_LEGEND.done}
       <span aria-hidden>·</span>
       <span aria-hidden className="w-5 border-t-[3px] border-dashed" style={{ borderColor: props.color }} />{LAYER_LEGEND.planned}
     </p>

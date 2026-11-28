@@ -83,3 +83,7 @@ export function avanceLinesOf(map: WorkMap, workId: string | null, streetId: str
   const color = map.works.find((work) => work.id === workId)?.color;
   return picked ? [...own, color ? { ...picked, color } : picked] : own;
 }
+
+/** A chip's name, cut with «…» so its % is never the part that hides (José 28/11). */
+export const CHIP_NAME_MAX = 14;
+export const chipNameOf = (name: string): string => (name.length > CHIP_NAME_MAX ? `${name.slice(0, CHIP_NAME_MAX - 1).trimEnd()}…` : name);

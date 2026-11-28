@@ -34,7 +34,7 @@ export function MapLegendCard(props: { view: WorkMapView; waiting: number }) {
         <span key={entry.key} className="flex items-center gap-1.5">
           {entry.kind === 'todo' ? <span aria-hidden className="w-4 border-t-2 border-dashed border-on-surface-variant/60" />
             : entry.kind === 'waiting' ? <span aria-hidden className="w-4 border-t-[3px] border-dashed border-on-surface/50" />
-            : <span aria-hidden className="h-1 w-4 rounded-full" style={{ backgroundColor: entry.color ?? undefined }} />}
+            : <span aria-hidden className="h-1.5 w-4 rounded-full ring-1 ring-on-surface/40" style={{ backgroundColor: entry.color ?? undefined }} />}
           <span className={entry.kind === 'work' ? 'font-semibold text-on-surface' : 'text-on-surface-variant'}>{entry.label}</span>
         </span>
       ))}

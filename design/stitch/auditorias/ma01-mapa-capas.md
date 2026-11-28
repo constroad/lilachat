@@ -43,6 +43,15 @@ Capturas del coordinador: `scratchpad/e2e-ma01/01-mapa.png`, `02-capas.png`, `03
 | R4 | Una capa casi negra (Carpeta asfáltica) no se ve en oscuro | corregida: puntos con aro de 1,5 px (`border-on-surface/40` / `ring-[1.5px]`) en chips, «Capas» y selector; en el mapa, borde claro bajo las líneas casi negras (`lineHaloOf`, `lineCasingPaint` con `line-gap-width`) |
 | R5 | ¿«Marcar a mano» aparece al tocar una calle? | corregida/confirmada: test `AvanceMode.test.tsx` comprueba que está en el panel tras el toque |
 
+## Ronda 3 (28/11, capturas 01b–05b del OTA 4b483fe)
+
+| # | Diferencia | Estado |
+| --- | --- | --- |
+| R6 | La fila de chips termina cortando un chip en «⋮» («Riego de liga 55» sin «%», «Carpeta» oculta) | corregida: nombre del chip hasta 14 caracteres con «…» (`chipNameOf`), así el % nunca se corta; desvanecido en el borde derecho de la fila para que se lea deslizable (APK: escalones del fondo; web: `mask-image`) |
+| R7 | En «Capas y leyenda» la muestra de la capa casi negra (Carpeta) no se ve | corregida: las muestras de la leyenda (convenciones y «— Hecho · - - Planificado») llevan el mismo aro claro |
+| R8 | Modo Avance no marca el % en que ya está la calle | corregida: el botón 0/25/50/75/100 % igual al avance aprobado de la calle sale marcado «actual» (`avanceCurrentPercent`) |
+| R9 | Con «Capas» abierta el zoom queda pegado debajo de «Capas» | corregida: el zoom y «Mi ubicación» solo suben sobre una hoja corta (vista previa o la acción sola, `isShortSheet`); con «Capas» o el detalle la hoja los cubre en vez de apretarlos contra «Capas» |
+
 Inventos de Stitch que no van: «Campo / Oficina», «Esc. 1:1500», «Configuración de trazado», «En línea», barra inferior «Mapa / Capas / Avances» (José 28/11: botón flotante «Capas»).
 
 ma04 (Registrar avance): no se revisó en esta ronda (no se abrió en el emulador); queda pendiente su revisión independiente.

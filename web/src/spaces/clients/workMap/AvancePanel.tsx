@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { CircleCheck, MousePointerClick, Ruler } from 'lucide-react';
-import { AVANCE_MANUAL_HINT, AVANCE_MANUAL_LABEL, AVANCE_MANUAL_ONE, manualRangeSummary, type ManualRange, AVANCE_FOOTER, AVANCE_PERCENTS, AVANCE_PICK_STREET, avanceEndFor, avanceKicker, avanceProgressLine, metersLabel, runAvanceSave, stationLabel, type AvanceEntryIds, type ByApproveProgress, type AvancePercent, type AvanceTarget, type MapEditSend, type WorkMap } from '@lilachat/shared';
+import { AVANCE_CURRENT, avanceCurrentPercent, AVANCE_MANUAL_HINT, AVANCE_MANUAL_LABEL, AVANCE_MANUAL_ONE, manualRangeSummary, type ManualRange, AVANCE_FOOTER, AVANCE_PERCENTS, AVANCE_PICK_STREET, avanceEndFor, avanceKicker, avanceProgressLine, metersLabel, runAvanceSave, stationLabel, type AvanceEntryIds, type ByApproveProgress, type AvancePercent, type AvanceTarget, type MapEditSend, type WorkMap } from '@lilachat/shared';
 import { KICKER } from './WorkMapPanel';
 import { UndoProgress } from './PendingProgress';
 import type { ManualMarks } from './AvanceMode';
@@ -11,11 +11,14 @@ const metersOrNull = (text: string): number | null => (text.trim() === '' ? null
 type Answer = { ok: boolean; message: string } | null;
 
 /** The five big buttons (design av-01): each one the street's share where the work arrives. */
-function PercentButtons(props: { picked: AvancePercent | null; onPick: (percent: AvancePercent) => void }) {
+function PercentButtons(props: { picked: AvancePercent | null; /** Where the street stands now (José 28/11). */ current: AvancePercent | null; onPick: (percent: AvancePercent) => void }) {
+  const look = (percent: AvancePercent) => (props.picked === percent ? 'bg-primary text-on-primary' : props.current === percent ? 'border-2 border-primary bg-primary/10 text-primary' : 'bg-surface-variant text-on-surface hover:bg-outline/15');
   return (
     <div className="grid grid-cols-5 gap-2">
       {AVANCE_PERCENTS.map((percent) => (
-        <button key={percent} type="button" data-testid={`avance-pct-${percent}`} aria-pressed={props.picked === percent} onClick={() => props.onPick(percent)} className={`h-14 rounded-2xl text-[16px] font-bold ${props.picked === percent ? 'bg-primary text-on-primary' : 'bg-surface-variant text-on-surface hover:bg-outline/15'}`}>{percent} %</button>
+        <button key={percent} type="button" data-testid={`avance-pct-${percent}`} aria-pressed={props.picked === percent} aria-current={props.picked !== percent && props.current === percent ? 'true' : undefined} onClick={() => props.onPick(percent)} className={`flex h-14 flex-col items-center justify-center rounded-2xl text-[16px] font-bold ${look(percent)}`}>
+          {percent} %{props.picked !== percent && props.current === percent ? <span data-testid="avance-pct-actual" className="text-[10px] font-semibold">{AVANCE_CURRENT}</span> : null}
+        </button>
       ))}
     </div>
   );
@@ -87,7 +90,7 @@ function AvanceStreet(props: { map: WorkMap; target: AvanceTarget; send: MapEdit
   return (
     <div data-testid="avance-panel" className="space-y-4 p-4 md:p-5">
       <StreetHead target={props.target} />
-      {manualOn ? null : <PercentButtons picked={save.typing ? null : save.picked} onPick={save.pick} />}
+      {manualOn ? null : <PercentButtons picked={save.typing ? null : save.picked} current={avanceCurrentPercent(props.target)} onPick={save.pick} />}
       <div className={manualOn ? 'hidden' : undefined}>
         <button type="button" data-testid="avance-progresiva" aria-expanded={save.typing} onClick={save.openTyping} className="flex h-11 w-full items-center justify-center gap-2 font-mono text-[13px] text-primary"><Ruler size={16} />Hasta una progresiva exacta · {stationLabel(save.endM ?? 0)}</button>
         {save.typing ? <input data-testid="avance-progresiva-m" type="number" inputMode="decimal" min={0} autoFocus aria-label="Hasta (m)" placeholder="Hasta (m)" value={save.typed} onChange={(event) => save.type(event.target.value)} className={FIELD} /> : null}

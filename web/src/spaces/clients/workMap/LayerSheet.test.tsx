@@ -50,7 +50,7 @@ describe('LayerSheet', () => {
 });
 
 describe('LayerChips', () => {
-  it('shows full names with their percent and picks a layer', () => {
+  it('shows names (a long one cut with «…» so its % stays whole, José 28/11) with their percent and picks a layer', () => {
     // Arrange
     const onPick = vi.fn();
     const { chips } = activeLayerOf(map, null, null, TODAY);
@@ -58,7 +58,8 @@ describe('LayerChips', () => {
     render(<LayerChips testPrefix="mapa-capa" chips={chips} onPick={onPick} />);
     fireEvent.click(screen.getByTestId('mapa-capa-car'));
     // Assert
-    expect(screen.getByTestId('mapa-capa-car').textContent).toBe('Carpeta asfáltica 2" 0 %');
+    expect(screen.getByTestId('mapa-capa-car').textContent).toBe('Carpeta asfál… 0 %');
+    expect(screen.getByTestId('mapa-capa-car')).toHaveAttribute('aria-label', 'Carpeta asfáltica 2" 0 %');
     expect(screen.getByTestId('mapa-capa-imp').getAttribute('aria-pressed')).toBe('true');
     expect(onPick).toHaveBeenCalledWith('car');
     expect(screen.queryByTestId('avance-trabajo-nuevo')).toBeNull();

@@ -420,6 +420,11 @@ Motores puros, con test, usados por web y APK:
   horizontal junto a un hermano `flex-1`, o raíz de un componente, declara `flexGrow: 0` (se añadió
   a `LayerChips`, `MapDays`, `ObservationParts` y `ReportItemsView`). Verificado en el emulador: la
   causa (build publicado). El arreglo: solo por tests y tsc (el build de desarrollo no tenía sesión).
+- **28/11** Ronda 3 de ma01 (capturas del OTA 4b483fe): nombres de chip hasta 14 caracteres con «…»
+  (`chipNameOf`) y desvanecido al borde derecho de la fila; muestras de la leyenda con aro claro (capa
+  casi negra legible); en Modo Avance el botón de % en que ya está la calle sale marcado «actual»
+  (`avanceCurrentPercent`); el zoom y «Mi ubicación» solo suben sobre una hoja corta (`isShortSheet`).
+  Verificado: tests y tsc.
 - **28/11** Ronda 2 de ma01 tras las capturas DESPUÉS del OTA 77c08e56: la fila de chips termina
   antes de «Más» y recorta ahí; la vista previa de la capa es más chica (nombre, cifra, barra y la
   acción), el asa la agranda y la X la pliega a «Registrar avance de <capa>» sola (estado `min`,

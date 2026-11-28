@@ -205,4 +205,16 @@ describe('Modo Avance with what waits for approval (web)', () => {
     await waitFor(() => expect(screen.getByTestId('avance-respuesta-modo')).toHaveTextContent('Esta calle ya va en 60 m de Imprimación.'));
     expect(send).not.toHaveBeenCalled();
   });
+
+  it('the % button the street stands at shows as the current state (José 28/11)', () => {
+    render(<Harness map={MAP} send={okSend()} />);
+    fireEvent.click(screen.getByTestId('mapa-modo-avance'));
+    fireEvent.click(screen.getByTestId('toque-calle'));
+    // 60 of 120 m: «50 %» is where Jr. Lima stands
+    expect(screen.getByTestId('avance-pct-50')).toHaveAttribute('aria-current', 'true');
+    expect(screen.getByTestId('avance-pct-50')).toHaveTextContent('actual');
+    expect(screen.getByTestId('avance-pct-75')).not.toHaveAttribute('aria-current');
+    fireEvent.click(screen.getByTestId('avance-pct-50'));
+    expect(screen.getByTestId('avance-pct-50')).not.toHaveAttribute('aria-current');
+  });
 });

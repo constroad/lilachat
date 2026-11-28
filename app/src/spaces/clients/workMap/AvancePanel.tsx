@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { randomUUID } from 'expo-crypto';
 import { CircleCheck, MousePointerClick, Ruler, X } from 'lucide-react-native';
-import { AVANCE_MANUAL_HINT, AVANCE_MANUAL_LABEL, AVANCE_MANUAL_ONE, manualRangeSummary, type ManualRange, AVANCE_FOOTER, AVANCE_PERCENTS, avanceEndFor, avanceKicker, avanceProgressLine, metersLabel, runAvanceSave, stationLabel, type AvanceEntryIds, type ByApproveProgress, type AvancePercent, type AvanceTarget, type MapEditSend, type WorkMap } from '@lilachat/shared';
+import { AVANCE_CURRENT, avanceCurrentPercent, AVANCE_MANUAL_HINT, AVANCE_MANUAL_LABEL, AVANCE_MANUAL_ONE, manualRangeSummary, type ManualRange, AVANCE_FOOTER, AVANCE_PERCENTS, avanceEndFor, avanceKicker, avanceProgressLine, metersLabel, runAvanceSave, stationLabel, type AvanceEntryIds, type ByApproveProgress, type AvancePercent, type AvanceTarget, type MapEditSend, type WorkMap } from '@lilachat/shared';
 import { DecimalInput } from '../../../ui/DecimalInput';
 import { useColores } from '../../../ui/tema';
 import { KICKER } from './WorkMapPanel';
@@ -14,14 +14,16 @@ const newIds = (): AvanceEntryIds => ({ scope: randomUUID(), progress: randomUUI
 type Answer = { ok: boolean; message: string } | null;
 
 /** The five big buttons (design av-01): each one the street's share where the work arrives. */
-function PercentButtons(props: { picked: AvancePercent | null; onPick: (percent: AvancePercent) => void }) {
+function PercentButtons(props: { picked: AvancePercent | null; /** Where the street stands now (José 28/11). */ current: AvancePercent | null; onPick: (percent: AvancePercent) => void }) {
   return (
     <View className="flex-row gap-2">
       {AVANCE_PERCENTS.map((percent) => {
         const on = props.picked === percent;
+        const now = !on && props.current === percent;
         return (
-          <Pressable key={percent} testID={`avance-pct-${percent}`} accessibilityRole="button" accessibilityState={{ selected: on }} onPress={() => props.onPick(percent)} className={`h-16 flex-1 items-center justify-center rounded-2xl ${on ? 'bg-primary' : 'bg-surface-variant'}`}>
-            <Text className={`text-[17px] font-bold ${on ? 'text-on-primary' : 'text-on-surface'}`}>{percent} %</Text>
+          <Pressable key={percent} testID={`avance-pct-${percent}`} accessibilityRole="button" accessibilityState={{ selected: on }} accessibilityHint={now ? AVANCE_CURRENT : undefined} onPress={() => props.onPick(percent)} className={`h-16 flex-1 items-center justify-center rounded-2xl ${on ? 'bg-primary' : now ? 'border-2 border-primary bg-primary/10' : 'bg-surface-variant'}`}>
+            <Text className={`text-[17px] font-bold ${on ? 'text-on-primary' : now ? 'text-primary' : 'text-on-surface'}`}>{percent} %</Text>
+            {now ? <Text testID="avance-pct-actual" className="text-[11px] font-semibold text-primary">{AVANCE_CURRENT}</Text> : null}
           </Pressable>
         );
       })}
@@ -108,7 +110,7 @@ export function AvancePanel(props: { map: WorkMap; target: AvanceTarget; send: M
     <View testID="avance-panel" className="absolute inset-x-0 bottom-0 gap-4 rounded-t-3xl bg-surface px-4 pt-5" style={{ paddingBottom: props.bottom + 12, elevation: 12 }}>
       <Pressable accessibilityLabel="Cerrar el panel" onPress={props.onClose} className="absolute right-2 top-1 z-10 h-11 w-11 items-center justify-center rounded-full"><X size={20} color={colors['on-surface-variant']} /></Pressable>
       <StreetHead target={props.target} />
-      {manualOn ? null : <PercentButtons picked={save.typing ? null : save.picked} onPick={save.pick} />}
+      {manualOn ? null : <PercentButtons picked={save.typing ? null : save.picked} current={avanceCurrentPercent(props.target)} onPick={save.pick} />}
       {manualOn ? null : <ExactEnd open={save.typing} endM={save.endM} typed={save.typed} onOpen={save.openTyping} onTyped={save.type} />}
       <ManualRow manual={props.manual} />
       {save.answer ? <Text testID="avance-respuesta-modo" accessibilityRole="alert" className={`text-[14px] font-semibold ${save.answer.ok ? 'text-primary' : 'text-error'}`}>{save.answer.message}</Text> : null}

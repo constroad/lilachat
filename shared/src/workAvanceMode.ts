@@ -27,6 +27,8 @@ export type AvanceEntryIds = { scope: string; progress: string };
 
 export const AVANCE_TITLE = 'Avance de la obra';
 export const AVANCE_NO_WORKS = 'Aún no hay trabajos (imprimación, base, carpeta…). Crea uno para marcar su avance.';
+/** Under the % button the street already stands at. */
+export const AVANCE_CURRENT = 'actual';
 export const AVANCE_FOOTER = 'Se guarda con la fecha de hoy y tu nombre';
 export const AVANCE_PICK_STREET = 'Toca una calle de la obra en el mapa.';
 export const avanceHint = (workName: string) => `Toca una calle para marcar su avance de ${workName}`;
@@ -74,6 +76,13 @@ export function avanceTargetOf(map: WorkMap, streetId: string, workId: string): 
 
 /** «50 %» of the street: the chainage where the work arrives. */
 export const avanceEndFor = (target: Pick<AvanceTarget, 'lengthM'>, percent: number): number => Math.round((target.lengthM * percent) / FULL_PERCENT);
+
+/** The big button the street already stands at (José 28/11): 100 % done shows «100 %» as the current state. */
+export function avanceCurrentPercent(target: Pick<AvanceTarget, 'doneM' | 'lengthM'>): AvancePercent | null {
+  if (target.lengthM <= 0) return null;
+  const share = Math.round((target.doneM / target.lengthM) * FULL_PERCENT);
+  return AVANCE_PERCENTS.find((percent) => percent === share && (percent > 0 || target.doneM === 0)) ?? null;
+}
 
 /** «IMPRIMACIÓN · JR. LIMA» over the street's name. */
 export const avanceKicker = (target: Pick<AvanceTarget, 'workName' | 'streetName'>) => `${target.workName} · ${target.streetName}`.toLocaleUpperCase('es');

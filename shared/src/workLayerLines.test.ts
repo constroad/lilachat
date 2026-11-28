@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { workMapView, type WorkMap } from './workMap.js';
 import { LAYER_BASE_COLOR, layerMapLinesOf, STATION_MIN_ZOOM } from './workLayerLines.js';
-import { collapseSheet, initialMapSheet, expandLayerSheet, sheetForLayerPick, toggleLayersSheet } from './workMapSheet.js';
+import { isShortSheet, collapseSheet, initialMapSheet, expandLayerSheet, sheetForLayerPick, toggleLayersSheet } from './workMapSheet.js';
 import { colorLuminance, lineHaloOf, LINE_HALO_COLOR, workMapCollection } from './workMap.js';
 
 /** Design ma01 (José 28/11): the map by layer, no grey dashes outside «Editar croquis». */
@@ -68,6 +68,13 @@ describe('the sheet over the phone map', () => {
     expect(collapseSheet('peek', true)).toBe('min');
     expect(collapseSheet('min', true)).toBe('min');
     expect(collapseSheet('layers', false)).toBeNull();
+  });
+
+  it('only a short sheet lifts the map controls', () => {
+    expect(isShortSheet('peek')).toBe(true);
+    expect(isShortSheet('min')).toBe(true);
+    expect(isShortSheet('layers')).toBe(false);
+    expect(isShortSheet('full')).toBe(false);
   });
 });
 

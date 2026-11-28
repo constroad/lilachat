@@ -27,3 +27,6 @@ export const sheetForLayerPick = (sheet: MapSheet): MapSheet => (sheet === 'full
 
 /** The handle of the layer's sheet: the action grows to the peek, the peek to the detail and back. */
 export const expandLayerSheet = (sheet: MapSheet): MapSheet => (sheet === 'min' ? 'peek' : sheet === 'full' ? 'peek' : 'full');
+
+/** Only over a short sheet do the zoom and «Mi ubicación» rise; a tall one («Capas», the detail) covers them instead of pinning them under «Capas» (José 28/11). */
+export const isShortSheet = (sheet: MapSheet): boolean => sheet === 'peek' || sheet === 'min';

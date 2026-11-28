@@ -1,7 +1,7 @@
 import { useMemo, useState, type ReactNode } from 'react';
 import { Linking, Pressable, Text, View } from 'react-native';
 import { X } from 'lucide-react-native';
-import { expandLayerSheet, initialMapSheet, layerMapLinesOf, sheetForLayerPick, toggleLayersSheet, type LayerStreetSummary, type MapSheet, activeLayerOf, limaDayKey, workMapWorkFilter, viewWithLayers, visibleMarks, visibleObservations, type WorkMapMark, type WorkMapObservation, mapCardOf, mapPickAnchor, mapPickOnMap, type MapPick, type WorkMapPoint, visibleStationMarks, progressTargetOf, type Brush, type ManualPhotoUpload, type MapEditSend, type TraceUpload, type ServiceMapInReport, unitPinsOfDay, withMediaBounds, pendingLinesOf, byApproveLinesOf, pendingCountOf, withPendingOf, showsUnitPins, type PendingProgress, type MapMoreKey, stretchLinesOf, suggestDischarges, workMapStageGroups, workMapView, type DischargePin, type StationMark, type StretchRange, type UnitDischarge, type MapPhoto, type ManualProgressDraft, type WorkMapLine, type WorkMap, type WorkMapFilter, type WorkMapView } from '@lilachat/shared';
+import { isShortSheet, expandLayerSheet, initialMapSheet, layerMapLinesOf, sheetForLayerPick, toggleLayersSheet, type LayerStreetSummary, type MapSheet, activeLayerOf, limaDayKey, workMapWorkFilter, viewWithLayers, visibleMarks, visibleObservations, type WorkMapMark, type WorkMapObservation, mapCardOf, mapPickAnchor, mapPickOnMap, type MapPick, type WorkMapPoint, visibleStationMarks, progressTargetOf, type Brush, type ManualPhotoUpload, type MapEditSend, type TraceUpload, type ServiceMapInReport, unitPinsOfDay, withMediaBounds, pendingLinesOf, byApproveLinesOf, pendingCountOf, withPendingOf, showsUnitPins, type PendingProgress, type MapMoreKey, stretchLinesOf, suggestDischarges, workMapStageGroups, workMapView, type DischargePin, type StationMark, type StretchRange, type UnitDischarge, type MapPhoto, type ManualProgressDraft, type WorkMapLine, type WorkMap, type WorkMapFilter, type WorkMapView } from '@lilachat/shared';
 import { Modal } from '../../../ui/Modal';
 import { useColores } from '../../../ui/tema';
 import { useMargenes } from '../../../ui/useMargenes';
@@ -242,7 +242,7 @@ export function WorkMapBoard(props: BoardProps) {
       {wide ? null : picks.files.viewer}
       <View className="flex-1 flex-row">
       <View className="flex-1 overflow-hidden bg-surface-variant">
-        {wide ? null : <WorkMapSurface view={layered} controlsInset={amplia ? 0 : sheetHeight} moves stations={stations} bare={lines.base} labels={lines.labels} marks={drawn.marks} observations={drawn.observations} onPick={picks.pickOnMap} pins={photos.shown ? photos.pins : unitPins} onPin={photos.shown ? photos.openPin : undefined} stretches={stretches} pending={pendingLines} />}
+        {wide ? null : <WorkMapSurface view={layered} controlsInset={amplia || !isShortSheet(sheet) ? 0 : sheetHeight} moves stations={stations} bare={lines.base} labels={lines.labels} marks={drawn.marks} observations={drawn.observations} onPick={picks.pickOnMap} pins={photos.shown ? photos.pins : unitPins} onPin={photos.shown ? photos.openPin : undefined} stretches={stretches} pending={pendingLines} />}
         {picks.card && !wide ? (
           <View className="absolute inset-x-3 bottom-20 items-center">
             <View style={{ width: '100%', maxWidth: CARD_MAX_WIDTH }}><MapCardView card={picks.card} onClose={picks.close} onPhoto={(photo, all) => picks.files.open(photo, all)} /></View>

@@ -126,3 +126,20 @@ describe('Modo Avance lines', () => {
     expect(avanceLinesOf(MAP, null, null, null)).toEqual([]);
   });
 });
+
+describe('round 3 (José 28/11)', () => {
+  it('cuts a long chip name with «…» and leaves short ones whole', async () => {
+    const { chipNameOf } = await import('./workAvanceManual.js');
+    expect(chipNameOf('Carpeta asfáltica en caliente e=2"')).toBe('Carpeta asfál…');
+    expect(chipNameOf('Riego de liga')).toBe('Riego de liga');
+  });
+
+  it('marks the button the street stands at: 100, 25, 50, 75 % or nothing in between', async () => {
+    const { avanceCurrentPercent } = await import('./workAvanceMode.js');
+    expect(avanceCurrentPercent({ doneM: 120, lengthM: 120 })).toBe(100);
+    expect(avanceCurrentPercent({ doneM: 60, lengthM: 120 })).toBe(50);
+    expect(avanceCurrentPercent({ doneM: 0, lengthM: 120 })).toBe(0);
+    expect(avanceCurrentPercent({ doneM: 70, lengthM: 120 })).toBeNull();
+    expect(avanceCurrentPercent({ doneM: 0, lengthM: 0 })).toBeNull();
+  });
+});

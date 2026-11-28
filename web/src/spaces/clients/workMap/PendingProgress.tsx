@@ -44,7 +44,7 @@ export function useByApprove(send: MapEditSend | undefined, reloadKey: unknown) 
   sender.current = send;
   const actions = useMemo(() => byApproveActions(sender, setList), []);
   useEffect(actions.load, [reloadKey, actions]);
-  return { list, undo: actions.undo };
+  return { list, undo: actions.undo, reload: actions.load };
 }
 
 function RejectedRow(props: { map: WorkMap; item: ByApproveProgress }) {
@@ -57,11 +57,32 @@ function RejectedRow(props: { map: WorkMap; item: ByApproveProgress }) {
   );
 }
 
+/** The admin's two buttons; «Rechazar» asks once more, a tap on the wrong one costs a day's metrado. */
+export function Decide(props: { id: string; busy: PendingDecision | null; onResolve: (decision: PendingDecision) => void }) {
+  const [rejecting, setRejecting] = useState(false);
+  if (rejecting) {
+    return (
+      <div className="mt-3 rounded-xl border border-error/30 bg-error/5 p-3">
+        <p className="text-[13px] font-semibold text-on-surface">¿Rechazar este avance? No suma al metrado.</p>
+        <div className="mt-2 flex gap-2">
+          <button type="button" data-testid={`rechazar-si-${props.id}`} disabled={props.busy !== null} onClick={() => props.onResolve('rechazar')} className="h-10 flex-1 rounded-xl bg-error text-[13px] font-semibold text-background disabled:opacity-60">{props.busy === 'rechazar' ? 'Rechazando…' : 'Sí, rechazar'}</button>
+          <button type="button" onClick={() => setRejecting(false)} className="h-10 flex-1 rounded-xl border border-outline/25 text-[13px] font-semibold text-on-surface">No</button>
+        </div>
+      </div>
+    );
+  }
+  return (
+    <div className="mt-3 flex gap-2">
+      <button type="button" data-testid={`aprobar-avance-${props.id}`} disabled={props.busy !== null} onClick={() => props.onResolve('aprobar')} className="flex h-11 flex-1 items-center justify-center gap-1.5 rounded-xl bg-primary text-[14px] font-semibold text-on-primary disabled:opacity-60"><Check size={16} />{props.busy === 'aprobar' ? 'Aprobando…' : 'Aprobar'}</button>
+      <button type="button" data-testid={`rechazar-avance-${props.id}`} disabled={props.busy !== null} onClick={() => setRejecting(true)} className="flex h-11 items-center justify-center gap-1.5 rounded-xl border border-outline/25 px-4 text-[14px] font-semibold text-on-surface disabled:opacity-60"><X size={16} /> Rechazar</button>
+    </div>
+  );
+}
+
 type Undo = { toM: number; onUndo: (id: string) => Promise<string | null> } | null;
 
 function PendingRow(props: { item: PendingProgress; admin: boolean; undo: Undo; onResolve: (decision: PendingDecision) => Promise<string | null> }) {
   const [busy, setBusy] = useState<PendingDecision | null>(null);
-  const [rejecting, setRejecting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const resolve = async (decision: PendingDecision) => {
     setBusy(decision);
@@ -76,21 +97,7 @@ function PendingRow(props: { item: PendingProgress; admin: boolean; undo: Undo; 
       {item.note ? <p className="mt-0.5 text-[12px] text-on-surface-variant">{item.note}</p> : null}
       {error ? <p role="alert" className="mt-2 text-[13px] font-semibold text-error">{error}</p> : null}
       {props.undo ? <UndoProgress id={item.id} toM={props.undo.toM} onUndo={props.undo.onUndo} /> : null}
-      {props.admin && !rejecting ? (
-        <div className="mt-3 flex gap-2">
-          <button type="button" data-testid={`aprobar-avance-${item.id}`} disabled={busy !== null} onClick={() => void resolve('aprobar')} className="flex h-11 flex-1 items-center justify-center gap-1.5 rounded-xl bg-primary text-[14px] font-semibold text-on-primary disabled:opacity-60"><Check size={16} />{busy === 'aprobar' ? 'Aprobando…' : 'Aprobar'}</button>
-          <button type="button" data-testid={`rechazar-avance-${item.id}`} disabled={busy !== null} onClick={() => setRejecting(true)} className="flex h-11 items-center justify-center gap-1.5 rounded-xl border border-outline/25 px-4 text-[14px] font-semibold text-on-surface disabled:opacity-60"><X size={16} /> Rechazar</button>
-        </div>
-      ) : null}
-      {props.admin && rejecting ? (
-        <div className="mt-3 rounded-xl border border-error/30 bg-error/5 p-3">
-          <p className="text-[13px] font-semibold text-on-surface">¿Rechazar este avance? No suma al metrado.</p>
-          <div className="mt-2 flex gap-2">
-            <button type="button" data-testid={`rechazar-si-${item.id}`} disabled={busy !== null} onClick={() => void resolve('rechazar')} className="h-10 flex-1 rounded-xl bg-error text-[13px] font-semibold text-background disabled:opacity-60">{busy === 'rechazar' ? 'Rechazando…' : 'Sí, rechazar'}</button>
-            <button type="button" onClick={() => setRejecting(false)} className="h-10 flex-1 rounded-xl border border-outline/25 text-[13px] font-semibold text-on-surface">No</button>
-          </div>
-        </div>
-      ) : null}
+      {props.admin ? <Decide id={item.id} busy={busy} onResolve={(decision) => void resolve(decision)} /> : null}
     </li>
   );
 }

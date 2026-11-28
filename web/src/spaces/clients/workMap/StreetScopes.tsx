@@ -95,7 +95,7 @@ export function StreetScopes(props: { map: WorkMap; streetId: string; send?: Map
       </div>
       {recording ? null : <div className="mt-4"><ProgressPreview map={props.map} streetId={detail.id} draft={STREET_ONLY} /></div>}
       {props.send && !recording ? <button type="button" data-testid="avance-manual-abrir" onClick={() => setRecording(true)} className="mt-4 flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-primary text-[15px] font-semibold text-on-primary"><TrendingUp size={18} />Registrar avance</button> : null}
-      {props.send && recording ? <div className="mt-4"><ManualProgress map={props.map} streetId={detail.id} lengthM={detail.lengthM} widthM={detail.widthM ?? undefined} send={props.send} uploadPhoto={props.uploadPhoto} initial={props.recordDraft} onDone={() => setRecording(false)} /></div> : null}
+      {props.send && recording ? <div className="mt-4"><ManualProgress map={props.map} streetId={detail.id} send={props.send} uploadPhoto={props.uploadPhoto} initial={props.recordDraft} onDone={() => setRecording(false)} /></div> : null}
       {detail.layers.length ? (
         <section className="mt-4 rounded-xl border-[1.5px] border-outline/15 bg-surface p-4">
           <p className={KICKER}>Avance por trabajo</p>

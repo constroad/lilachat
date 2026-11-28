@@ -7,7 +7,7 @@ import { useColores } from '../../../ui/tema';
 const KICKER = 'text-[12px] font-bold uppercase tracking-[1.5px] text-on-surface-variant';
 
 /** The admin's two buttons; «Rechazar» asks once more, a tap on the wrong one costs a day's metrado. */
-function Decide(props: { id: string; busy: PendingDecision | null; onResolve: (decision: PendingDecision) => void }) {
+export function Decide(props: { id: string; busy: PendingDecision | null; onResolve: (decision: PendingDecision) => void }) {
   const colors = useColores();
   const [rejecting, setRejecting] = useState(false);
   if (rejecting) {
@@ -81,7 +81,7 @@ export function useByApprove(send: MapEditSend | undefined, reloadKey: unknown) 
   sender.current = send;
   const actions = useMemo(() => byApproveActions(sender, setList), []);
   useEffect(actions.load, [reloadKey, actions]);
-  return { list, undo: actions.undo };
+  return { list, undo: actions.undo, reload: actions.load };
 }
 
 function RejectedRow(props: { map: WorkMap; item: ByApproveProgress }) {

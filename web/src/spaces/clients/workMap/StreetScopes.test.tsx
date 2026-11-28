@@ -35,8 +35,7 @@ describe('StreetScopes', () => {
     // Act
     render(<StreetScopes map={mapOf()} streetId="s1" send={sender()} recordDraft={{ workId: 'base', fromM: 80, toM: 150, photoIds: [], note: '' }} onBack={vi.fn()} />);
     // Assert
-    expect(screen.getByTestId('avance-manual-desde')).toHaveTextContent('0+080');
-    expect(screen.getByTestId('avance-manual-hasta-progresiva')).toHaveTextContent('Progresiva 0+150');
+    expect(screen.getByTestId('avance-manual-tramo')).toHaveTextContent('0+080 → 0+150');
     expect(screen.getByTestId('avance-manual-trabajo-base')).toHaveAttribute('aria-pressed', 'true');
   });
 
@@ -95,11 +94,12 @@ describe('StreetScopes', () => {
     await waitFor(() => expect(send).toHaveBeenCalledWith({ kind: 'work_scope_delete', scope_id: 'c1', forms: expect.any(Number) }, expect.any(Function)));
   });
 
-  it('«Registrar avance» opens o-06 on the street, and closes with Cancelar', () => {
+  it('«Registrar avance» opens ma04 on the street, and closes with its X', () => {
     render(<StreetScopes map={mapOf()} streetId="s1" send={sender()} onBack={vi.fn()} />);
     fireEvent.click(screen.getByTestId('avance-manual-abrir'));
     expect(screen.getByTestId('avance-manual')).toBeTruthy();
-    fireEvent.click(screen.getByText('Cancelar'));
+    expect(screen.getByTestId('avance-calle-nombre')).toBeTruthy();
+    fireEvent.click(screen.getByTestId('avance-cerrar'));
     expect(screen.queryByTestId('avance-manual')).toBeNull();
   });
 

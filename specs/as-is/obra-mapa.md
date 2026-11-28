@@ -331,6 +331,37 @@ Motores puros, con test, usados por web y APK:
   avanceId })`; al deshacer recarga mapa y lista; si Portal se niega, muestra su motivo. La lista
   «Pendiente de aprobar» lleva la píldora «POR APROBAR» y suma lo rechazado con «RECHAZADO» en rojo
   y la nota del rechazo. `work_by_approve` es lectura (`READS_ONLY`): no recarga el mapa.
+- **28/11** «Registrar avance» rehecho como ma04 y lista «Avances» como ma05 (web y APK; prototipo
+  aprobado de Portal `claude.ai/artifact/L8iULepUHhNJukC7MJkpF9`). **ma04** (`ManualProgress.tsx` =
+  pantalla completa + `RecordProgress.tsx`; motor puro `shared/src/workProgressRecord.ts`): al abrir
+  se lee el GPS una vez y `gpsStreetOf` proyecta el teléfono sobre las calles CON trabajo; ±25 m o
+  menos y a ≤30 m del eje elige la calle («Estás en Jr. Progreso · ±4 m»); GPS débil, lejos o sin
+  permiso abre «¿En qué calle?» (lista de `progressTargetOf`). «Cambiar» vuelve a la lista. Un aro
+  grande arrastrable (el `StreetHandle` del editor) arranca en el frente (`manualStartOf`, ya salta
+  lo pendiente), muestra su progresiva y al soltarlo se pega al eje (`recordDropAt`: nunca antes del
+  inicio ni pasado la calle). «Hasta mi ubicación» (`manualEndFromGps`) y «Toda la calle» (fin del
+  tramo del trabajo o de la calle). Resumen grande «+46 m», «0+120 → 0+166», barra hecho/nuevo y
+  «Metrado 276 m² · 46 m × 6 m» (m² solo con ancho de calle). «Tomar foto y registrar»: valida ANTES
+  de abrir la cámara (`recordProblem`: lo por aprobar, sin trabajo, sin largo, pasado la calle);
+  APK `takeFieldPhoto` → cola de campo del servicio o subida al Drive; web `DrivePhotoInput` →
+  subida → `work_manual_progress` (pendiente, `MANUAL_SENT`/`MANUAL_QUEUED`). «Registrar sin foto»
+  sigue (el flujo de hoy no exigía foto); sin subidor el botón es «Registrar avance». La nota
+  opcional sigue (`MANUAL_NOTE_MAX`, multilínea para dictar) plegada tras «Agregar nota» bajo el
+  resumen y va como `nota`. Se quitaron los 4 pasos y «±10 m» del formulario o-06; los textos de GPS ahora dicen «arrastra el
+  círculo». Girado/tablet: mapa y panel lado a lado (APK `useDisposicion`, web `md:`). «Registrar»
+  del mapa abre esta pantalla (sin calle, decide el GPS); la del detalle de calle y la sugerencia de
+  imprimación la abren en su calle. **ma05** (`ProgressFeed.tsx`; motor `shared/src/workProgressFeed.ts`):
+  en el panel del mapa, donde estaba «Pendiente de aprobar», cuando Portal responde
+  `avances_por_aprobar_de_obra` (si no, queda la tarjeta vieja). Une pendientes y rechazados de esa
+  lista con lo aprobado de `progress[]` (sin autor: no se muestra), más nuevo primero; «Hoy / Semana /
+  Todo» por día de Lima (semana = 7 días) con conteos, resumen «m lineales · m² totales» sin los
+  rechazados, tarjetas con color del trabajo, «Trabajo · Calle», «0+120 → 0+166 · 46 m · 276 m²»,
+  «Hoy/Ayer/20 nov · autor», píldora POR APROBAR / APROBADO / RECHAZADO y «Nota: …» del rechazo.
+  «Deshacer» en el propio pendiente más reciente; admins «Aprobar»/«Rechazar» (`work_resolve`) y
+  recarga lista y mapa. Diferencias con el diseño: sin selector «Campo / Oficina» (lo decide el rol),
+  sin escala ni «Configuración de trazado»; la miniatura es un ícono de cámara (ninguna de las dos
+  listas trae la URL de la foto); la hora no sale (las fechas llegan sin hora); la progresiva del aro
+  se actualiza al soltarlo, no durante el arrastre.
 - **20/11** Rediseño aprobado `mapa-v2` (web y APK): cabecera de una fila en Mapa, mapa a pantalla,
   días y corte flotando, «Compartir avance» y «Pantalla completa» dentro de «Más», panel como hoja
   en el teléfono. Auditorías: `design/stitch/auditorias/mapa-v2-movil.md` y `mapa-v2-escritorio.md`.

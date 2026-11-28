@@ -95,7 +95,7 @@ function StreetBody(props: BodyProps) {
     <>
       {props.recording ? null : <ProgressPreview map={props.map} streetId={detail.id} draft={STREET_ONLY} />}
       {send && !props.recording ? <Pressable testID="avance-manual-abrir" onPress={() => props.onRecording(true)} className="h-14 flex-row items-center justify-center gap-2 rounded-xl bg-primary"><TrendingUp size={20} color={colors['on-primary']} /><Text className="text-[16px] font-semibold text-on-primary">Registrar avance</Text></Pressable> : null}
-      {send && props.recording ? <ManualProgress map={props.map} streetId={detail.id} lengthM={detail.lengthM} widthM={detail.widthM ?? undefined} send={send} uploadPhoto={props.uploadPhoto} initial={props.recordDraft} onDone={() => props.onRecording(false)} /> : null}
+      {send && props.recording ? <ManualProgress map={props.map} streetId={detail.id} send={send} uploadPhoto={props.uploadPhoto} initial={props.recordDraft} onDone={() => props.onRecording(false)} /> : null}
       {detail.layers.length ? (
         <View className="gap-2 rounded-xl border-[1.5px] border-outline/15 bg-surface p-4">
           <Text className={KICKER}>Avance por trabajo</Text>

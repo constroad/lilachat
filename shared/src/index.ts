@@ -212,6 +212,8 @@ export * from './workPending.js';
 export * from './workByApprove.js';
 export * from './workScopeDraft.js';
 export * from './workManualProgress.js';
+export * from './workProgressRecord.js';
+export * from './workProgressFeed.js';
 export * from './workMapPartial.js';
 export * from './workProgressLink.js';
 export * from './workImport.js';

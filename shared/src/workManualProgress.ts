@@ -140,10 +140,10 @@ export async function runManualProgress(run: ManualRun): Promise<WorkProgressRes
   return run.send(workManualProgressRequest(run.map, run.streetId, run.draft, run.entryId, run.now), (deps) => sendWorkManualProgress(deps, run.draft.note));
 }
 
-export const GPS_WEAK = (accuracyM: number) => `GPS débil (±${Math.round(accuracyM)} m): espera a cielo abierto o usa ±10 m.`;
-export const GPS_OFF_STREET = (distanceM: number) => `Estás a ${Math.round(distanceM)} m de la calle. Acércate o usa ±10 m.`;
+export const GPS_WEAK = (accuracyM: number) => `GPS débil (±${Math.round(accuracyM)} m): espera a cielo abierto o arrastra el círculo.`;
+export const GPS_OFF_STREET = (distanceM: number) => `Estás a ${Math.round(distanceM)} m de la calle. Acércate o arrastra el círculo.`;
 export const GPS_BEHIND = 'Tu posición queda antes del punto de partida.';
-export const GPS_UNAVAILABLE = 'No se pudo leer tu ubicación. Revisa el permiso de ubicación o usa ±10 m.';
+export const GPS_UNAVAILABLE = 'No se pudo leer tu ubicación. Revisa el permiso de ubicación o arrastra el círculo.';
 
 /** «Mi GPS» (o-06): where the person stands, projected on the street, becomes the end. */
 export function manualEndFromGps(draft: ManualProgressDraft, line: WorkMapPoint[], lengthM: number, fix: GpsFix): { draft: ManualProgressDraft } | { problem: string } {

@@ -1,6 +1,6 @@
 import { Suspense, useEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from 'react';
 import { lazyChunk } from '../../../ui/lazyChunk';
-import { ChevronRight, Paintbrush, TrendingUp, Undo2, X } from 'lucide-react';
+import { ChevronRight, Paintbrush, Route, TrendingUp, Undo2, X } from 'lucide-react';
 import { viewWithLayers, visibleMarks, visibleObservations, mapCardOf, mapPickAnchor, type MapPick, type WorkMapPoint, bareLinesOf, visibleStationMarks, brushLinesOf, brushTitle, progressTargetOf, type Brush, type ProgressTarget, type ManualPhotoUpload, type MapEditSend, type TraceUpload, type ServiceMapInReport, unitPinsOfDay, withMediaBounds, withPendingLines, showsUnitPins, type DischargePin, type PendingProgress, type MapMoreKey, stretchLinesOf, suggestDischarges, workMapStageGroups, workMapView, type UnitDischarge, type WorkMap, type WorkMapFilter, type StretchRange, type MapPhoto, type ManualProgressDraft } from '@lilachat/shared';
 import { WorkMapDischarges, type ProgressSend } from './WorkMapDischarges';
 import { WorkMapExport } from './WorkMapExport';
@@ -21,6 +21,8 @@ import { MapMoreMenu } from './MapMoreMenu';
 import { usePortalFileViewer } from '../PortalFileViewer';
 import { WorkMapItems, type LiftRow } from './WorkMapItems';
 import { MapCardView } from './MapCardView';
+import { AvanceTop, useAvanceMode } from './AvanceMode';
+import { AvancePanel } from './AvancePanel';
 import { ServiceCroquisButton } from './ServiceCroquis';
 
 const WorkMapCanvas = lazyChunk(() => import('./WorkMapCanvas'));
@@ -108,7 +110,7 @@ function StreetPick(props: { streets: Array<{ id: string; name: string }>; onPic
   );
 }
 
-type ToolProps = { pageUrl: string; expanded: boolean; /** «Capas» opens or folds «Capas y leyenda» (design cc-04). */ layersOpen: boolean; onLayersPanel: () => void; onPick: (key: Exclude<MapMoreKey, 'open'>) => void; draws: boolean; edits: boolean; admin: boolean; onRecord?: () => void; /** «Editar croquis» (José 19/11), drawn with the class it is given. */ croquis?: (className: string) => ReactNode };
+type ToolProps = { pageUrl: string; expanded: boolean; /** «Capas» opens or folds «Capas y leyenda» (design cc-04). */ layersOpen: boolean; onLayersPanel: () => void; onPick: (key: Exclude<MapMoreKey, 'open'>) => void; draws: boolean; edits: boolean; admin: boolean; onRecord?: () => void; /** «Avance» (design av-01): only who can edit the map. */ onAvance?: () => void; /** «Editar croquis» (José 19/11), drawn with the class it is given. */ croquis?: (className: string) => ReactNode };
 
 /** «Más» with «Compartir avance» and the full screen inside (José 20/11, design mapa-v2). */
 const More = (props: ToolProps & { round: boolean; className: string }) => (
@@ -120,6 +122,11 @@ const RecordButton = (props: { onRecord?: () => void; label: string; className: 
   ? <button type="button" data-testid="mapa-registrar-avance" onClick={props.onRecord} className={props.className}><TrendingUp size={16} /> {props.label}</button>
   : null);
 
+/** «Avance» (design av-01): the mode that marks how far each work went, street by street. */
+const AvanceButton = (props: { onAvance?: () => void }) => (props.onAvance
+  ? <button type="button" data-testid="mapa-modo-avance" onClick={props.onAvance} className={`${MAP_PILL} border-primary/40 text-primary`}><Route size={16} /> Avance</button>
+  : null);
+
 /** A computer (design mapa-v2 desktop): one segmented group «Capas | Editar croquis | Más» over the map. */
 function WideTools(props: ToolProps) {
   return (
@@ -129,6 +136,7 @@ function WideTools(props: ToolProps) {
         {props.croquis?.(MAP_SEGMENT)}
         <More {...props} round={false} className={`${MAP_SEGMENT} rounded-r-xl`} />
       </MapToolGroup>
+      <AvanceButton onAvance={props.onAvance} />
       <RecordButton onRecord={props.onRecord} label="Registrar avance" className={MAP_PILL_PRIMARY} />
     </div>
   );
@@ -152,6 +160,7 @@ function NarrowFoot(props: ToolProps & { legend: ReactNode }) {
       {props.legend}
       <div className="flex flex-wrap gap-2">
         {props.croquis?.(MAP_PILL)}
+        <AvanceButton onAvance={props.onAvance} />
         <RecordButton onRecord={props.onRecord} label="Registrar" className={MAP_PILL_PRIMARY} />
       </div>
     </div>
@@ -215,6 +224,7 @@ export function WorkMapBoard(props: BoardProps) {
   const brushing = useBrush(map, props.editMap);
   const brushLines = useMemo(() => linesFor(map, brushing.brush), [map, brushing.brush]);
   const closeLayers = () => { setLayers(null); brushing.setBrush(null); };
+  const avance = useAvanceMode(map);
   const [recordingStart, setRecordingStart] = useState(false);
   const [recordDraft, setRecordDraft] = useState<ManualProgressDraft | undefined>(undefined);
   const [choosing, setChoosing] = useState<ProgressTarget | null>(null);
@@ -252,7 +262,8 @@ export function WorkMapBoard(props: BoardProps) {
   const mapLayers = useMapLayers();
   const drawn = useMemo(() => ({ view: viewWithLayers(view, mapLayers.layers), marks: visibleMarks(map.marks ?? NO_MARKS, mapLayers.layers), observations: visibleObservations(map.observations ?? NO_OBSERVATIONS, mapLayers.layers) }), [view, map, mapLayers.layers]);
   const layersNode = mapLayers.open ? <MapLayersPanel map={map} view={view} filter={filter} onFilter={setFilter} layers={mapLayers.layers} onToggle={mapLayers.toggle} photos={photoLayer.available ? { count: photoLayer.count, shown: photoLayer.shown, onToggle: photoLayer.toggle, reports: photoLayer.reports, onToggleReport: photoLayer.toggleReport } : undefined} /> : null;
-  const other = deletedPanel ?? layersPanel ?? sidePanel ?? pickPanel ?? streetPanel;
+  const avancePanel = avance.on && props.editMap && (wide || avance.target) ? <AvancePanel map={map} target={avance.target} send={props.editMap} /> : null;
+  const other = avancePanel ?? deletedPanel ?? layersPanel ?? sidePanel ?? pickPanel ?? streetPanel;
   const panel = other ?? <WorkMapPanel view={view} groups={groups} filter={filter} badge={props.badge} top={top} items={picks.items} layers={layersNode} scrolls={wide} deleteStreet={props.deleteStreet} onOpenStreet={(id) => openStreet(id)} />;
   // A phone: the map takes the screen and the panel is a sheet over it, open on demand (José 20/11).
   const [sheet, setSheet] = useState(false);
@@ -265,7 +276,7 @@ export function WorkMapBoard(props: BoardProps) {
     setSheet(opening);
     mapLayers.setOpen(opening);
   };
-  const closeSheet = () => { setSheet(false); setSide(null); closeLayers(); setStreetId(null); setChoosing(null); setSeeingDeleted(false); };
+  const closeSheet = () => { avance.closeStreet(); setSheet(false); setSide(null); closeLayers(); setStreetId(null); setChoosing(null); setSeeingDeleted(false); };
   const pick = (key: Exclude<MapMoreKey, 'open'>) => {
     if (key === 'share' || key === 'export') toggleSide(key);
     else if (key === 'screen') (expanded ? close : open)();
@@ -274,7 +285,8 @@ export function WorkMapBoard(props: BoardProps) {
     else setSeeingDeleted((shown) => !shown);
   };
   const editMap = props.editMap;
-  const tools: ToolProps = { pageUrl, expanded, layersOpen: wide ? mapLayers.open : sheet && mapLayers.open, onLayersPanel: showLayers, onPick: pick, draws: Boolean(props.onDraw), edits: Boolean(props.editMap), admin: Boolean(props.admin && props.editMap), onRecord: props.editMap && target.kind !== 'none' ? () => { setSide(null); record(); } : undefined, croquis: editMap ? (className) => <ServiceCroquisButton send={editMap} title={props.title} onDone={() => props.reload?.()} className={className} /> : undefined };
+  const openAvance = () => { setSheet(false); setSide(null); closeLayers(); setStreetId(null); setChoosing(null); setSeeingDeleted(false); avance.open(); };
+  const tools: ToolProps = { pageUrl, expanded, layersOpen: wide ? mapLayers.open : sheet && mapLayers.open, onLayersPanel: showLayers, onPick: pick, draws: Boolean(props.onDraw), edits: Boolean(props.editMap), admin: Boolean(props.admin && props.editMap), onRecord: props.editMap && target.kind !== 'none' ? () => { setSide(null); record(); } : undefined, onAvance: props.editMap ? openAvance : undefined, croquis: editMap ? (className) => <ServiceCroquisButton send={editMap} title={props.title} onDone={() => props.reload?.()} className={className} /> : undefined };
   const days = mapDays.options.length ? <MapDayChips options={mapDays.options} day={mapDays.day} onDay={mapDays.setDay} /> : null;
   const notice = props.notice ? <p role="status" data-testid="mapa-aviso" className="pointer-events-auto rounded-xl border border-primary/30 bg-surface px-3 py-2 text-[13px] font-semibold text-on-surface shadow-md">{props.notice}</p> : null;
   const filters = <MapFilters map={map} view={view} filter={filter} onFilter={setFilter} />;
@@ -285,10 +297,11 @@ export function WorkMapBoard(props: BoardProps) {
       <div className={wide ? 'flex min-h-0 flex-1' : 'relative flex min-h-0 flex-1 flex-col'}>
         <div className={`relative min-h-[320px] overflow-hidden bg-surface-variant ${wide ? 'min-w-0 flex-1' : 'flex-1'}`}>
           <Suspense fallback={<div data-testid="mapa-cargando-lienzo" className="absolute inset-0 animate-pulse bg-surface-variant" />}>
-            <WorkMapCanvas view={drawn.view} expanded={expanded} stations={stations} bare={bare} marks={drawn.marks} observations={drawn.observations} selected={picks.selected} onSelect={picks.setSelected} onCardPhoto={(photo, all) => picks.openPhoto(photo, all)} focus={picks.focus} pins={photoLayer.shown ? photoLayer.pins : unitPins} onPin={photoLayer.shown ? photoLayer.openPin : undefined} stretches={brushing.brush ? brushLines : stretches} onTap={brushing.brush ? (place) => void brushing.tap(place) : undefined} />
+            <WorkMapCanvas view={drawn.view} expanded={expanded} stations={stations} bare={bare} marks={drawn.marks} observations={drawn.observations} selected={picks.selected} onSelect={picks.setSelected} onCardPhoto={(photo, all) => picks.openPhoto(photo, all)} focus={picks.focus} pins={photoLayer.shown ? photoLayer.pins : unitPins} onPin={photoLayer.shown ? photoLayer.openPin : undefined} stretches={brushing.brush ? brushLines : avance.on ? avance.lines : stretches} onTap={brushing.brush ? (place) => void brushing.tap(place) : avance.on ? avance.tap : undefined} />
           </Suspense>
           {brushing.brush ? <BrushBand title={brushTitle(map, brushing.brush)} error={brushing.error} busy={brushing.busy} canUndo={brushing.canUndo} onUndo={() => void brushing.undo()} onDone={() => brushing.setBrush(null)} /> : null}
-          {brushing.brush ? null : wide ? (
+          {avance.on && editMap ? <AvanceTop mode={avance} title={props.title} send={editMap} /> : null}
+          {brushing.brush || avance.on ? null : wide ? (
             <>
               <div data-testid="mapa-flotante" className="pointer-events-none absolute inset-x-4 top-4 z-10 flex flex-col items-start gap-2">
                 <div className="flex w-full min-w-0 items-start gap-2">{days ? <div className="min-w-0 shrink">{days}</div> : null}<WideTools {...tools} /></div>

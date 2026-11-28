@@ -1,6 +1,6 @@
 import { useMemo, useState, type ReactNode } from 'react';
 import { Linking, Pressable, ScrollView, Text, View } from 'react-native';
-import { ChevronRight, TrendingUp, X } from 'lucide-react-native';
+import { ChevronRight, Route, TrendingUp, X } from 'lucide-react-native';
 import { viewWithLayers, visibleMarks, visibleObservations, type WorkMapMark, type WorkMapObservation, mapCardOf, mapPickAnchor, mapPickOnMap, type MapPick, type WorkMapPoint, bareLinesOf, visibleStationMarks, progressTargetOf, type Brush, type ProgressTarget, type ManualPhotoUpload, type MapEditSend, type TraceUpload, type ServiceMapInReport, unitPinsOfDay, withMediaBounds, withPendingLines, showsUnitPins, type PendingProgress, type MapMoreKey, stretchLinesOf, suggestDischarges, workMapStageGroups, workMapView, type DischargePin, type StationMark, type StretchRange, type UnitDischarge, type MapPhoto, type ManualProgressDraft, type WorkMapLine, type WorkMap, type WorkMapFilter, type WorkMapView } from '@lilachat/shared';
 import { Modal } from '../../../ui/Modal';
 import { Sheet } from '../../../ui/Sheet';
@@ -29,6 +29,7 @@ import { MapCardView } from './MapCardView';
 import { WorkMapItems, type LiftRow } from './WorkMapItems';
 import { useFileViewer } from '../useFileViewer';
 import { ServiceCroquisButton } from './ServiceCroquis';
+import { AvanceMode } from './AvanceMode';
 
 type PhotoLayer = ReturnType<typeof usePhotoLayer>;
 const NO_MARKS: NonNullable<WorkMap['marks']> = [];
@@ -162,13 +163,19 @@ function MapTop(props: FloatingProps) {
 }
 
 /** The foot of the map: the legend, «Editar croquis» small and «Registrar» (zoom and GPS on the right), raised over the map attribution (E2E 20/11). */
-function MapFoot(props: { legend: ReactNode; croquis: ReactNode; onRecord?: () => void }) {
+function MapFoot(props: { legend: ReactNode; croquis: ReactNode; onRecord?: () => void; /** «Avance» (design av-01): only who can edit the map. */ onAvance?: () => void }) {
   const colors = useColores();
   return (
     <View pointerEvents="box-none" className="absolute bottom-8 left-3 right-20 items-start gap-2">
       {props.legend}
       <View pointerEvents="box-none" className="flex-row flex-wrap gap-2">
         {props.croquis}
+        {props.onAvance ? (
+          <Pressable testID="mapa-modo-avance" onPress={props.onAvance} className="h-11 flex-row items-center gap-2 rounded-full border border-primary/40 bg-surface px-4" style={MAP_SHADOW}>
+            <Route size={18} color={colors.primary} />
+            <Text className="text-[15px] font-semibold text-primary">Avance</Text>
+          </Pressable>
+        ) : null}
         {props.onRecord ? (
           <Pressable testID="mapa-registrar-avance" onPress={props.onRecord} className="h-11 flex-row items-center gap-2 rounded-full bg-primary px-4" style={MAP_SHADOW}>
             <TrendingUp size={18} color={colors['on-primary']} />
@@ -200,6 +207,7 @@ export function WorkMapBoard(props: BoardProps) {
   const [brush, setBrush] = useState<{ brush: Brush; from: LayersKind } | null>(null);
   const [sheet, setSheet] = useState(false);
   const [legendOpen, setLegendOpen] = useState(false);
+  const [avance, setAvance] = useState(false);
   const target = useMemo(() => progressTargetOf(map), [map]);
   const openStreet = (id: string | null, record = false, draft?: ManualProgressDraft) => { setChoosing(null); setRecordingStart(record); setRecordDraft(draft); setStreetId(id); };
   // No street to frame: the map frames the photos and the units (Portal via José 09/11).
@@ -251,7 +259,7 @@ export function WorkMapBoard(props: BoardProps) {
           </View>
         ) : null}
         <MapTop map={map} view={view} filter={filter} onFilter={setFilter} days={mapDays} notice={props.notice} layersOpen={sheet && mapLayers.open} onLayers={toggleSheet} legendOpen={legendOpen} onLegend={() => setLegendOpen(!legendOpen)} onMore={more} draws={Boolean(props.onDraw)} edits={Boolean(props.editMap)} admin={Boolean(props.admin)} />
-        <MapFoot legend={legendOpen ? <WorkMapLegend view={view} waiting={pendingItems.length} /> : null} croquis={croquis} onRecord={record} />
+        <MapFoot legend={legendOpen ? <WorkMapLegend view={view} waiting={pendingItems.length} /> : null} croquis={croquis} onRecord={record} onAvance={props.editMap ? () => setAvance(true) : undefined} />
         <PanelOverlay open={sheet} onClose={() => setSheet(false)}>
           <WorkMapPanel view={view} groups={groups} filter={filter} badge={props.badge} top={top} items={picks.items} layers={layersNode} deleteStreet={props.deleteStreet} onOpenStreet={(id) => openStreet(id)} />
         </PanelOverlay>
@@ -263,6 +271,7 @@ export function WorkMapBoard(props: BoardProps) {
       <WorkMapExport open={side === 'export'} map={map} filter={filter} onFilter={setFilter} title={props.title} pageUrl={pageUrl} send={props.editMap} uploadTrace={props.uploadTrace} onClose={() => setSide(null)} />
       {props.editMap ? <WorkLayersSheet kind={layers} map={map} send={props.editMap} onBrush={(picked) => { setBrush({ brush: picked, from: layers ?? 'stages' }); setLayers(null); }} onClose={() => setLayers(null)} /> : null}
       {props.editMap && brush ? <BrushMap map={map} send={props.editMap} brush={brush.brush} onDone={() => { setLayers(brush.from); setBrush(null); }} /> : null}
+      {props.editMap && avance ? <AvanceMode map={map} title={props.title} send={props.editMap} onExit={() => setAvance(false)} /> : null}
       <ShareProgress open={side === 'share'} map={map} filter={filter} onFilter={setFilter} send={props.editMap} mapInReport={props.mapInReport} onClose={() => setSide(null)} />
     </View>
   );

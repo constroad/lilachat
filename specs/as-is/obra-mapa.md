@@ -299,6 +299,21 @@ Motores puros, con test, usados por web y APK:
   web y APK, y soltar pasado el fin dice «Ahí termina la calle del mapa…» (`HANDLE_PAST_END`).
   También: tras el primer toque de inicio, la línea y «Largo» ya van del aro de inicio al fin (antes
   seguían la calle entera).
+- **27/11** «Modo Avance» (diseño `av-01-modo-avance-movil`, web y APK): botón «Avance»
+  (`mapa-modo-avance`) al pie del mapa (APK y web en teléfono) y junto a «Registrar avance» (web en
+  computadora); solo con permiso de editar el mapa (`editMap`). Arriba, una tira horizontal de
+  trabajos (chips de 56 dp con punto de color, nombre y %, el elegido con ✓; % de `layerRowsOf`) y
+  la pista «Toca una calle para marcar su avance de <Trabajo>». Tocar una calle (`streetAtTap`)
+  abre el panel: «TRABAJO · CALLE», largo, barra «N m de L m», botones 0/25/50/75/100 %, «Hasta una
+  progresiva exacta» (metros escritos) y «Guardar avance». Guardar usa las puertas de siempre: si la
+  calle no lleva el trabajo, primero `work_scope` (calle entera, o el trabajo sumado a sus tramos,
+  como la brocha), luego `work_manual_progress` desde `manualStartOf`; queda PENDIENTE hasta que un
+  admin lo apruebe (`MANUAL_SENT`). Un % igual o menor a lo aprobado no se envía («Esta calle ya va
+  en N m de …»). Ids de entrada estables por guardado (reenvío sin duplicar). Motor puro
+  `shared/src/workAvanceMode.ts`; UI `AvanceMode.tsx` + `AvancePanel.tsx` (web y APK). APK: modal a
+  pantalla completa; web: tira y pista sobre el mapa, panel en la hoja/lateral. Sin trabajos, ofrece
+  «Agregar trabajo» (`NewLabel`). Diferencia con el diseño: sin la barra blanca «Mapa Operativo
+  Vial» (Stitch la inventó) ni los botones de zoom propios (se usan los del mapa).
 - **20/11** Rediseño aprobado `mapa-v2` (web y APK): cabecera de una fila en Mapa, mapa a pantalla,
   días y corte flotando, «Compartir avance» y «Pantalla completa» dentro de «Más», panel como hoja
   en el teléfono. Auditorías: `design/stitch/auditorias/mapa-v2-movil.md` y `mapa-v2-escritorio.md`.
@@ -313,6 +328,7 @@ Motores puros, con test, usados por web y APK:
 | o-04 etapas | Implementado (brocha) | `WorkLayers.tsx`, `LayerActions.tsx` |
 | o-05 trabajos | Implementado (brocha) | `WorkLayers.tsx`, `LayerActions.tsx` |
 | o-06 registrar avance | Implementado | `ManualProgress.tsx` |
+| av-01 modo avance | Implementado web y APK (27/11) | `AvanceMode.tsx`, `AvancePanel.tsx`, `shared/src/workAvanceMode.ts` |
 | o-07 avance por unidades | Implementado; falta «Ancho útil» y botón fijo en APK (auditoría 08/11, no verificado si se cerró) | `WorkMapDischarges.tsx` |
 | o-08 avance parcial y enlace | Implementado | `ShareProgress.tsx`, `PdfAction.tsx` |
 | o-09 vista del cliente | **No es de Lilachat**: página pública de Portal; le falta «Línea de tiempo» y filtro por etapa (según spec) | sin referencia en código |

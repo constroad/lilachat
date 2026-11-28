@@ -30,8 +30,8 @@ type OpenFile = (file: ViewableFile, siblings?: readonly ViewableFile[]) => void
 const BODY = { padding: 16, gap: 12, paddingBottom: 40 };
 
 /**
- * The ONE «Crear informe» of Informes, where «Generar informe de servicio» was (José 28/11: «se siente duplicado;
- * solamente debería ir un Crear»). It opens the picker; «Informe de servicio» is its first type when offered.
+ * The ONE «Crear informe» of Informes, where «Generar informe de servicio» was (José 28/11: it felt duplicated;
+ * only one create button). It opens the picker; «Informe de servicio» is its first type when offered.
  */
 function CreateReportButton({ onPress }: { onPress: () => void }) {
   const colors = useColores();

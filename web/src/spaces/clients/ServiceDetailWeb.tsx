@@ -26,8 +26,8 @@ const orderLinkAction = (links: ChannelLinks | undefined, top: OpenSheet | undef
   links?.can('order') && top?.tab === 'orders' ? { label: 'Crear enlace del pedido', onPress: () => links.open({ kind: 'order', clientId: target.clientId, orderId: top.id }) } : undefined;
 
 /**
- * The ONE «Crear informe» of Informes, where «Generar informe de servicio» was (José 28/11: «se siente duplicado;
- * solamente debería ir un Crear»). It opens the picker; «Informe de servicio» is its first type when offered.
+ * The ONE «Crear informe» of Informes, where «Generar informe de servicio» was (José 28/11: it felt duplicated;
+ * only one create button). It opens the picker; «Informe de servicio» is its first type when offered.
  */
 const CreateReportButton = ({ onPress }: { onPress: () => void }) => (
   <button type="button" data-testid="crear-informe" onClick={onPress} className="flex h-11 w-full items-center gap-2 rounded-xl border border-primary/30 bg-primary/10 px-3 text-left text-sm font-semibold text-primary hover:bg-primary/15"><FilePlus size={16} /> Crear informe</button>

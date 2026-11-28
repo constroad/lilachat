@@ -96,7 +96,7 @@ Plan» (`channelTabsFor`, `checklistHoldsPending`); quien no tiene Checklist con
 - Informes agrupados por día de Lima, del más nuevo al más viejo; «Creado por …».
 - «Crear informe» en el APK y la web angosta ofrece los tipos de la página pública de Portal y todos se llenan aquí (18/11, `fieldPickerReportTypes`). La aprobación de adicional (APR-ADI) sale solo a quien ve la plata. Detalle por tipo en `obra-informes.md`.
 - En el control de pista, una línea sobre las unidades dice que la foto de unidad vacía cierra la unidad y le da su número de colocación (`UNITS_CLOSE_HINT`, 18/11). La tarjeta de una unidad cerrada dice «Colocación N° X» bajo la placa (`placementOf`).
-- **«Terminar unidad»** (19/11). Las fotos de una unidad salen al grupo del cliente solo con este botón, que ve cualquier miembro del canal, en borrador o publicado (José 19/11 noche: «que sea para todos»).
+- **«Terminar unidad»** (19/11). Las fotos de una unidad salen al grupo del cliente solo con este botón, que ve cualquier miembro del canal, en borrador o publicado (José 19/11 noche: «que sea para todos»; 28/11: «Debería estar para todos»). El documento del informe ya no recibe la marca `admin`: solo las etapas del servicio, que leen plata, la usan.
   - Antes de enviar, una revisión (web `UnitAlbumDialog`, APK `UnitAlbumSheet`) muestra todas las fotos marcadas. La persona desmarca las que no van, y una miniatura rota queda fuera sola.
   - Las fotos van a la herramienta de Portal `enviar_fotos_de_unidad`.
   - El botón dice «Enviar fotos al grupo» en una unidad cerrada y «Reenviar fotos» una vez enviadas.

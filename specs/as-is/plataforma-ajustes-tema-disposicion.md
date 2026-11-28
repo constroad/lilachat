@@ -25,7 +25,9 @@ Fuentes: código, `git log`, `specs/PLANES-FLUIDEZ-IOS-PWA.spec.md` §3 y
   6. Dispositivos vinculados.
   7. Grupos como lista, Medios, Almacenamiento, Destacados, Respaldo, respuesta
      automática, «Respaldo del servidor» (operador).
-  8. Diagnóstico y «Buscar actualizaciones».
+  8. Diagnóstico y «Buscar actualizaciones». La misma consulta (`useActualizacionesDeLaApp`)
+     publica el aviso de versión para la píldora que sale sobre cualquier pantalla (28/11,
+     `plataforma-versiones-ota-respaldo.md`).
   9. Superadmin (solo el creador) e «Invitar a alguien».
   10. Cuenta: «Cerrar sesión» y, al final, «Borrar mi cuenta» (`DeleteAccountSetting.tsx`,
       19/11; detalle en `plataforma-perfil-contactos-privacidad.md`).

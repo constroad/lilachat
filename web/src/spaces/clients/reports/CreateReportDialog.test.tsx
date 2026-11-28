@@ -12,6 +12,25 @@ vi.mock('@lilachat/shared', async (original) => {
 });
 
 describe('CreateReportDialog', () => {
+  it('«Informe de servicio» comes first when offered and runs its own action, no responsible asked (José 28/11)', async () => {
+    // Arrange
+    const pick = vi.fn();
+    const serviceReport = vi.fn();
+    render(<CreateReportDialog seesMoney onServiceReport={serviceReport} onPick={pick} onClose={vi.fn()} />);
+    // Act
+    const first = screen.getAllByTestId(/^tipo-informe-/)[0]!;
+    await userEvent.click(first);
+    // Assert
+    expect(first).toHaveTextContent('Informe de servicio');
+    expect(serviceReport).toHaveBeenCalledTimes(1);
+    expect(pick).not.toHaveBeenCalled();
+  });
+
+  it('without the action, no «Informe de servicio» row', () => {
+    render(<CreateReportDialog seesMoney onPick={vi.fn()} onClose={vi.fn()} />);
+    expect(screen.queryByTestId('tipo-informe-INF-SERV')).toBeNull();
+  });
+
   it('an observation opens at once: no one types a responsible in the field (stitch-design §5-ter rule 1)', async () => {
     const pick = vi.fn();
     render(<CreateReportDialog people={['Ana']} onPick={pick} onClose={vi.fn()} />);

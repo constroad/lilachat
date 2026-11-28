@@ -94,8 +94,8 @@ export function WorkMapLegend(props: { view: WorkMapView; waiting: number }) {
     <View testID="mapa-leyenda" className="gap-1.5 rounded-xl border border-outline/15 bg-surface px-3 py-2" style={MAP_SHADOW}>
       {mapLegendEntries(props.view, props.waiting).map((entry) => (
         <View key={entry.key} className="flex-row items-center gap-2">
-          {entry.kind === 'todo' ? <View className="w-4 border-t-2 border-dashed border-on-surface-variant/60" />
-            : entry.kind === 'waiting' ? <View className="w-4 border-t-[3px] border-dashed border-on-surface/50" />
+          {entry.kind === 'todo' ? <View className="h-1.5 w-4 rounded-full bg-on-surface-variant/35" />
+            : entry.kind === 'waiting' ? <View className="h-1.5 w-4 rounded-full bg-on-surface/40" />
             : <View className="h-1.5 w-4 rounded-full border border-on-surface/40" style={{ backgroundColor: entry.color ?? undefined }} />}
           <Text className={`text-[13px] ${entry.kind === 'work' ? 'font-medium text-on-surface' : 'text-on-surface-variant'}`}>{entry.label}</Text>
         </View>

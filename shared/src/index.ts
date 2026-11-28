@@ -313,3 +313,5 @@ export * from './accountDeletion.js';
 export * from './cameraZoom.js';
 export * from './chatWallpaper.js';
 export * from './colorPick.js';
+export * from './workLineWidth.js';
+export * from './decimalText.js';

@@ -164,6 +164,11 @@ describe('dischargePinsOf and stretchLineOf (what the canvas draws)', () => {
     expect(line?.coordinates.at(-1)?.[0]).toBeCloseTo(-76.995, 3);
     expect(stretchLineOf(map, 'nope', 0, 10)).toBeNull();
   });
+
+  it('carries the street width so the stretch is painted as wide as the street', () => {
+    const map = { streets: [{ id: 's1', name: 'Calle', line: [{ lat: -12, lng: -77 }, { lat: -12, lng: -76.99 }], lengthM: 1090, widthM: 7.2 }] };
+    expect(stretchLineOf(map, 's1', 0, 545)?.widthM).toBe(7.2);
+  });
 });
 
 describe('dischargePinCollection (the APK draws pins as a layer)', () => {

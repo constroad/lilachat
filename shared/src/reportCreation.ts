@@ -236,3 +236,10 @@ export function reportViewOf(draft: ReportDraftResult | null, itemsOf: string | 
 export function staleAnswerIds(answers: readonly Pick<EphemeralAnswer, 'commandId' | 'state'>[]): string[] {
   return answers.slice(0, -1).filter((answer) => answer.state === 'answered').map((answer) => answer.commandId);
 }
+
+/** The service's liquidation in the same picker (José 28/11: «solamente debería ir un Crear»): a picker-only code, never sent. */
+export const SERVICE_REPORT_PICK = 'INF-SERV';
+export const SERVICE_REPORT_OPTION: ReportTypeOption = { code: SERVICE_REPORT_PICK, label: 'Informe de servicio', caption: 'La liquidación del servicio, con sus montos', opensHere: true, money: true };
+
+/** «Informe de servicio» first when the space offers it to this person (it carries amounts), then the field types. */
+export const withServiceReport = (options: ReportTypeOption[], offered: boolean): ReportTypeOption[] => (offered ? [SERVICE_REPORT_OPTION, ...options] : options);

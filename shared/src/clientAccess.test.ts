@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { accessSummary, canSeeDrive, MEMBER_TABS, canSeeTab, isFieldReport, isMoneyRecord, channelTabs, memberAccessIn, memberAccessOf, serviceAccessOf, taskActionsFor, toggleInAccess, type MyClientAccess } from './clientAccess.js';
+import { accessSummary, canSeeDrive, MEMBER_TABS, canSeeTab, isFieldReport, isMoneyRecord, channelTabs, memberAccessIn, memberAccessOf, serviceAccessOf, taskActionsFor, toggleInAccess, clientChannelMenuOf, type MyClientAccess } from './clientAccess.js';
 
 /** José 30/10 night: topographers and engineers join a client's channel seeing only what an admin picks; money only for admins. */
 const STAGE_A = 'a'.repeat(24);
@@ -159,5 +159,23 @@ describe('isFieldReport: the reports of a member without money', () => {
 
   it('does not depend on accents or capitals', () => {
     expect(isFieldReport({ typeLabel: 'CONTROL DE IMPRIMACION' })).toBe(true);
+  });
+});
+
+describe('clientChannelMenuOf (José 28/11: one menu beside «Buscar servicio»)', () => {
+  it('lists what this person may do, in order, with the accesses\' line', () => {
+    // Arrange / Act
+    const items = clientChannelMenuOf({ link: true, accessRestricted: 0, drive: true });
+    // Assert
+    expect(items).toEqual([
+      { key: 'link', label: 'Enlace del cliente' },
+      { key: 'access', label: 'Accesos del canal', hint: 'Todos ven el canal; los montos, solo los admins' },
+      { key: 'drive', label: 'Drive del cliente' },
+    ]);
+  });
+
+  it('counts who is restricted and leaves out what is not allowed', () => {
+    expect(clientChannelMenuOf({ link: false, accessRestricted: 2, drive: false })).toEqual([{ key: 'access', label: 'Accesos del canal', hint: '2 con acceso restringido' }]);
+    expect(clientChannelMenuOf({ link: false, accessRestricted: null, drive: false })).toEqual([]);
   });
 });

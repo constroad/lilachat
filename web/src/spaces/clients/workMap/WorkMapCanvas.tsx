@@ -4,7 +4,7 @@ import workerUrl from 'maplibre-gl/dist/maplibre-gl-csp-worker?url';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { addObservationLayer, useMapCardPopup, useObservationData } from './MapCardPopup';
 import { useDarkClass } from '../../../ui/useDarkClass';
-import { type MapPick, type ViewableFile, type WorkMapObservation, MARK_CHIP_PAINT, MARK_FILL_PAINT, MARK_GLYPH_PAINT, MARK_LINE_PAINT, MARK_TEXT_LAYOUT, MARK_TEXT_PAINT, mapMarkCollection, type WorkMapMark, PLACE_ZOOM, type MapFrame, STATION_DOT_PAINT, STATION_TEXT_LAYOUT, STATION_TEXT_PAINT, stationMarkCollection, type StationMark, NAMED_ROAD_LAYER, ROAD_SOURCE_LAYERS, tapBox, tapTolerancePx, WORK_MAP_PENDING_PAINT, LAYER_BASE_PAINT, lineCasingPaint, LAYER_LABEL_LAYOUT, LAYER_LABEL_PAINT, LAYER_PLANNED_PAINT, STATION_MIN_ZOOM, workMapStyleFor, workMapCollection, type BasemapFeatureLike, type DischargePin, type StreetEnd, type StreetHandle, type TapFeatures, type WorkMapLine, type WorkMapPoint, type WorkMapView } from '@lilachat/shared';
+import { type MapPick, type ViewableFile, type WorkMapObservation, MARK_CHIP_PAINT, MARK_FILL_PAINT, MARK_GLYPH_PAINT, MARK_LINE_PAINT, MARK_TEXT_LAYOUT, MARK_TEXT_PAINT, mapMarkCollection, type WorkMapMark, PLACE_ZOOM, type MapFrame, STATION_DOT_PAINT, STATION_TEXT_LAYOUT, STATION_TEXT_PAINT, stationMarkCollection, type StationMark, NAMED_ROAD_LAYER, ROAD_SOURCE_LAYERS, tapBox, tapTolerancePx, WORK_MAP_PENDING_PAINT, LAYER_BASE_PAINT, lineCasingPaint, LAYER_LABEL_LAYOUT, LAYER_LABEL_PAINT, LAYER_PLANNED_PAINT, LAYER_DONE_PAINT, WORK_MAP_LABELS_LAYER, WORK_MAP_STRETCH_PAINT, STATION_MIN_ZOOM, workMapStyleFor, workMapCollection, type BasemapFeatureLike, type DischargePin, type StreetEnd, type StreetHandle, type TapFeatures, type WorkMapLine, type WorkMapPoint, type WorkMapView } from '@lilachat/shared';
 
 maplibregl.setWorkerUrl(workerUrl);
 
@@ -17,7 +17,6 @@ const PENDING = 'work-map-pending';
 const STATIONS = 'work-map-stations';
 const BARE = 'work-map-bare';
 const LABELS = 'work-map-layer-labels';
-const DONE_WIDTH = 7;
 const MARKS = 'work-map-marks';
 const NO_MARKS: WorkMapMark[] = [];
 const NO_STATIONS: StationMark[] = [];
@@ -26,32 +25,34 @@ const LINE_ROUND = { 'line-cap': 'round', 'line-join': 'round' } as const;
 const NO_PINS: DischargePin[] = [];
 
 /** Portal's drawings (gibas, manholes…) under the streets' lines, in Portal's croquis colors: chip, its dot, tag (José 19/11). */
-function addMarkLayers(map: maplibregl.Map) {
+function addMarkLayers(map: maplibregl.Map, under: string | undefined) {
   map.addSource(MARKS, { type: 'geojson', data: mapMarkCollection([]) });
-  map.addLayer({ id: `${MARKS}-fill`, type: 'fill', source: MARKS, filter: ['==', ['geometry-type'], 'Polygon'], paint: MARK_FILL_PAINT as maplibregl.FillLayerSpecification['paint'] });
-  map.addLayer({ id: `${MARKS}-line`, type: 'line', source: MARKS, filter: ['!=', ['geometry-type'], 'Point'], layout: LINE_ROUND, paint: MARK_LINE_PAINT as maplibregl.LineLayerSpecification['paint'] });
+  map.addLayer({ id: `${MARKS}-fill`, type: 'fill', source: MARKS, filter: ['==', ['geometry-type'], 'Polygon'], paint: MARK_FILL_PAINT as maplibregl.FillLayerSpecification['paint'] }, under);
+  map.addLayer({ id: `${MARKS}-line`, type: 'line', source: MARKS, filter: ['!=', ['geometry-type'], 'Point'], layout: LINE_ROUND, paint: MARK_LINE_PAINT as maplibregl.LineLayerSpecification['paint'] }, under);
   map.addLayer({ id: `${MARKS}-dot`, type: 'circle', source: MARKS, filter: ['==', ['geometry-type'], 'Point'], paint: MARK_CHIP_PAINT as maplibregl.CircleLayerSpecification['paint'] });
   map.addLayer({ id: `${MARKS}-glyph`, type: 'circle', source: MARKS, filter: ['==', ['geometry-type'], 'Point'], paint: MARK_GLYPH_PAINT as maplibregl.CircleLayerSpecification['paint'] });
   map.addLayer({ id: `${MARKS}-text`, type: 'symbol', source: MARKS, layout: MARK_TEXT_LAYOUT as maplibregl.SymbolLayerSpecification['layout'], paint: MARK_TEXT_PAINT });
 }
 
+/** Our lines and fills under the street names (José 28/11: «el nombre de la calle siempre por encima»). */
 function addWorkLayers(map: maplibregl.Map) {
-  addMarkLayers(map);
+  const under = map.getLayer(WORK_MAP_LABELS_LAYER) ? WORK_MAP_LABELS_LAYER : undefined;
+  addMarkLayers(map, under);
   map.addSource(BARE, { type: 'geojson', data: workMapCollection([]) });
-  map.addLayer({ id: BARE, type: 'line', source: BARE, layout: LINE_ROUND, paint: LAYER_BASE_PAINT as maplibregl.LineLayerSpecification['paint'] });
+  map.addLayer({ id: BARE, type: 'line', source: BARE, layout: LINE_ROUND, paint: LAYER_BASE_PAINT as maplibregl.LineLayerSpecification['paint'] }, under);
   map.addSource(PLANNED, { type: 'geojson', data: workMapCollection([]) });
   map.addSource(DONE, { type: 'geojson', data: workMapCollection([]) });
   // A light rim under a near-black layer, so it reads on the dark map (José 28/11).
-  map.addLayer({ id: `${PLANNED}-casing`, type: 'line', source: PLANNED, layout: LINE_ROUND, paint: lineCasingPaint(LAYER_PLANNED_PAINT['line-width']) as maplibregl.LineLayerSpecification['paint'] });
-  map.addLayer({ id: PLANNED, type: 'line', source: PLANNED, layout: LINE_ROUND, paint: LAYER_PLANNED_PAINT as maplibregl.LineLayerSpecification['paint'] });
+  map.addLayer({ id: `${PLANNED}-casing`, type: 'line', source: PLANNED, layout: LINE_ROUND, paint: lineCasingPaint(LAYER_PLANNED_PAINT['line-width']) as maplibregl.LineLayerSpecification['paint'] }, under);
+  map.addLayer({ id: PLANNED, type: 'line', source: PLANNED, layout: LINE_ROUND, paint: LAYER_PLANNED_PAINT as maplibregl.LineLayerSpecification['paint'] }, under);
   // Suggested and waiting stretches under the done line: the chosen work's color stays on top (José 09/11).
   map.addSource(STRETCH, { type: 'geojson', data: workMapCollection([]) });
-  map.addLayer({ id: STRETCH, type: 'line', source: STRETCH, layout: LINE_ROUND, paint: { 'line-color': ['get', 'color'], 'line-width': 11, 'line-opacity': 0.55 } });
-  map.addLayer({ id: `${DONE}-casing`, type: 'line', source: DONE, layout: LINE_ROUND, paint: lineCasingPaint(DONE_WIDTH) as maplibregl.LineLayerSpecification['paint'] });
-  map.addLayer({ id: DONE, type: 'line', source: DONE, layout: LINE_ROUND, paint: { 'line-color': ['get', 'color'], 'line-width': DONE_WIDTH } });
-  // What waits for approval: thin and dashed in its work's color, over the approved line (José 28/11).
+  map.addLayer({ id: STRETCH, type: 'line', source: STRETCH, layout: LINE_ROUND, paint: WORK_MAP_STRETCH_PAINT as maplibregl.LineLayerSpecification['paint'] }, under);
+  map.addLayer({ id: `${DONE}-casing`, type: 'line', source: DONE, layout: LINE_ROUND, paint: lineCasingPaint(LAYER_DONE_PAINT['line-width']) as maplibregl.LineLayerSpecification['paint'] }, under);
+  map.addLayer({ id: DONE, type: 'line', source: DONE, layout: LINE_ROUND, paint: LAYER_DONE_PAINT as maplibregl.LineLayerSpecification['paint'] }, under);
+  // What waits for approval: solid and half-transparent in its work's color, over the approved line (José 28/11).
   map.addSource(PENDING, { type: 'geojson', data: workMapCollection([]) });
-  map.addLayer({ id: PENDING, type: 'line', source: PENDING, layout: { 'line-join': 'round' }, paint: WORK_MAP_PENDING_PAINT as maplibregl.LineLayerSpecification['paint'] });
+  map.addLayer({ id: PENDING, type: 'line', source: PENDING, layout: { 'line-join': 'round' }, paint: WORK_MAP_PENDING_PAINT as maplibregl.LineLayerSpecification['paint'] }, under);
   map.addSource(STATIONS, { type: 'geojson', data: stationMarkCollection([]) });
   // «0+000» only zoomed in (José 28/11: they covered every street).
   map.addLayer({ id: `${STATIONS}-dot`, type: 'circle', source: STATIONS, minzoom: STATION_MIN_ZOOM, paint: STATION_DOT_PAINT });

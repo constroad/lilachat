@@ -1,5 +1,5 @@
 import { dayMonthOf } from './appDirectory.js';
-import { metersLabel, projectOntoLine, sliceLine, workMapView, type WorkMap, type WorkMapLine, type WorkMapPoint, type WorkMapScope } from './workMap.js';
+import { metersLabel, projectOntoLine, sliceLine, widthOf, workMapView, type WorkMap, type WorkMapLine, type WorkMapPoint, type WorkMapScope } from './workMap.js';
 import type { WorkProgressResult } from './workProgressSend.js';
 import { WORK_TAG_COLORS, workScopeDeleteRequest, workScopeRequest, type ScopeDraft, type WorkScopeDeleteRequest, type WorkScopeRequest } from './workScopeDraft.js';
 
@@ -92,17 +92,31 @@ export function brushProblem(map: Pick<WorkMap, 'scopes'>, brush: Brush, streetI
   return scopesOf(map, streetId).some(emptied) ? BRUSH_LAST_WORK : null;
 }
 
-/** What a tap on the street sends: the brush on all its stretches, or off if it had it on all. */
+/**
+ * A stretch inside the street's own length, the one Portal checks against (José 28/11: «El tramo
+ * excede el largo de la calle (44.28 m)»). Portal recomputes `lengthM` when a street is redrawn and
+ * keeps its stretches as they were, so a stretch can end past a shortened street; resent untouched,
+ * Portal refused the whole tap.
+ */
+export function clampToStreet(draft: ScopeDraft, lengthM: number): ScopeDraft {
+  const fromM = Math.min(Math.max(0, draft.fromM ?? 0), lengthM);
+  const toM = Math.min(Math.max(fromM, draft.toM ?? lengthM), lengthM);
+  return { ...draft, fromM, toM };
+}
+
+const hasLength = (draft: ScopeDraft): boolean => (draft.toM ?? 0) > (draft.fromM ?? 0);
+
+/** What a tap on the street sends: the brush on all its stretches, or off if it had it on all; always within the street. */
 export function brushRequests(map: WorkMap, brush: Brush, streetId: string, entryId: string): WorkScopeRequest[] {
   const street = map.streets.find((one) => one.id === streetId);
   if (!street || brushProblem(map, brush, streetId)) return [];
-  const scopes = scopesOf(map, streetId);
-  if (!scopes.length) {
-    const whole: ScopeDraft = { fromM: 0, toM: Math.round(street.lengthM), workIds: [], stageId: null, widthM: null };
+  const on = !brushHas(map, brush, streetId);
+  const kept = scopesOf(map, streetId).map((scope) => ({ scope, draft: clampToStreet(draftOf(scope), street.lengthM) })).filter((one) => hasLength(one.draft));
+  if (!kept.length) {
+    const whole: ScopeDraft = { fromM: 0, toM: street.lengthM, workIds: [], stageId: null, widthM: null };
     return [workScopeRequest(map, streetId, painted(whole, brush, true), entryId)];
   }
-  const on = !brushHas(map, brush, streetId);
-  return scopes.map((scope) => workScopeRequest(map, streetId, painted(draftOf(scope), brush, on), entryId, scope.id));
+  return kept.map(({ scope, draft }) => workScopeRequest(map, streetId, painted(draft, brush, on), entryId, scope.id));
 }
 
 /** «Deshacer»: the street's stretches as they were before the tap; one the tap created is deleted. */
@@ -131,13 +145,13 @@ export const BRUSH_STAGE_COLOR: string = WORK_TAG_COLORS[5];
 export const BRUSH_OFF_STREET = 'Toca sobre una calle de la obra.';
 export const BRUSH_NO_EDIT = 'Sin permiso para editar el mapa.';
 
-/** The stretches that carry the brush, thick over the map: what is already painted. */
+/** The stretches that carry the brush, solid and as wide as the street: what is already painted. */
 export function brushLinesOf(map: WorkMap, brush: Brush): WorkMapLine[] {
   const color = brush.kind === 'stage' ? BRUSH_STAGE_COLOR : map.works.find((work) => work.id === brush.id)?.color ?? BRUSH_STAGE_COLOR;
   return map.scopes.filter((scope) => scopeHas(scope, brush)).flatMap((scope) => {
-    const line = map.streets.find((street) => street.id === scope.streetId)?.line ?? [];
-    const coordinates = sliceLine(line, scope.fromM, scope.toM).map((point): [number, number] => [point.lng, point.lat]);
-    return coordinates.length >= 2 ? [{ streetId: scope.streetId, color, coordinates, fromM: scope.fromM, toM: scope.toM }] : [];
+    const street = map.streets.find((one) => one.id === scope.streetId);
+    const coordinates = sliceLine(street?.line ?? [], scope.fromM, scope.toM).map((point): [number, number] => [point.lng, point.lat]);
+    return coordinates.length >= 2 ? [{ streetId: scope.streetId, color, coordinates, fromM: scope.fromM, toM: scope.toM, ...widthOf(scope.widthM ?? street?.widthM) }] : [];
   });
 }
 

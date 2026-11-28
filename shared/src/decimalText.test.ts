@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { cleanDecimalText, decimalOf, decimalTextFollows } from './decimalText';
+import { cleanDecimalText, decimalOf, decimalTextFollows } from './decimalText.js';
 
 describe('cleanDecimalText', () => {
   it('keeps a trailing separator so the person can go on typing «3.»', () => {

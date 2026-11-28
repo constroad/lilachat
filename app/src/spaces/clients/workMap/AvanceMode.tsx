@@ -77,7 +77,7 @@ export function AvanceMode(props: { map: WorkMap; /** The board's stage and day 
   };
   const workId = avancePickedWork(map, chosen);
   const chips = useMemo(() => avanceChipsOf(map, workId, props.filter), [map, workId, props.filter]);
-  // The map by layer as on the board (José 28/11): the picked work dashed in its colour, the rest thin and neutral.
+  // The map by layer as on the board (José 28/11): the picked work solid in its colour, the rest faint and neutral.
   const whole = useMemo(() => workMapView(map), [map]);
   const lines = useMemo(() => layerMapLinesOf({ map, view: whole, filter: NO_FILTER, workId, rows: NO_ROWS, hidden: false }), [map, whole, workId]);
   const view = useMemo(() => ({ ...whole, planned: lines.planned, done: lines.done }), [whole, lines]);

@@ -3,6 +3,7 @@ import { dayMonthOf } from './appDirectory.js';
 import type { ServiceMapResult } from './serviceMap.js';
 import { mapMarksBounds, workMapMarksOf, type WorkMapMark } from './workMapMarks.js';
 import { observationsBounds, workMapObservationsOf, type WorkMapObservation } from './workMapObservations.js';
+import { DEFAULT_STREET_WIDTH_M } from './workLineWidth.js';
 
 /**
  * The work map of a service (José 06/11: «el mapa literal de la obra»). Portal owns the streets,
@@ -25,7 +26,8 @@ export type WorkMap = { streets: WorkMapStreet[]; scopes: WorkMapScope[]; progre
 
 export type WorkMapFilter = { stageId?: string; workId?: string; untilDay?: string };
 /** A done line also says its stations, so an export can name the stretch. */
-export type WorkMapLine = { streetId: string; workId?: string; color: string; coordinates: Array<[number, number]>; fromM?: number; toM?: number };
+/** `widthM`: the street's (or stretch's) width on the ground; the map paints the line that wide. */
+export type WorkMapLine = { streetId: string; workId?: string; color: string; coordinates: Array<[number, number]>; fromM?: number; toM?: number; widthM?: number };
 export type WorkMapStreetRow = {
   id: string;
   name: string;
@@ -251,18 +253,22 @@ function streetRow(street: WorkMapStreet, stretches: WorkedStretch[], works: Wor
 
 const lngLat = (line: WorkMapPoint[]) => line.map((point): [number, number] => [point.lng, point.lat]);
 
+/** A known width goes on the line; an unknown one is left out (the map falls back to a common street). */
+export const widthOf = (widthM: number | undefined): { widthM?: number } => (widthM && widthM > 0 ? { widthM } : {});
+
 function plannedLines(map: WorkMap, scopes: WorkMapScope[], narrowed: boolean): WorkMapLine[] {
-  const lineOf = (streetId: string) => map.streets.find((street) => street.id === streetId)?.line ?? [];
-  const stretches = scopes.map((scope) => ({ streetId: scope.streetId, color: WORK_MAP_PLANNED_COLOR, coordinates: lngLat(sliceLine(lineOf(scope.streetId), scope.fromM, scope.toM)) }));
+  const streetOf = (streetId: string) => map.streets.find((street) => street.id === streetId);
+  const stretches = scopes.map((scope) => ({ streetId: scope.streetId, color: WORK_MAP_PLANNED_COLOR, coordinates: lngLat(sliceLine(streetOf(scope.streetId)?.line ?? [], scope.fromM, scope.toM)), ...widthOf(scope.widthM ?? streetOf(scope.streetId)?.widthM) }));
   const bare = narrowed ? [] : map.streets.filter((street) => !scopes.some((scope) => scope.streetId === street.id));
-  return [...stretches, ...bare.map((street) => ({ streetId: street.id, color: WORK_MAP_PLANNED_COLOR, coordinates: lngLat(street.line) }))].filter((line) => line.coordinates.length >= 2);
+  return [...stretches, ...bare.map((street) => ({ streetId: street.id, color: WORK_MAP_PLANNED_COLOR, coordinates: lngLat(street.line), ...widthOf(street.widthM) }))].filter((line) => line.coordinates.length >= 2);
 }
 
 function doneLines(map: WorkMap, stretches: WorkedStretch[]): WorkMapLine[] {
   return stretches.flatMap((stretch) => {
-    const line = map.streets.find((street) => street.id === stretch.scope.streetId)?.line ?? [];
+    const street = map.streets.find((one) => one.id === stretch.scope.streetId);
     const color = map.works.find((work) => work.id === stretch.workId)?.color ?? WORK_MAP_PLANNED_COLOR;
-    return stretch.doneIntervals.map(([from, to]) => ({ streetId: stretch.scope.streetId, workId: stretch.workId, color, coordinates: lngLat(sliceLine(line, from, to)), fromM: from, toM: to }));
+    const width = widthOf(stretch.scope.widthM ?? street?.widthM);
+    return stretch.doneIntervals.map(([from, to]) => ({ streetId: stretch.scope.streetId, workId: stretch.workId, color, coordinates: lngLat(sliceLine(street?.line ?? [], from, to)), fromM: from, toM: to, ...width }));
   }).filter((line) => line.coordinates.length >= 2);
 }
 
@@ -340,7 +346,7 @@ export function workMapView(map: WorkMap, filter: WorkMapFilter = {}): WorkMapVi
 /** The lines as MapLibre reads them, on the web and in the app. */
 export const workMapCollection = (lines: WorkMapLine[]) => ({
   type: 'FeatureCollection' as const,
-  features: lines.map((line) => ({ type: 'Feature' as const, properties: { color: line.color, halo: lineHaloOf(line.color) }, geometry: { type: 'LineString' as const, coordinates: line.coordinates } })),
+  features: lines.map((line) => ({ type: 'Feature' as const, properties: { color: line.color, halo: lineHaloOf(line.color), widthM: line.widthM ?? DEFAULT_STREET_WIDTH_M }, geometry: { type: 'LineString' as const, coordinates: line.coordinates } })),
 });
 
 /** A light rim for a near-black line (José 28/11: «Carpeta asfáltica» vanished on the dark map); none for the rest. MapLibre paints hex. */
@@ -364,7 +370,7 @@ export function colorLuminance(color: string): number {
 export const lineHaloOf = (color: string): string => (colorLuminance(color) < DARK_LUMINANCE ? LINE_HALO_COLOR : NO_HALO);
 
 /** The rim drawn under a line of `widthPx` (MapLibre `line-gap-width`): it outlines the line on both sides. */
-export const lineCasingPaint = (widthPx: number) => ({ 'line-color': ['get', 'halo'], 'line-gap-width': widthPx, 'line-width': 1.5 });
+export const lineCasingPaint = (widthPx: number | unknown[]) => ({ 'line-color': ['get', 'halo'], 'line-gap-width': widthPx, 'line-width': 1.5 });
 
 /** A stage may not have the chosen work: the filter drops it instead of showing an empty map. */
 type FilterChange = { stageId?: string | undefined; workId?: string | undefined; untilDay?: string | undefined };

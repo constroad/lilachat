@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { ChevronRight, ShieldCheck } from 'lucide-react';
-import { accessSummary, clientAccessPath, DEFAULT_RESTRICTED, memberAccessIn, MEMBER_TABS, RESTRICTABLE_TAB_HINTS, CHANNEL_TAB_LABELS, toggleInAccess, type ClientAccessList, type MemberAccess, type MemberAccessEntry } from '@lilachat/shared';
+import { accessSummary, channelAccessLine, clientAccessPath, DEFAULT_RESTRICTED, memberAccessIn, MEMBER_TABS, RESTRICTABLE_TAB_HINTS, CHANNEL_TAB_LABELS, toggleInAccess, type ClientAccessList, type MemberAccess, type MemberAccessEntry } from '@lilachat/shared';
 import { api } from '../../api';
 import { Avatar } from '../../ui/Avatar';
 import { Overlay } from '../../ui/Overlay';
@@ -107,7 +107,7 @@ export function ClientAccessSection(props: { target: ServiceAskTarget; people: r
         <ShieldCheck size={18} className="text-primary" />
         <span className="min-w-0 flex-1">
           <span className="block text-[15px] font-semibold">Accesos del canal</span>
-          <span className="block text-[12px] text-on-surface-variant">{restrictedCount ? `${restrictedCount} con acceso restringido` : 'Todos ven el canal entero; los montos, solo los admins'}</span>
+          <span className="block text-[12px] text-on-surface-variant">{channelAccessLine(restrictedCount)}</span>
         </span>
         <ChevronRight size={16} className="text-on-surface-variant" />
       </button>

@@ -4,7 +4,7 @@ import { isFieldReport } from './clientAccess';
 import { fieldDocumentOf } from './fieldDocument';
 import { locationMapLink } from './sharedLocation';
 import { EMBED_CREATE_TYPES } from './portalEmbed';
-import { draftToContinue, EDITOR_REPORT_TYPE_OPTIONS, fieldPickerReportTypes, needsMoneyToCreate, offersReportType, opensInApp, itemsLine, emptyItemsHint, pickerReportTypes, removePhotoRequest, pageLine, placeFieldValue, progressLine, progressPercent, publishFormRequest, readObservationDraft, readReportDraft, REPORT_TYPE_OPTIONS, reportDraftPath, reportDraftRequest, openPublishForm, reportFormsPath, reportTypeLabel, reportViewOf, sectionBadge, sectionFormRequest, staleAnswerIds, STATUS_BADGE, type ReportTypeOption, type TrackStart } from './reportCreation';
+import { draftToContinue, EDITOR_REPORT_TYPE_OPTIONS, fieldPickerReportTypes, needsMoneyToCreate, offersReportType, opensInApp, itemsLine, emptyItemsHint, pickerReportTypes, removePhotoRequest, pageLine, placeFieldValue, progressLine, progressPercent, publishFormRequest, readObservationDraft, readReportDraft, REPORT_TYPE_OPTIONS, reportDraftPath, reportDraftRequest, openPublishForm, reportFormsPath, reportTypeLabel, reportViewOf, sectionBadge, sectionFormRequest, staleAnswerIds, STATUS_BADGE, SERVICE_REPORT_OPTION, SERVICE_REPORT_PICK, withServiceReport, type ReportTypeOption, type TrackStart } from './reportCreation';
 
 /** A CTL-IMP as Portal answers it, with one tramo whose photos go through their own tool. */
 const form = (title: string) => ({ type: 'object', properties: { campo: { type: 'string', title } } });
@@ -340,5 +340,28 @@ describe('readObservationDraft', () => {
 
   it('the registry is a field report a restricted member may see', () => {
     expect(isFieldReport({ typeLabel: 'Registro de observaciones' })).toBe(true);
+  });
+});
+
+describe('withServiceReport (one «Crear informe», José 28/11)', () => {
+  it('puts «Informe de servicio» first when the space offers it', () => {
+    // Arrange
+    const field = fieldPickerReportTypes(true);
+    // Act
+    const options = withServiceReport(field, true);
+    // Assert
+    expect(options[0]).toEqual(SERVICE_REPORT_OPTION);
+    expect(options[0]?.label).toBe('Informe de servicio');
+    expect(options.slice(1)).toEqual(field);
+  });
+
+  it('leaves the field types alone when it is not offered', () => {
+    const field = fieldPickerReportTypes(false);
+    expect(withServiceReport(field, false)).toBe(field);
+  });
+
+  it('its code is the picker\'s own: the server never creates it', () => {
+    expect(needsMoneyToCreate(SERVICE_REPORT_PICK)).toBe(true);
+    expect(fieldPickerReportTypes(true).some((option) => option.code === SERVICE_REPORT_PICK)).toBe(false);
   });
 });

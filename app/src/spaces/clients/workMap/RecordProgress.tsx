@@ -2,7 +2,7 @@ import { useContext, useMemo, useState } from 'react';
 import { Pressable, ScrollView, Text, TextInput, useWindowDimensions, View } from 'react-native';
 import { randomUUID } from 'expo-crypto';
 import { Camera, Crosshair, Hand, Map as MapIcon, X } from 'lucide-react-native';
-import { GPS_UNAVAILABLE, MANUAL_NOTE_MAX, RECORD_ADD_NOTE, RECORD_NOTE_PLACEHOLDER, layerDraftFor, manualEndFromGps, pickManualWork, progressPreviewOf, RECORD_CHANGE, RECORD_PENDING_NOTE, RECORD_PHOTO_AND_SEND, RECORD_SEND, RECORD_TO_ME, RECORD_WHOLE, RECORD_WITHOUT_PHOTO, recordDropAt, recordHint, recordTitle, recordMapOf, recordProblem, recordSummary, recordWholeStreet, runManualProgress, youAreOn, type GpsStreet, type ManualPhotoUpload, type ManualProgressDraft, type MapEditSend, type StreetEnd, type WorkManualProgressRequest, type WorkMap, type WorkMapPoint, type WorkMapWork } from '@lilachat/shared';
+import { GPS_UNAVAILABLE, MANUAL_NOTE_MAX, RECORD_ADD_NOTE, RECORD_NOTE_PLACEHOLDER, layerDraftFor, manualEndFromGps, pickManualWork, progressPreviewOf, RECORD_CHANGE, RECORD_PENDING_NOTE, RECORD_PHOTO_AND_SEND, RECORD_SEND, RECORD_TO_ME, RECORD_WHOLE, RECORD_WITHOUT_PHOTO, recordAtPercent, streetPercentOf, recordDropAt, recordHint, recordTitle, recordMapOf, recordProblem, recordSummary, recordWholeStreet, runManualProgress, youAreOn, type GpsStreet, type ManualPhotoUpload, type ManualProgressDraft, type MapEditSend, type StreetEnd, type WorkManualProgressRequest, type WorkMap, type WorkMapPoint, type WorkMapWork } from '@lilachat/shared';
 import type { CapturedShot } from '../../../chat/camara/cameraRequests';
 import { useColores } from '../../../ui/tema';
 import { useDisposicion } from '../../../ui/useDisposicion';
@@ -11,6 +11,7 @@ import { ServiceScopeContext } from '../serviceScope';
 import { enqueueManualProgress, MANUAL_QUEUED } from './manualProgressJobs';
 import { readGpsOnce } from './useGpsWalk';
 import { WorkMapSurface } from './WorkMapSurface';
+import { RecordPercent } from './RecordPercent';
 
 type Answer = { ok: boolean; message: string } | null;
 const STREET_ONLY = { workId: null, fromM: 0, toM: 0 };
@@ -132,7 +133,8 @@ function useRecord(props: RecordScreenProps) {
     else if (evidence) await send(evidence);
     return setBusy(null);
   };
-  return { street, lengthM, works: start.works, draft, drops, answer, busy, canPhoto: Boolean(queued || props.uploadPhoto), change, drop, toMe, submit };
+  const toPercent = (percent: number) => { setDrops((count) => count + 1); change(recordAtPercent(draft, lengthM, percent)); };
+  return { street, lengthM, works: start.works, draft, drops, answer, busy, canPhoto: Boolean(queued || props.uploadPhoto), change, drop, toPercent, toMe, submit };
 }
 
 /** «Agregar nota» (as o-06 had it): folded so it never pushes the main button down; dictation fits in it. */
@@ -150,6 +152,7 @@ function RecordFoot(props: { record: ReturnType<typeof useRecord>; map: WorkMap;
   return (
     <View className="gap-2">
       <Summary draft={record.draft} lengthM={record.lengthM} widthM={record.street?.widthM} />
+      <RecordPercent percent={streetPercentOf(record.draft.toM, record.lengthM)} onPercent={record.toPercent} />
       <NoteField note={record.draft.note} onNote={(note) => record.change({ ...record.draft, note })} />
       <View className="flex-row gap-2">
         <Pressable testID="avance-manual-gps" disabled={record.busy !== null} onPress={() => void record.toMe()} className={`${OUTLINE_BUTTON} ${record.busy === 'gps' ? 'opacity-60' : ''}`}>

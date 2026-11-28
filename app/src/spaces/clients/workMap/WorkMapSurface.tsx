@@ -4,11 +4,11 @@ import { Camera, GeoJSONSource, Images, Layer, Map as MapSurface, ViewAnnotation
 import { MapControls } from './MapControls';
 import { MY_LOCATION_DOT_PAINT, MY_LOCATION_HALO_PAINT, myLocationCollection, type LocatedPoint } from './myLocationDot';
 import { useTema } from '../../../ui/tema';
-import { OBSERVATION_PIN_PAINT, observationMapCollection, type MapPick, type WorkMapObservation, MARK_CHIP_PAINT, MARK_FILL_PAINT, MARK_GLYPH_PAINT, MARK_LINE_PAINT, MARK_TEXT_LAYOUT, MARK_TEXT_PAINT, mapMarkCollection, type WorkMapMark, PLACE_ZOOM, type MapFrame, dischargePinCollection, tapBox, tapTolerancePx, LAYER_BASE_PAINT, lineCasingPaint, LAYER_LABEL_LAYOUT, LAYER_LABEL_PAINT, LAYER_PLANNED_PAINT, STATION_MIN_ZOOM, workMapStyleFor, workMapCollection, type BasemapFeatureLike, type DischargePin, type StreetEnd, type StreetHandle, type TapFeatures, type WorkMapLine, type WorkMapPoint, type WorkMapView , WORK_MAP_PENDING_PAINT, STATION_DOT_PAINT, STATION_TEXT_LAYOUT, STATION_TEXT_PAINT, stationMarkCollection, type StationMark } from '@lilachat/shared';
+import { OBSERVATION_PIN_PAINT, observationMapCollection, type MapPick, type WorkMapObservation, MARK_CHIP_PAINT, MARK_FILL_PAINT, MARK_GLYPH_PAINT, MARK_LINE_PAINT, MARK_TEXT_LAYOUT, MARK_TEXT_PAINT, mapMarkCollection, type WorkMapMark, PLACE_ZOOM, type MapFrame, dischargePinCollection, tapBox, tapTolerancePx, LAYER_BASE_PAINT, lineCasingPaint, LAYER_LABEL_LAYOUT, LAYER_LABEL_PAINT, LAYER_PLANNED_PAINT, LAYER_DONE_PAINT, WORK_MAP_LABELS_LAYER, WORK_MAP_STRETCH_PAINT, STATION_MIN_ZOOM, workMapStyleFor, workMapCollection, type BasemapFeatureLike, type DischargePin, type StreetEnd, type StreetHandle, type TapFeatures, type WorkMapLine, type WorkMapPoint, type WorkMapView , WORK_MAP_PENDING_PAINT, STATION_DOT_PAINT, STATION_TEXT_LAYOUT, STATION_TEXT_PAINT, stationMarkCollection, type StationMark } from '@lilachat/shared';
 
 const LINE_ENDS = { 'line-cap': 'round', 'line-join': 'round' } as const;
-const DONE_WIDTH = 6;
-const PLANNED_WIDTH = LAYER_PLANNED_PAINT['line-width'];
+/** Our lines under the street names (José 28/11: «el nombre de la calle siempre por encima»). */
+const UNDER_NAMES = WORK_MAP_LABELS_LAYER;
 const EDGE = { top: 48, right: 48, bottom: 48, left: 48 };
 /** The style's own font: OpenFreeMap serves it, the street names use it. */
 const PIN_FONT = ['Noto Sans Bold'];
@@ -77,11 +77,11 @@ function StationLayers(props: { stations?: StationMark[]; labels?: StationMark[]
   );
 }
 
-/** What waits for approval (José 28/11): thin and dashed in its work's color, over the approved line. */
+/** What waits for approval (José 28/11): solid and half-transparent in its work's color, as wide as the street. */
 function PendingLayer(props: { lines?: WorkMapLine[] }) {
   return (
     <GeoJSONSource id="work-map-pending" data={workMapCollection(props.lines ?? NO_LINES)}>
-      <Layer id="work-map-pending-line" type="line" layout={{ 'line-join': 'round' }} paint={WORK_MAP_PENDING_PAINT as never} />
+      <Layer id="work-map-pending-line" type="line" beforeId={UNDER_NAMES} layout={{ 'line-join': 'round' }} paint={WORK_MAP_PENDING_PAINT as never} />
     </GeoJSONSource>
   );
 }
@@ -98,7 +98,7 @@ const iconPinCollection = (pins: DischargePin[]) => {
 };
 
 /** `onTap` draws a street (o-02): each tap is a bend. `near` frames where the phone is when there is nothing drawn yet. */
-export function WorkMapSurface(props: { view: WorkMapView; moves: boolean; /** The selected layer's «42 %» beside each street (design ma01). */ labels?: StationMark[]; pins?: DischargePin[]; stretches?: WorkMapLine[]; /** What waits for approval: thin and dashed in its work's color (José 28/11). */ pending?: WorkMapLine[]; /** «0+100» on the road (audit item 10). */ stations?: StationMark[]; /** The part of a street without a stretch (audit item 15). */ bare?: WorkMapLine[]; onTap?: (point: WorkMapPoint, roads: TapFeatures, zoom?: number) => void; near?: WorkMapPoint | null; /** Draggable ends of a picked street (José 08/11). */ handles?: StreetHandle[]; onHandleDrop?: (handle: StreetEnd, point: WorkMapPoint) => void; /** A tap on a pin (the «Fotos» layer, José 08/11). */ onPin?: (id: string) => void; /** A place found by the search: the map flies there (José 08/11). */ focus?: WorkMapPoint | null; /** A street just picked whole: the map shows both of its ends. */ frame?: MapFrame | null; /** Room for the system bar under a full-screen map. */ controlsInset?: number; /** Portal's drawings (José 19/11). */ marks?: readonly WorkMapMark[]; /** Portal's observations, as pins (José 19/11). */ observations?: readonly WorkMapObservation[]; /** A tap on a drawing or an observation: its card. */ onPick?: (pick: MapPick) => void; /** Where the map opens when a list item opened it. */ startAt?: WorkMapPoint | null }) {
+export function WorkMapSurface(props: { view: WorkMapView; moves: boolean; /** The selected layer's «42 %» beside each street (design ma01). */ labels?: StationMark[]; pins?: DischargePin[]; stretches?: WorkMapLine[]; /** What waits for approval: solid and half-transparent in its work's color (José 28/11). */ pending?: WorkMapLine[]; /** «0+100» on the road (audit item 10). */ stations?: StationMark[]; /** The part of a street without a stretch (audit item 15). */ bare?: WorkMapLine[]; onTap?: (point: WorkMapPoint, roads: TapFeatures, zoom?: number) => void; near?: WorkMapPoint | null; /** Draggable ends of a picked street (José 08/11). */ handles?: StreetHandle[]; onHandleDrop?: (handle: StreetEnd, point: WorkMapPoint) => void; /** A tap on a pin (the «Fotos» layer, José 08/11). */ onPin?: (id: string) => void; /** A place found by the search: the map flies there (José 08/11). */ focus?: WorkMapPoint | null; /** A street just picked whole: the map shows both of its ends. */ frame?: MapFrame | null; /** Room for the system bar under a full-screen map. */ controlsInset?: number; /** Portal's drawings (José 19/11). */ marks?: readonly WorkMapMark[]; /** Portal's observations, as pins (José 19/11). */ observations?: readonly WorkMapObservation[]; /** A tap on a drawing or an observation: its card. */ onPick?: (pick: MapPick) => void; /** Where the map opens when a list item opened it. */ startAt?: WorkMapPoint | null }) {
   const { view, moves } = props;
   const map = useRef<MapRef>(null);
   const { oscuro } = useTema();
@@ -122,27 +122,27 @@ export function WorkMapSurface(props: { view: WorkMapView; moves: boolean; /** T
       {props.startAt ? <Camera ref={camera} center={[props.startAt.lng, props.startAt.lat]} zoom={PLACE_ZOOM} duration={0} /> : corners ? <Camera ref={camera} bounds={[...corners[0], ...corners[1]]} padding={EDGE} duration={0} /> : props.near ? <Camera ref={camera} center={[props.near.lng, props.near.lat]} zoom={DRAW_ZOOM} duration={0} /> : <Camera ref={camera} />}
       {/* Portal's drawings (gibas, manholes…) under the streets' lines, in Portal's croquis colors (José 19/11). */}
       <GeoJSONSource id="work-map-marks" data={mapMarkCollection(props.marks ?? NO_MARKS)} onPress={pickPress('mark', props.onPick)}>
-        <Layer id="work-map-marks-fill" type="fill" filter={['==', ['geometry-type'], 'Polygon']} paint={MARK_FILL_PAINT as never} />
-        <Layer id="work-map-marks-line" type="line" filter={['!=', ['geometry-type'], 'Point']} layout={LINE_ENDS} paint={MARK_LINE_PAINT as never} />
+        <Layer id="work-map-marks-fill" type="fill" beforeId={UNDER_NAMES} filter={['==', ['geometry-type'], 'Polygon']} paint={MARK_FILL_PAINT as never} />
+        <Layer id="work-map-marks-line" type="line" beforeId={UNDER_NAMES} filter={['!=', ['geometry-type'], 'Point']} layout={LINE_ENDS} paint={MARK_LINE_PAINT as never} />
         <Layer id="work-map-marks-dot" type="circle" filter={['==', ['geometry-type'], 'Point']} paint={MARK_CHIP_PAINT as never} />
         <Layer id="work-map-marks-glyph" type="circle" filter={['==', ['geometry-type'], 'Point']} paint={MARK_GLYPH_PAINT as never} />
         <Layer id="work-map-marks-text" type="symbol" layout={MARK_TEXT_LAYOUT as never} paint={MARK_TEXT_PAINT} />
       </GeoJSONSource>
       <GeoJSONSource id="work-map-bare" data={workMapCollection(props.bare ?? NO_LINES)}>
-        <Layer id="work-map-bare-line" type="line" layout={LINE_ENDS} paint={LAYER_BASE_PAINT as never} />
+        <Layer id="work-map-bare-line" type="line" beforeId={UNDER_NAMES} layout={LINE_ENDS} paint={LAYER_BASE_PAINT as never} />
       </GeoJSONSource>
       <GeoJSONSource id="work-map-planned" data={workMapCollection(view.planned)}>
         {/* A light rim under a near-black layer, so it reads on the dark map (José 28/11). */}
-        <Layer id="work-map-planned-casing" type="line" layout={LINE_ENDS} paint={lineCasingPaint(PLANNED_WIDTH) as never} />
-        <Layer id="work-map-planned-line" type="line" layout={LINE_ENDS} paint={LAYER_PLANNED_PAINT as never} />
+        <Layer id="work-map-planned-casing" type="line" beforeId={UNDER_NAMES} layout={LINE_ENDS} paint={lineCasingPaint(LAYER_PLANNED_PAINT['line-width']) as never} />
+        <Layer id="work-map-planned-line" type="line" beforeId={UNDER_NAMES} layout={LINE_ENDS} paint={LAYER_PLANNED_PAINT as never} />
       </GeoJSONSource>
       {/* Suggested and waiting stretches under the done line: the chosen work's color stays on top (José 09/11). */}
       <GeoJSONSource id="work-map-stretch" data={workMapCollection(props.stretches ?? NO_LINES)}>
-        <Layer id="work-map-stretch-line" type="line" layout={LINE_ENDS} paint={{ 'line-color': ['get', 'color'], 'line-width': 10, 'line-opacity': 0.55 }} />
+        <Layer id="work-map-stretch-line" type="line" beforeId={UNDER_NAMES} layout={LINE_ENDS} paint={WORK_MAP_STRETCH_PAINT as never} />
       </GeoJSONSource>
       <GeoJSONSource id="work-map-done" data={workMapCollection(view.done)}>
-        <Layer id="work-map-done-casing" type="line" layout={LINE_ENDS} paint={lineCasingPaint(DONE_WIDTH) as never} />
-        <Layer id="work-map-done-line" type="line" layout={LINE_ENDS} paint={{ 'line-color': ['get', 'color'], 'line-width': DONE_WIDTH }} />
+        <Layer id="work-map-done-casing" type="line" beforeId={UNDER_NAMES} layout={LINE_ENDS} paint={lineCasingPaint(LAYER_DONE_PAINT['line-width']) as never} />
+        <Layer id="work-map-done-line" type="line" beforeId={UNDER_NAMES} layout={LINE_ENDS} paint={LAYER_DONE_PAINT as never} />
       </GeoJSONSource>
       <PendingLayer lines={props.pending} />
       <StationLayers stations={props.stations} labels={props.labels} />

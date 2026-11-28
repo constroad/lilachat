@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { WORK_MAP_MIN_FRAME_DEG, workMapOf, type WorkMap } from './workMap.js';
 import { GPS_OFF_STREET, GPS_WEAK, progressPreviewOf } from './workManualProgress.js';
-import { gpsStreetOf, locateRecordStreet, recordStageOf, recordStreetChoices, recordDropAt, recordHandleOf, recordHint, recordMapOf, recordProblem, recordStreetOf, recordSummary, recordTitle, recordWholeStreet, youAreOn } from './workProgressRecord.js';
+import { gpsStreetOf, locateRecordStreet, recordStageOf, recordStreetChoices, recordDropAt, recordHandleOf, recordHint, recordMapOf, recordProblem, recordStreetOf, recordSummary, recordTitle, recordWholeStreet, youAreOn, chainageAtPercent, recordAtPercent, streetPercentOf } from './workProgressRecord.js';
 
 /** Design ma04 (José 28/11): the street by GPS, a ring dragged along its axis, a photo and send. */
 const progreso = [{ lat: -12, lng: -77 }, { lat: -12, lng: -76.997 }];
@@ -161,5 +161,39 @@ describe('ma04: the screen', () => {
     await Promise.resolve();
     expect(seen).toHaveLength(1);
     expect(seen[0]).toMatchObject({ streetId: 's1' });
+  });
+});
+
+describe('the % of the street (José 28/11: slider or typed %)', () => {
+  const DRAFT = { workId: 'w', fromM: 0, toM: 0, photoIds: [], note: '' };
+
+  it('turns a % into a chainage clamped to the street, to the centimeter', () => {
+    expect(chainageAtPercent(50, 44.28)).toBe(22.14);
+    expect(chainageAtPercent(100, 44.28)).toBe(44.28);
+    expect(chainageAtPercent(140, 44.28)).toBe(44.28);
+    expect(chainageAtPercent(-5, 44.28)).toBe(0);
+    expect(chainageAtPercent(Number.NaN, 44.28)).toBe(0);
+    expect(chainageAtPercent(50, 0)).toBe(0);
+  });
+
+  it('reads the ring back as % with one decimal', () => {
+    expect(streetPercentOf(22.14, 44.28)).toBe(50);
+    expect(streetPercentOf(10, 44.28)).toBe(22.6);
+    expect(streetPercentOf(60, 44.28)).toBe(100);
+    expect(streetPercentOf(10, 0)).toBe(0);
+  });
+
+  it('moves the ring to the typed %, never before where the work stopped', () => {
+    // Arrange
+    const started = { ...DRAFT, fromM: 30 };
+    // Act / Assert
+    expect(recordAtPercent(DRAFT, 44.28, 50).toM).toBe(22.14);
+    expect(recordAtPercent(started, 44.28, 10).toM).toBe(30);
+    expect(recordSummary(recordAtPercent(DRAFT, 44.28, 50), 44.28, 6).stretch).toBe('0+000 → 0+022');
+  });
+
+  it('round-trips: the % typed is the % shown', () => {
+    const typed = 37.5;
+    expect(streetPercentOf(chainageAtPercent(typed, 44.28), 44.28)).toBe(typed);
   });
 });

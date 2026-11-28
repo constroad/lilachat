@@ -1,4 +1,4 @@
-import { metersLabel, sliceLine, stationLabel, type WorkMap, type WorkMapLine, type WorkMapWork } from './workMap.js';
+import { metersLabel, sliceLine, stationLabel, widthOf, type WorkMap, type WorkMapLine, type WorkMapWork } from './workMap.js';
 import type { DischargePoint, DischargeSuggestion, PlacedDischarge, SuggestedStretch, UnitDischarge } from './workMapDischarges.js';
 
 /**
@@ -157,7 +157,7 @@ export const dischargePinsOf = ({ units, hasWork }: Pick<DischargeSuggestion, 'u
 export function stretchLineOf(map: Pick<WorkMap, 'streets'>, streetId: string, fromM: number, toM: number): WorkMapLine | null {
   const street = map.streets.find((one) => one.id === streetId);
   const coordinates = street ? sliceLine(street.line, fromM, toM).map((point): [number, number] => [point.lng, point.lat]) : [];
-  return coordinates.length >= 2 ? { streetId, color: STRETCH_COLOR, coordinates, fromM, toM } : null;
+  return coordinates.length >= 2 ? { streetId, color: STRETCH_COLOR, coordinates, fromM, toM, ...widthOf(street?.widthM) } : null;
 }
 
 /** MapLibre paints plain colors: a unit outside the work in red. */

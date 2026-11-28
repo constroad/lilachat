@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
-import { CheckSquare, ChevronRight, ShieldCheck, Square } from 'lucide-react-native';
+import { CheckSquare, ChevronRight, Square } from 'lucide-react-native';
 import { accessSummary, CHANNEL_TAB_LABELS, clientAccessPath, DEFAULT_RESTRICTED, memberAccessIn, MEMBER_TABS, RESTRICTABLE_TAB_HINTS, toggleInAccess, type ClientAccessList, type MemberAccess, type MemberAccessEntry } from '@lilachat/shared';
 import { BASE_URL } from '../../api/client';
 import { jsonCall } from '../../api/jsonCall';
@@ -102,26 +102,18 @@ function MemberAccessScreen(props: { name: string; entry: MemberAccessEntry; onS
 /**
  * «Accesos del canal» of a client's channel, for the space's admins (José 30/10
  * night): each member with what they see; tapping one edits it. Replaces
- * «Quién ve la cobranza», which is now its «Ve montos».
+ * «Quién ve la cobranza», which is now its «Ve montos». José 28/11: it opens
+ * from the one menu beside «Buscar servicio».
  */
-export function ClientAccessRow(props: { target: ServiceAskTarget; members: ReadonlyMap<string, string>; me: string }) {
+export function ClientAccessScreens(props: { access: ReturnType<typeof useClientAccess>; members: ReadonlyMap<string, string>; me: string; open: boolean; onClose: () => void }) {
   const colors = useColores();
-  const { list, save } = useClientAccess(props.target);
-  const [open, setOpen] = useState(false);
+  const { list, save } = props.access;
   const [editing, setEditing] = useState<{ id: string; name: string } | null>(null);
   if (!list) return null;
   const people = [...props.members].filter(([userId]) => userId !== props.me);
   return (
     <>
-      <Pressable testID="accesos-del-canal" onPress={() => setOpen(true)} className="min-h-[56px] flex-row items-center gap-3 rounded-xl border border-outline/15 bg-surface px-3">
-        <ShieldCheck size={18} color={colors.primary} />
-        <View className="min-w-0 flex-1">
-          <Text className="text-[14px] font-semibold text-on-surface">Accesos del canal</Text>
-          <Text className="text-[12px] text-on-surface-variant">{list.restricted.length ? `${list.restricted.length} con acceso restringido` : 'Todos ven el canal; los montos, solo los admins'}</Text>
-        </View>
-        <ChevronRight size={16} color={colors['on-surface-variant']} />
-      </Pressable>
-      <PantallaEnModal visible={open && !editing} titulo="Accesos del canal" onCerrar={() => setOpen(false)} testIDCerrar="cerrar-accesos">
+      <PantallaEnModal visible={props.open && !editing} titulo="Accesos del canal" onCerrar={props.onClose} testIDCerrar="cerrar-accesos">
         <Text className="mb-3 text-[14px] text-on-surface-variant">Los admins del espacio ven todo. Elige qué ve cada uno de los demás.</Text>
         <View className="overflow-hidden rounded-2xl border border-outline/15 bg-surface">
           {people.map(([userId, name], index) => {

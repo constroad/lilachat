@@ -410,7 +410,7 @@ describe('ServiceDetailWeb', () => {
     expect(screen.getByTestId('pestana-detalle-orders')).toHaveAttribute('aria-selected', 'true');
   });
 
-  it('«Generar informe de servicio» runs informe_de_servicio from the space with the service: Portal refuses it in a group (01/11)', async () => {
+  it('one «Crear informe» (José 28/11): «Informe de servicio» is the picker\'s first type and runs informe_de_servicio from the space (Portal refuses it in a group, 01/11)', async () => {
     // Arrange
     const groups = [{ appId: 'p1', appName: 'Portal', commands: [], shortcuts: [{ key: 'informe_de_servicio', name: 'Informe de servicio' }] }];
     const answered = { commandId: 'c2', appId: 'p1', appName: 'Portal', outcome: 'ephemeral', response: { responseType: 'ephemeral', text: 'Tu informe está listo' } };
@@ -421,25 +421,30 @@ describe('ServiceDetailWeb', () => {
     vi.stubGlobal('fetch', fetchMock);
     render(<ServiceDetailWeb target={target} chatId="chat-1" service={service} seesMoney onBack={() => undefined} />);
     fireEvent.click(await screen.findByTestId('pestana-detalle-reports'));
+    expect(screen.getAllByTestId('crear-informe')).toHaveLength(1);
     // Act
-    fireEvent.click(await screen.findByTestId('generar-informe-servicio'));
+    fireEvent.click(screen.getByTestId('crear-informe'));
+    await vi.waitFor(() => expect(within(screen.getByTestId('crear-informe-tipos')).getAllByTestId(/^tipo-informe-/)[0]).toHaveTextContent('Informe de servicio'));
+    fireEvent.click(within(screen.getByTestId('crear-informe-tipos')).getAllByTestId(/^tipo-informe-/)[0]!);
     // Assert
     expect(await screen.findByText('Tu informe está listo')).toBeInTheDocument();
+    expect(screen.queryByTestId('crear-informe-tipos')).toBeNull();
     const shortcut = fetchMock.mock.calls.find(([url]) => String(url).endsWith('/shortcuts')) as unknown as [string, RequestInit];
     expect(shortcut[0]).toContain('/api/workspaces/s1/shortcuts');
     expect(JSON.parse(String(shortcut[1].body))).toMatchObject({ app_id: 'p1', shortcut: 'informe_de_servicio', values: { servicioId: 'srv-318' } });
   });
 
-  it('no «Generar informe de servicio» while the server does not offer it to that person', async () => {
+  it('no «Informe de servicio» in the picker while the server does not offer it to that person', async () => {
     const fetchMock = vi.fn(async (url: string) => new Response(JSON.stringify(String(url).includes('/commands?place=space') ? { groups: [] } : { detail }), { status: 200 }));
     vi.stubGlobal('fetch', fetchMock);
     render(<ServiceDetailWeb target={target} chatId="chat-1" service={service} seesMoney onBack={() => undefined} />);
     fireEvent.click(await screen.findByTestId('pestana-detalle-reports'));
     await vi.waitFor(() => expect(fetchMock.mock.calls.some(([url]) => String(url).includes('/commands?place=space'))).toBe(true));
-    expect(screen.queryByTestId('generar-informe-servicio')).toBeNull();
+    fireEvent.click(screen.getByTestId('crear-informe'));
+    expect(screen.queryByTestId('tipo-informe-INF-SERV')).toBeNull();
   });
 
-  it('José 05/11: «Generar informe de servicio» makes a liquidation with amounts: not for whoever does not see money', async () => {
+  it('José 05/11: «Informe de servicio» makes a liquidation with amounts: not for whoever does not see money', async () => {
     // Arrange
     const groups = [{ appId: 'p1', appName: 'Portal', commands: [], shortcuts: [{ key: 'informe_de_servicio', name: 'Informe' }] }];
     const fetchMock = vi.fn(async (url: string) => new Response(JSON.stringify(String(url).includes('/commands?place=space') ? { groups } : { detail }), { status: 200 }));
@@ -447,8 +452,9 @@ describe('ServiceDetailWeb', () => {
     // Act
     render(<ServiceDetailWeb target={target} chatId="chat-1" service={service} seesMoney={false} onBack={() => undefined} />);
     fireEvent.click(await screen.findByTestId('pestana-detalle-reports'));
+    fireEvent.click(screen.getByTestId('crear-informe'));
     // Assert
-    expect(screen.queryByTestId('generar-informe-servicio')).toBeNull();
+    expect(screen.queryByTestId('tipo-informe-INF-SERV')).toBeNull();
     expect(fetchMock.mock.calls.some(([url]) => String(url).includes('/commands?place=space'))).toBe(false);
   });
 

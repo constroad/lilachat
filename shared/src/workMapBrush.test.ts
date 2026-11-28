@@ -81,6 +81,29 @@ describe('brushRequests: a tap on a street toggles the brush on all its stretche
     expect(brushRequests(MAP, asphalt, 'nope', 'k')).toEqual([]);
   });
 
+  it('a whole new street goes to its exact length, never rounded past it (44.28 m)', () => {
+    // Arrange
+    const odd: WorkMap = { ...MAP, streets: [{ id: 'q', name: 'Jr. Corto', line, lengthM: 44.28 }], scopes: [] };
+    // Act
+    const [request] = brushRequests(odd, { kind: 'work', id: 'base' }, 'q', 'k');
+    // Assert
+    expect(request).toMatchObject({ from_m: 0, to_m: 44.28 });
+  });
+
+  it('a stretch left past a redrawn, shorter street is clamped to the street (José 28/11, «excede el largo»)', () => {
+    // Arrange: Portal recomputed the street to 44.28 m and kept the stretch to 50 m
+    const redrawn: WorkMap = { ...MAP, streets: [{ id: 'q', name: 'Jr. Corto', line, lengthM: 44.28 }], scopes: [{ id: 'c9', streetId: 'q', fromM: 0, toM: 50, workIds: ['asf'] }] };
+    // Act
+    const requests = brushRequests(redrawn, { kind: 'work', id: 'base' }, 'q', 'k');
+    // Assert
+    expect(requests).toEqual([expect.objectContaining({ scope_id: 'c9', from_m: 0, to_m: 44.28 })]);
+  });
+
+  it('a stretch wholly past the street is left alone and the street is painted whole', () => {
+    const past: WorkMap = { ...MAP, streets: [{ id: 'q', name: 'Jr. Corto', line, lengthM: 44.28 }], scopes: [{ id: 'c9', streetId: 'q', fromM: 46, toM: 50, workIds: ['asf'] }] };
+    expect(brushRequests(past, { kind: 'work', id: 'base' }, 'q', 'k')).toEqual([expect.objectContaining({ from_m: 0, to_m: 44.28, entry_id: 'k' })]);
+  });
+
   it('brushHas says which streets the brush already covers, to paint them', () => {
     expect(brushHas(MAP, asphalt, 's1')).toBe(true);
     expect(brushHas(MAP, asphalt, 's2')).toBe(false);
@@ -122,6 +145,10 @@ describe('brushLinesOf: the streets the brush already covers, painted over the m
     const lines = brushLinesOf(MAP, { kind: 'work', id: 'asf' });
     expect(lines.map((one) => [one.streetId, one.color])).toEqual([['s1', '#111827']]);
     expect(brushLinesOf(MAP, { kind: 'stage', id: 'e1' }).map((one) => one.color)).toEqual([BRUSH_STAGE_COLOR, BRUSH_STAGE_COLOR]);
+  });
+
+  it('as wide as the stretch, or its street (solid, full width: José 28/11)', () => {
+    expect(brushLinesOf(MAP, { kind: 'stage', id: 'e1' }).map((one) => one.widthM)).toEqual([6, 4]);
   });
 });
 

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { TextInput, type TextInputProps } from 'react-native';
-import { cleanDecimalText, decimalOf, decimalTextFollows } from './decimalText';
+import { cleanDecimalText, decimalOf, decimalTextFollows } from '@lilachat/shared';
 
 type DecimalInputProps = Omit<TextInputProps, 'value' | 'onChangeText' | 'keyboardType'> & { value: number | null; onValue: (value: number | null) => void };
 

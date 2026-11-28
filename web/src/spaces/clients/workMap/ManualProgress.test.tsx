@@ -61,6 +61,32 @@ describe('ManualProgress (ma04)', () => {
     expect(submit).toHaveBeenCalledWith('c1', { nota: 'Falta la esquina' });
   });
 
+  it('the typed % and the slider move the ring and the summary (José 28/11)', async () => {
+    // Arrange
+    render(<ManualProgress map={mapOf()} streetId="s1" send={vi.fn<MapEditSend>()} onDone={vi.fn()} />);
+    // Act: 75 % of 320 m
+    fireEvent.change(screen.getByTestId('avance-porcentaje'), { target: { value: '75' } });
+    // Assert
+    expect(screen.getByTestId('avance-manual-tramo')).toHaveTextContent('0+120 → 0+240');
+    expect(screen.getByTestId('avance-manual-metrado')).toHaveTextContent('+120 m');
+    expect((screen.getByTestId('avance-porcentaje-slider') as HTMLInputElement).value).toBe('75');
+    expect((await screen.findByTestId('avance-mapa-lienzo')).dataset.tramo).toBe('120-240');
+    // Act: the slider to half the street
+    fireEvent.change(screen.getByTestId('avance-porcentaje-slider'), { target: { value: '50' } });
+    // Assert
+    expect(screen.getByTestId('avance-manual-tramo')).toHaveTextContent('0+120 → 0+160');
+    expect((screen.getByTestId('avance-porcentaje') as HTMLInputElement).value).toBe('50');
+  });
+
+  it('a % before where the work stopped keeps the ring there; a decimal typed with a comma stays', () => {
+    render(<ManualProgress map={mapOf()} streetId="s1" send={vi.fn<MapEditSend>()} onDone={vi.fn()} />);
+    fireEvent.change(screen.getByTestId('avance-porcentaje'), { target: { value: '10' } });
+    expect(screen.getByTestId('avance-manual-tramo')).toHaveTextContent('0+120 → 0+120');
+    fireEvent.change(screen.getByTestId('avance-porcentaje'), { target: { value: '62,5' } });
+    expect(screen.getByTestId('avance-manual-tramo')).toHaveTextContent('0+120 → 0+200');
+    expect((screen.getByTestId('avance-porcentaje') as HTMLInputElement).value).toBe('62,5');
+  });
+
   it('says what blocks it before the camera, and a refused photo sends nothing', async () => {
     const send = vi.fn<MapEditSend>();
     const uploadPhoto = vi.fn<ManualPhotoUpload<File>>(async () => ({ ok: false, message: 'El archivo pesa demasiado.' }));

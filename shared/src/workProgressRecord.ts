@@ -82,6 +82,25 @@ export function recordWholeStreet(map: Pick<WorkMap, 'scopes'>, streetId: string
   return { ...draft, toM: Math.max(draft.fromM, Math.min(endLimit(lengthM), Math.round(endM))) };
 }
 
+/** «%» beside the ring (José 28/11: «permíteme agregar un slider o de manera manual el %»). */
+export const RECORD_PERCENT_LABEL = 'Hasta qué % de la calle';
+const PERCENT_STEP = 10;
+const CENTIMETERS = 100;
+const clampPercent = (percent: number) => Math.min(FULL_PCT, Math.max(0, percent));
+
+/** Where the ring is, as % of the street, to one decimal; 0 for a street without length. */
+export const streetPercentOf = (toM: number, lengthM: number): number =>
+  (lengthM > 0 ? clampPercent(Math.round((toM / lengthM) * FULL_PCT * PERCENT_STEP) / PERCENT_STEP) : 0);
+
+/** The chainage at `percent` of the street, to the centimeter, never past the street nor before 0. */
+export const chainageAtPercent = (percent: number, lengthM: number): number =>
+  (Number.isFinite(percent) && lengthM > 0 ? Math.min(lengthM, Math.round(((lengthM * clampPercent(percent)) / FULL_PCT) * CENTIMETERS) / CENTIMETERS) : 0);
+
+/** The slider or the typed %: the ring moves there, never before where the work stopped. */
+export function recordAtPercent(draft: ManualProgressDraft, lengthM: number, percent: number): ManualProgressDraft {
+  return { ...draft, toM: Math.max(draft.fromM, chainageAtPercent(percent, lengthM)) };
+}
+
 const percentOf = (meters: number, lengthM: number) => (lengthM > 0 ? Math.max(0, Math.min(FULL_PCT, Math.round((meters / lengthM) * FULL_PCT))) : 0);
 const areaLabel = (squareM: number) => `${metersLabel(squareM).slice(0, -2)} m²`;
 
@@ -104,7 +123,7 @@ export function recordProblem(map: Pick<WorkMap, 'pending'>, streetId: string, l
   return pendingProblem(map, streetId, draft.workId, draft.toM) ?? manualProblem(draft, lengthM);
 }
 
-/** The street alone with what is done, what waits (dashed), the new stretch and its ring. */
+/** The street alone with what is done, what waits (translucent), the new stretch and its ring. */
 export function recordMapOf(map: WorkMap, streetId: string, draft: ManualProgressDraft, drop: number): RecordMap {
   const preview = progressPreviewOf(map, streetId, draft);
   const color = (workId: string) => map.works.find((work) => work.id === workId)?.color;

@@ -97,12 +97,14 @@ describe('a client channel (design f-03)', () => {
     expect(screen.queryByTestId('nota-archivado')).toBeNull();
   });
 
-  it('the links of the channel (José 31/10): the client\'s at the top and each service\'s on its card, only while their action is on', () => {
+  it('the links of the channel (José 31/10): the client\'s in the one menu (José 28/11) and each service\'s on its card, only while their action is on', () => {
     // Arrange
     const open = vi.fn();
     const links = { can: (kind: string) => kind !== 'order', open, map: vi.fn() };
     render(<ClientServices client={client('x', { services: [inProgress] })} records={[]} target={null} links={links} />);
+    expect(screen.queryByText('Servicios del cliente')).toBeNull();
     // Act
+    fireEvent.click(screen.getByTestId('menu-canal-cliente'));
     fireEvent.click(screen.getByTestId('enlace-cliente'));
     fireEvent.click(screen.getByTestId('enlace-servicio-s1'));
     // Assert
@@ -178,15 +180,18 @@ describe('a client channel (design f-03)', () => {
     const withoutDrive = client('y', { services: [inProgress], drive_url: 'https://portal.constroad.com/drive/c1', access: undefined });
     // Act
     const { rerender } = render(<ClientServices client={withDrive} records={[]} target={null} />);
+    fireEvent.click(screen.getByTestId('menu-canal-cliente'));
     const link = screen.getByTestId('drive-cliente');
     // Assert
     expect(link).toHaveAttribute('href', 'https://portal.constroad.com/drive/c1');
     rerender(<ClientServices client={withoutDrive} records={[]} target={null} />);
     expect(screen.queryByTestId('drive-cliente')).toBeNull();
+    expect(screen.queryByTestId('menu-canal-cliente')).toBeNull();
   });
 
   it('without the link actions offered to that person there is nothing to tap', () => {
     render(<ClientServices client={client('x', { services: [inProgress] })} records={[]} target={null} links={{ can: () => false, open: vi.fn(), map: vi.fn() }} />);
+    expect(screen.queryByTestId('menu-canal-cliente')).toBeNull();
     expect(screen.queryByTestId('enlace-cliente')).toBeNull();
     expect(screen.queryByTestId('enlace-servicio-s1')).toBeNull();
   });

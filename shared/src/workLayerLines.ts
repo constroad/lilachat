@@ -1,19 +1,25 @@
-import { sliceLine, workMapView, type WorkMap, type WorkMapFilter, type WorkMapLine, type WorkMapStreet, type WorkMapView } from './workMap.js';
+import { sliceLine, widthOf, workMapView, type WorkMap, type WorkMapFilter, type WorkMapLine, type WorkMapStreet, type WorkMapView } from './workMap.js';
 import type { StationMark } from './workMapStations.js';
 import type { LayerStreetSummary } from './workLayerSummary.js';
+import { streetWidthExpression } from './workLineWidth.js';
 
 /**
  * The map drawn by layer (design ma01, José 28/11: «¿por qué sigue mostrándose líneas punteadas?»).
- * Every street of the work is a thin solid neutral line; the selected layer paints its planned
- * stretches dashed in ITS color with the street's % beside them, and what is done solid on top.
- * No grey dashes outside «Editar croquis». PURE: the web and the APK paint what this returns.
+ * Every street of the work is a faint solid neutral band; the selected layer paints its planned
+ * stretches solid and translucent in ITS color with the street's % beside them, and what is done
+ * solid and opaque on top. Every line is as wide as the street (José 28/11: no dashes, «el ancho de
+ * la calle»). PURE: the web and the APK paint what this returns.
  */
 export type LayerMapLines = { base: WorkMapLine[]; planned: WorkMapLine[]; done: WorkMapLine[]; labels: StationMark[] };
 
 /** MapLibre paints hex, not tokens: a slate that reads on the light and the dark basemap. */
 export const LAYER_BASE_COLOR = '#64748b';
-export const LAYER_BASE_PAINT = { 'line-color': ['get', 'color'], 'line-width': 2.5, 'line-opacity': 0.85 };
-export const LAYER_PLANNED_PAINT = { 'line-color': ['get', 'color'], 'line-width': 5, 'line-dasharray': [1.6, 1.2] };
+export const LAYER_BASE_PAINT = { 'line-color': ['get', 'color'], 'line-width': streetWidthExpression(2), 'line-opacity': 0.35 };
+export const LAYER_PLANNED_PAINT = { 'line-color': ['get', 'color'], 'line-width': streetWidthExpression(4), 'line-opacity': 0.4 };
+/** The stretch being recorded or painted (Registrar avance, the brush): solid and as wide as the street. */
+export const WORK_MAP_STRETCH_PAINT = { 'line-color': ['get', 'color'], 'line-width': streetWidthExpression(6), 'line-opacity': 0.6 };
+/** What is done: the layer's color, opaque, over the planned band. */
+export const LAYER_DONE_PAINT = { 'line-color': ['get', 'color'], 'line-width': streetWidthExpression(5) };
 export const LAYER_LABEL_LAYOUT = { 'text-field': ['get', 'label'], 'text-font': ['Noto Sans Bold'], 'text-size': 12, 'text-offset': [0, -1.3], 'text-anchor': 'bottom', 'text-allow-overlap': false };
 export const LAYER_LABEL_PAINT = { 'text-color': '#0f172a', 'text-halo-color': '#ffffff', 'text-halo-width': 2 };
 /** «0+000» marks only from this zoom on: zoomed out they covered every street (José 28/11). */
@@ -26,7 +32,7 @@ const lngLat = (street: WorkMapStreet): Array<[number, number]> => street.line.m
 /** The streets the view shows, whole, thin and neutral: the work reads without looking pending. */
 export function baseLinesOf(map: Pick<WorkMap, 'streets'>, view: Pick<WorkMapView, 'streets'>): WorkMapLine[] {
   const shown = new Set(view.streets.map((row) => row.id));
-  return map.streets.filter((street) => shown.has(street.id) && street.line.length >= MIN_POINTS).map((street) => ({ streetId: street.id, color: LAYER_BASE_COLOR, coordinates: lngLat(street) }));
+  return map.streets.filter((street) => shown.has(street.id) && street.line.length >= MIN_POINTS).map((street) => ({ streetId: street.id, color: LAYER_BASE_COLOR, coordinates: lngLat(street), ...widthOf(street.widthM) }));
 }
 
 /** The street's % at the middle of its line, as the design writes «42 %» beside the stretch. */

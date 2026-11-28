@@ -36,7 +36,12 @@ Plan» (`channelTabsFor`, `checklistHoldsPending`); quien no tiene Checklist con
 
 ### Servicios (cc-01)
 
-- Cabecera «SERVICIOS DEL CLIENTE / Servicios» con «Enlace del cliente» y «Drive del cliente».
+- Sin cabecera (la pestaña ya dice «Servicios»; José 28/11). Un solo botón ⋮ de 44 dp en la fila de
+  «Buscar servicio» (`menu-canal-cliente`; solo, a la derecha, si no hay buscador) abre una hoja chica
+  (APK) o un menú (web) con «Enlace del cliente», «Accesos del canal» con «Todos ven el canal; los
+  montos, solo los admins» o «N con acceso restringido» (APK; solo admins del espacio) y «Drive del
+  cliente» (`clientChannelMenuOf`, `channelAccessLine` en `shared/src/clientAccess.ts`). Sin nada que
+  ofrecer, no hay botón. En la web «Accesos del canal» sigue en la info del canal, «Miembros».
 - Buscador y segmentado «Abiertos · Completados · Todos» con su número; «Rechazados» solo si hay uno
   (`serviceSegmentsOf`).
 - Una tarjeta por servicio con borde de color por estado, estado, avance, inicio y «Enlace del servicio».
@@ -62,7 +67,8 @@ Plan» (`channelTabsFor`, `checklistHoldsPending`); quien no tiene Checklist con
 - **Una sola barra subrayada** (`serviceTabs`): Pedidos N · Informes N · Mapa · Drive; el número
   va aparte (`ServiceTabItem.count`). La barra en sí nunca lleva botones de una sección (auditoría
   20/11: «Crear informe» y Pegar/cámara/Subir la empujaban a una segunda fila en computadora):
-  «Crear informe» va en la barra propia de Informes, Pegar/cámara/Subir en la de Drive (ambas en
+  «Crear informe» es UN botón ancho al tope de la lista de Informes (José 28/11: «se siente duplicado»;
+  ni píldora en la barra ni «Generar informe de servicio» aparte), Pegar/cámara/Subir en la de Drive (ambas en
   el contenido, bajo la barra de pestañas); Capas, Editar croquis, Más, Compartir y Registrar
   flotan sobre el lienzo del Mapa. Web: `ServiceShellWeb.tsx` sigue exportando `SectionActions`
   (sin uso hoy) para una acción futura que de verdad quepa en esa fila.
@@ -177,7 +183,9 @@ Plan» (`channelTabsFor`, `checklistHoldsPending`); quien no tiene Checklist con
   Cobranza con «Registrar pago».
 - Cuenta del cliente (f-08): todas las cotizaciones y pedidos a crédito, vencido primero.
 - **Valorización = informe de servicio** (José 31/10). Se quitó la pestaña
-  «Valorizaciones». «Generar informe de servicio» crea la liquidación **LIQ-SRV**
+  «Valorizaciones». «Informe de servicio», primer tipo de «Crear informe» para quien ve montos y si el
+  espacio ofrece la acción (`withServiceReport`, `SERVICE_REPORT_PICK`; corre `informe_de_servicio` desde el
+  espacio, `useSpaceActionRun`), crea la liquidación **LIQ-SRV**
   («Liquidación Final del Servicio»). VAL-SRV y LIQ-SRV entrarán al editor 2.0 después.
 - Quién ve montos por cliente: `GET|PUT /api/workspaces/:id/clients/:clientId/billing-viewers`.
 - Sin la marca de montos se quitan factura, precio, crédito y pagos de un pedido
@@ -224,8 +232,8 @@ Plan» (`channelTabsFor`, `checklistHoldsPending`); quien no tiene Checklist con
 
 APK y la gramática de 19/11: el teléfono (ancho < 768 dp o alto < 500 dp, `serviceTakesScreen`, así un
 teléfono apaisado sigue igual) abre el servicio a pantalla completa con flecha; la tablet deja la cabecera
-del chat y las pestañas del canal arriba (`ChannelWorkTabs.tsx`, `useWindowDimensions`). «Crear informe» va a
-la derecha de la barra. **Diferencia con la web:** RN no tiene portales, así que Pegar, cámara y Subir siguen
+del chat y las pestañas del canal arriba (`ChannelWorkTabs.tsx`, `useWindowDimensions`). «Crear informe» va al
+tope de la lista de Informes, como en la web (28/11). **Diferencia con la web:** RN no tiene portales, así que Pegar, cámara y Subir siguen
 en la cabecera del Drive y las acciones del mapa en su barra, justo bajo la barra de pestañas. Checklist con
 «Pendientes · Plan» en el teléfono: `chat/workPlan/ChecklistSegments.tsx`.
 
@@ -438,3 +446,5 @@ Un Control de imprimación con fotos ubicadas y dos días de avance aprobado (o-
 - **28/11** Mapa: «Marcar calles» (ma02) toca varias calles del mapa base, las numera en una lista y «Listo · N calles» las guarda de a una; «Una sola calle» sigue (detalle en `obra-mapa.md`).
 - **28/11** «Registrar avance de <capa>» mostraba el mapa vacío (la fila de chips crecía y dejaba el mapa en 0 de alto); arreglado y compactado en APK y web (detalle en `obra-mapa.md`).
 - **28/11** Mapa ronda 2: chips antes de «Más», vista previa chica de la capa, controles sobre la hoja, Modo Avance por color de capa y capas oscuras con borde (detalle en `obra-mapa.md`).
+- **28/11** Mapa: líneas sólidas del ancho real de la calle, bajo los nombres de las calles; brocha que nunca se pasa del largo de la calle; «Registrar avance» con % por deslizador o escrito (detalle en `obra-mapa.md`).
+- **28/11** Informes: un solo «Crear informe» al tope de la lista; «Informe de servicio» es el primer tipo del selector (quien ve montos). Servicios: sin cabecera, un ⋮ junto a «Buscar servicio» con «Enlace del cliente», «Accesos del canal» y «Drive del cliente».

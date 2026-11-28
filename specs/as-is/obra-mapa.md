@@ -432,6 +432,30 @@ Motores puros, con test, usados por web y APK:
   `controlsInset` por `onLayout`, web `useHeight`); Modo Avance dibuja por capa igual que el tablero;
   una capa casi negra lleva aro claro en sus puntos y borde claro en sus líneas (`lineHaloOf`,
   `lineCasingPaint`). Verificado: tests y tsc; en el dispositivo, las capturas de la ronda 1.
+- **28/11** Sin punteado y del ancho de la calle (José 28/11: «xq siguen viéndose líneas punteadas… no
+  ocupan el ancho de la calle. El nombre de la calle siempre por encima»; web y APK). Reemplaza el
+  punteado de las entradas de abajo: TODAS las líneas del visor son sólidas — calles de la obra en
+  banda neutra tenue (opacidad 0,35), lo planificado de la capa en su color translúcido (0,4), lo
+  hecho opaco, lo por aprobar en su color a media opacidad (0,65; antes punteado), el tramo que se
+  registra o se pinta a 0,6. Ancho: `shared/src/workLineWidth.ts` › `streetWidthExpression(minPx)`,
+  una parada por zoom 12…22 con interpolación exponencial base 2, cada una `max(minPx, ancho_m /
+  metros_por_px)` (tiles de 512 px, latitud de Lima −12°), leyendo `widthM` de cada línea
+  (`WorkMapLine.widthM`: tramo, si no la calle; sin ancho, 6 m `DEFAULT_STREET_WIDTH_M`). Los nombres
+  del mapa base van encima: nuestras líneas y rellenos se insertan bajo `street-name`
+  (`WORK_MAP_LABELS_LAYER`; APK `beforeId`, web `addLayer(…, beforeId)`); los «NN %», progresivas y
+  pines siguen arriba. Leyendas («Planificado», «Pendiente de ejecución», «Por aprobar») con
+  muestra sólida translúcida. «Editar croquis» usa las mismas líneas (también sólidas).
+  Brocha («Pintando <capa> · Toca las calles que la llevan»): causa del «El tramo excede el largo de
+  la calle (44.28 m)» — Portal recalcula `lengthM` al redibujar una calle (`PUT /api/work-streets/:id`)
+  y NO recorta sus tramos; la brocha reenviaba `toM` del tramo viejo tal cual y Portal lo rechaza si
+  pasa `lengthM + 0,5`. Ahora `clampToStreet` recorta cada tramo al largo de la calle (una sola fuente:
+  `street.lengthM` del mapa, el mismo que Portal valida), un tramo que queda vacío no se envía, y la
+  calle nueva va a `lengthM` exacto (antes `Math.round`). Las líneas de la brocha llevan su ancho.
+  «Registrar avance de <capa>» (ma04): fila compacta con deslizador 0–100 % y % escrito
+  (`RecordPercent.tsx` con `DecimalInput` en el APK, `input type=range` + texto en la web;
+  `decimalText` pasó a shared); los tres (deslizador, % y aro) van juntos: `recordAtPercent`,
+  `chainageAtPercent` (al centímetro, sin pasar la calle ni quedar antes del frente) y
+  `streetPercentOf` en `workProgressRecord.ts`. Verificado: tests y tsc; falta E2E en el dispositivo.
 - **28/11** Auditoría stitch-fidelity de ma01 tras las quejas de José (botones grandes, botones
   sobre las capas, «Capas y leyenda» abierta y enorme, líneas punteadas fuera de «Editar croquis»).
   Auditoría: `design/stitch/auditorias/ma01-mapa-capas.md` (16 diferencias del revisor independiente

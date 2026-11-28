@@ -1,6 +1,6 @@
-import { Suspense, useMemo, useRef, useState } from 'react';
+import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { Camera, Crosshair, Hand, Map as MapIcon, X } from 'lucide-react';
-import { GPS_UNAVAILABLE, MANUAL_NOTE_MAX, RECORD_ADD_NOTE, RECORD_NOTE_PLACEHOLDER, layerDraftFor, manualEndFromGps, pickManualWork, progressPreviewOf, RECORD_CHANGE, RECORD_PENDING_NOTE, RECORD_PHOTO_AND_SEND, RECORD_SEND, RECORD_TO_ME, RECORD_WHOLE, RECORD_WITHOUT_PHOTO, recordDropAt, recordHint, recordMapOf, recordProblem, recordSummary, recordTitle, recordWholeStreet, runManualProgress, youAreOn, type GpsStreet, type ManualPhotoUpload, type ManualProgressDraft, type MapEditSend, type StreetEnd, type WorkMap, type WorkMapPoint, type WorkMapWork } from '@lilachat/shared';
+import { GPS_UNAVAILABLE, MANUAL_NOTE_MAX, RECORD_ADD_NOTE, RECORD_NOTE_PLACEHOLDER, layerDraftFor, manualEndFromGps, pickManualWork, progressPreviewOf, RECORD_CHANGE, RECORD_PENDING_NOTE, RECORD_PHOTO_AND_SEND, RECORD_SEND, RECORD_TO_ME, RECORD_WHOLE, RECORD_WITHOUT_PHOTO, RECORD_PERCENT_LABEL, cleanDecimalText, decimalOf, decimalTextFollows, recordAtPercent, streetPercentOf, recordDropAt, recordHint, recordMapOf, recordProblem, recordSummary, recordTitle, recordWholeStreet, runManualProgress, youAreOn, type GpsStreet, type ManualPhotoUpload, type ManualProgressDraft, type MapEditSend, type StreetEnd, type WorkMap, type WorkMapPoint, type WorkMapWork } from '@lilachat/shared';
 import { DrivePhotoInput } from '../ServiceDriveWeb';
 import type { PickerHandle } from '../../../chat/camera/cameraRequests';
 import { lazyChunk } from '../../../ui/lazyChunk';
@@ -61,6 +61,28 @@ function Summary(props: { draft: ManualProgressDraft; lengthM: number; widthM?: 
   );
 }
 
+/** The ring's place as % of the street: a slider and a typed % in one compact row (José 28/11). */
+function PercentControl(props: { percent: number; onPercent: (percent: number) => void }) {
+  const [text, setText] = useState(String(props.percent));
+  useEffect(() => {
+    setText((typed) => decimalTextFollows(typed, props.percent));
+  }, [props.percent]);
+  const typed = (raw: string) => {
+    const cleaned = cleanDecimalText(raw);
+    setText(cleaned);
+    const value = decimalOf(cleaned);
+    if (value !== null) props.onPercent(value);
+  };
+  return (
+    <div className="flex items-center gap-2">
+      <input type="range" min={0} max={100} step={0.1} aria-label={RECORD_PERCENT_LABEL} data-testid="avance-porcentaje-slider" value={props.percent} onChange={(event) => props.onPercent(Number(event.target.value))} className="h-11 min-w-0 flex-1 accent-primary" />
+      <label className="flex h-11 shrink-0 items-center gap-1 rounded-xl border border-outline/25 bg-surface px-2 text-[15px] font-semibold text-on-surface focus-within:border-primary">
+        <input inputMode="decimal" aria-label={RECORD_PERCENT_LABEL} data-testid="avance-porcentaje" value={text} onChange={(event) => typed(event.target.value)} className="w-14 bg-transparent text-right outline-none" />%
+      </label>
+    </div>
+  );
+}
+
 /** One street: the ring from where the work stopped, the summary and «Tomar foto y registrar». */
 function useRecord(props: RecordScreenProps) {
   const street = props.map.streets.find((one) => one.id === props.streetId);
@@ -101,7 +123,8 @@ function useRecord(props: RecordScreenProps) {
     setBusy(null);
     return setAnswer(uploaded);
   };
-  return { street, lengthM, works: start.works, draft, drops, answer, busy, change, drop, toMe, problem, send, withPhoto };
+  const toPercent = (percent: number) => { setDrops((count) => count + 1); change(recordAtPercent(draft, lengthM, percent)); };
+  return { street, lengthM, works: start.works, draft, drops, answer, busy, change, drop, toPercent, toMe, problem, send, withPhoto };
 }
 
 /** «Agregar nota» (as o-06 had it): folded so it never pushes the main button down; dictation fits in it. */
@@ -123,6 +146,7 @@ function RecordFoot(props: { record: ReturnType<typeof useRecord>; map: WorkMap;
   return (
     <div className="space-y-2">
       <Summary draft={record.draft} lengthM={record.lengthM} widthM={record.street?.widthM} />
+      <PercentControl percent={streetPercentOf(record.draft.toM, record.lengthM)} onPercent={record.toPercent} />
       <NoteField note={record.draft.note} onNote={(note) => record.change({ ...record.draft, note })} />
       <div className="flex gap-2">
         <button type="button" data-testid="avance-manual-gps" disabled={record.busy !== null} onClick={() => void record.toMe()} className={OUTLINE_BUTTON}><Crosshair size={18} className="text-primary" />{record.busy === 'gps' ? 'Ubicando…' : RECORD_TO_ME}</button>

@@ -1,9 +1,10 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { Linking, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
-import { Archive, FolderOpen, Link2, Search } from 'lucide-react-native';
-import { archivedBanner, ARCHIVED_COMPOSER_NOTE, filterServices, serviceAccessOf, serviceSegmentsOf, orderFocusOf, type ChannelLinks, type ServiceFilter, type ClientRecord, type SpaceClient, type SpaceClientService } from '@lilachat/shared';
+import { Archive, FolderOpen, Link2, MoreVertical, Search, ShieldCheck, type LucideIcon } from 'lucide-react-native';
+import { archivedBanner, ARCHIVED_COMPOSER_NOTE, clientChannelMenuOf, filterServices, serviceAccessOf, serviceSegmentsOf, orderFocusOf, type ChannelLinks, type ClientChannelMenuKey, type ServiceFilter, type ClientRecord, type SpaceClient, type SpaceClientService } from '@lilachat/shared';
 import { useColores } from '../../ui/tema';
-import { ClientAccessRow } from './ClientAccess';
+import { ClientAccessScreens, useClientAccess } from './ClientAccess';
+import { Sheet } from '../../ui/Sheet';
 import { ServiceDetailView } from './ServiceDetailView';
 import { ServiceCard } from './ServiceCard';
 import { prefetchServiceDetails } from './savedServiceAnswers';
@@ -30,13 +31,16 @@ export function ArchivedComposerNote(props: { client: SpaceClient | null }) {
   return props.client && !props.client.live ? <Text testID="nota-archivado" className="bg-background pt-2 text-center text-[13px] text-on-surface-variant">{ARCHIVED_COMPOSER_NOTE}</Text> : null;
 }
 
-function ServiceFilters(props: { query: string; onQuery: (query: string) => void; filter: ServiceFilter; onFilter: (filter: ServiceFilter) => void; counts: Record<ServiceFilter, number> }) {
+function ServiceFilters(props: { query: string; onQuery: (query: string) => void; filter: ServiceFilter; onFilter: (filter: ServiceFilter) => void; counts: Record<ServiceFilter, number>; /** The channel's menu, on the search's row (José 28/11). */ menu: ReactNode }) {
   const colors = useColores();
   return (
     <View className="gap-2">
-      <View className="h-11 flex-row items-center gap-2 rounded-xl border border-outline/15 bg-surface px-3">
-        <Search size={16} color={colors['on-surface-variant']} />
-        <TextInput testID="buscar-servicio" value={props.query} onChangeText={props.onQuery} placeholder="Buscar servicio" placeholderTextColor={colors['on-surface-variant']} className="flex-1 text-[14px] text-on-surface" />
+      <View className="flex-row items-center gap-2">
+        <View className="h-11 flex-1 flex-row items-center gap-2 rounded-xl border border-outline/15 bg-surface px-3">
+          <Search size={16} color={colors['on-surface-variant']} />
+          <TextInput testID="buscar-servicio" value={props.query} onChangeText={props.onQuery} placeholder="Buscar servicio" placeholderTextColor={colors['on-surface-variant']} className="flex-1 text-[14px] text-on-surface" />
+        </View>
+        {props.menu}
       </View>
       {/* Design cc-01: a segmented control, «Rechazados» only when there is one. */}
       <View className="flex-row rounded-xl border border-outline/15 bg-surface p-1">
@@ -50,36 +54,53 @@ function ServiceFilters(props: { query: string; onQuery: (query: string) => void
   );
 }
 
-function ListHead(props: { client: SpaceClient; links?: ChannelLinks; seesDrive: boolean }) {
+const MENU_ICONS: Record<ClientChannelMenuKey, LucideIcon> = { link: Link2, access: ShieldCheck, drive: FolderOpen };
+
+/**
+ * One ⋮ beside «Buscar servicio» (José 28/11: «Enlace del cliente» and «Accesos del canal» were two big
+ * blocks): the client's link, the channel's accesses (space admins) and its Drive, in a small sheet.
+ */
+function ChannelMenu(props: { client: SpaceClient; links?: ChannelLinks; seesDrive: boolean; target: ServiceAskTarget | null; members: ReadonlyMap<string, string>; me: string }) {
   const colors = useColores();
   const { links } = props;
+  const access = useClientAccess(props.target);
+  const [open, setOpen] = useState(false);
+  const [accessOpen, setAccessOpen] = useState(false);
   const driveUrl = props.client.drive_url;
+  const items = clientChannelMenuOf({ link: Boolean(links?.can('client')), accessRestricted: access.list ? access.list.restricted.length : null, drive: props.seesDrive && Boolean(driveUrl) });
+  const pick = (key: ClientChannelMenuKey) => {
+    setOpen(false);
+    if (key === 'link') links?.open({ kind: 'client', clientId: props.client.id });
+    else if (key === 'access') setAccessOpen(true);
+    else if (driveUrl) void Linking.openURL(driveUrl);
+  };
+  if (!items.length) return null;
   return (
-    <View className="gap-2">
-      <View>
-        <Text className="text-[11px] font-bold uppercase tracking-[1.5px] text-on-surface-variant">Servicios del cliente</Text>
-        <Text className="text-[22px] font-extrabold text-primary">Servicios</Text>
-      </View>
-      <View className="flex-row flex-wrap gap-2">
-        {/* José 31/10: the client's link here; an order's in its sheet, a service's on its card. */}
-        {links?.can('client') ? (
-          <Pressable testID="enlace-cliente" onPress={() => links.open({ kind: 'client', clientId: props.client.id })} className={HEAD_BUTTON}>
-            <Link2 size={16} color={colors.primary} />
-            <Text className="text-[14px] font-semibold text-on-surface">Enlace del cliente</Text>
-          </Pressable>
-        ) : null}
-        {props.seesDrive && driveUrl ? (
-          <Pressable testID="drive-cliente" onPress={() => void Linking.openURL(driveUrl)} className={HEAD_BUTTON}>
-            <FolderOpen size={16} color={colors.primary} />
-            <Text className="text-[14px] font-semibold text-on-surface">Drive del cliente</Text>
-          </Pressable>
-        ) : null}
-      </View>
-    </View>
+    <>
+      <Pressable testID="menu-canal-cliente" accessibilityLabel="Opciones del cliente" onPress={() => setOpen(true)} className="h-11 w-11 items-center justify-center rounded-xl border border-outline/15 bg-surface">
+        <MoreVertical size={20} color={colors['on-surface']} />
+      </Pressable>
+      <Sheet visible={open} onClose={() => setOpen(false)} testID="menu-canal-cliente-hoja" className="px-4 pt-2">
+        {items.map((item) => {
+          const Icon = MENU_ICONS[item.key];
+          return (
+            <Pressable key={item.key} testID={MENU_TEST_IDS[item.key]} onPress={() => pick(item.key)} className="min-h-[56px] flex-row items-center gap-3 border-b border-outline/10 py-2">
+              <Icon size={20} color={colors.primary} />
+              <View className="min-w-0 flex-1">
+                <Text className="text-[16px] font-semibold text-on-surface">{item.label}</Text>
+                {item.hint ? <Text className="text-[12px] text-on-surface-variant">{item.hint}</Text> : null}
+              </View>
+            </Pressable>
+          );
+        })}
+      </Sheet>
+      <ClientAccessScreens access={access} members={props.members} me={props.me} open={accessOpen} onClose={() => setAccessOpen(false)} />
+    </>
   );
 }
 
-const HEAD_BUTTON = 'min-h-[44px] flex-row items-center gap-2 rounded-xl border border-outline/20 bg-surface px-3';
+/** The ids the blocks had before they moved into the menu: the E2E keeps them. */
+const MENU_TEST_IDS: Record<ClientChannelMenuKey, string> = { link: 'enlace-cliente', access: 'accesos-del-canal', drive: 'drive-cliente' };
 
 /**
  * «Servicios» (José 19/11, design cc-01): the client's link and Drive, the search with «Abiertos ·
@@ -135,11 +156,10 @@ export function ClientServices(props: { /** The channel hides its chrome while a
   const sees = serviceAccessOf(props.client.access);
   if (opened && props.target) return <ServiceDetailView key={`${opened.id}:${startReportId ?? ''}`} people={[...props.members.values()]} target={props.target} chatId={props.client.chat_id} clientName={props.client.name} compact={props.compact ?? true} service={opened} seesMoney={Boolean(props.client.access?.money)} admin={Boolean(props.client.access?.admin)} seesDrive={sees.drive} driveOnly={!sees.detail} onBack={close} links={links} startOrderId={startOrderId} startReportId={startReportId} />;
   const total = props.client.services.length;
+  const menu = <ChannelMenu client={props.client} links={links} seesDrive={sees.drive} target={props.target} members={props.members} me={props.me} />;
   return (
     <ScrollView keyboardShouldPersistTaps="handled" testID="servicios-cliente" contentContainerStyle={{ padding: 16, gap: 12 }}>
-      <ListHead client={props.client} links={links} seesDrive={sees.drive} />
-      {props.target ? <ClientAccessRow target={props.target} members={props.members} me={props.me} /> : null}
-      {total > 1 ? <ServiceFilters query={query} onQuery={setQuery} filter={filter} onFilter={setFilter} counts={counts} /> : null}
+      {total > 1 ? <ServiceFilters query={query} onQuery={setQuery} filter={filter} onFilter={setFilter} counts={counts} menu={menu} /> : <View className="flex-row justify-end">{menu}</View>}
       {total === 0 ? <Text className="pt-10 text-center text-[14px] text-on-surface-variant">Este cliente todavía no tiene servicios.</Text> : null}
       {total > 0 && services.length === 0 ? <Text className="pt-6 text-center text-[14px] text-on-surface-variant">Ningún servicio con ese filtro.</Text> : null}
       {services.map((service) => (

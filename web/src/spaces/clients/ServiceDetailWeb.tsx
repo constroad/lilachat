@@ -1,16 +1,16 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
-import { ChevronLeft, FilePlus, FileText } from 'lucide-react';
+import { ChevronLeft, FilePlus } from 'lucide-react';
 import { LIFTING_TYPE, AREA_TYPE, createsInEmbed, draftToContinue, embedCreateRequest, opensEmbed, reportTypeLabel, isObservationType, SERVICE_REPORT_ACTION, serviceValuesOf, detailRows, detailSheet, serviceTabs, openingSheets, moreInPortal, type ChannelLinks, type DetailTabKey, type ServiceTabKey, type EmbedCreateRequest, type ServiceAskResult, type ServiceDetail, type ServiceReport, type ServiceTabItem, type SpaceClientService } from '@lilachat/shared';
 import { usePortalFileViewer } from './PortalFileViewer';
 import { RecordSheetWeb } from './RecordSheetWeb';
 import { ServiceDriveWeb } from './ServiceDriveWeb';
 import { ServiceListWeb } from './ServiceListsWeb';
-import { SHELL_PRIMARY, ServiceShellWeb, useCompactShell } from './ServiceShellWeb';
+import { ServiceShellWeb, useCompactShell } from './ServiceShellWeb';
 import { MapWorkspace } from './workMap/MapWorkspace';
 import { doorMapLinks, serviceLinkSender } from './workMap/workProgressSender';
 import { ServiceLinkSheetWeb } from './ServiceLinkSheetWeb';
 import { ServiceStagesWeb } from './ServiceStagesWeb';
-import { SpaceActionButtonWeb } from './SpaceActionButtonWeb';
+import { useSpaceActionRunWeb } from './SpaceActionButtonWeb';
 import { useReportPdf } from './useReportPdf';
 import { useServiceAsk, type ServiceAskTarget } from './useServiceAsk';
 import { CreateReportDialog } from './reports/CreateReportDialog';
@@ -26,23 +26,14 @@ const orderLinkAction = (links: ChannelLinks | undefined, top: OpenSheet | undef
   links?.can('order') && top?.tab === 'orders' ? { label: 'Crear enlace del pedido', onPress: () => links.open({ kind: 'order', clientId: target.clientId, orderId: top.id }) } : undefined;
 
 /**
- * «Crear informe» at the right of Informes' own toolbar (design cc-03), for everyone with the
- * services (José 05/11). Not in the shared tab bar: crammed there with the other tabs it pushed
- * the service header to a second row on a computer (audit 20/11).
+ * The ONE «Crear informe» of Informes, where «Generar informe de servicio» was (José 28/11: «se siente duplicado;
+ * solamente debería ir un Crear»). It opens the picker; «Informe de servicio» is its first type when offered.
  */
 const CreateReportButton = ({ onPress }: { onPress: () => void }) => (
-  <button type="button" data-testid="crear-informe" onClick={onPress} className={SHELL_PRIMARY}><FilePlus size={16} /> Crear informe</button>
+  <button type="button" data-testid="crear-informe" onClick={onPress} className="flex h-11 w-full items-center gap-2 rounded-xl border border-primary/30 bg-primary/10 px-3 text-left text-sm font-semibold text-primary hover:bg-primary/15"><FilePlus size={16} /> Crear informe</button>
 );
 
-/**
- * «Generar informe de servicio» above Informes (José 31/10): the liquidation carries amounts, so
- * only for whoever sees money (José 05/11). It runs from the space; an answered one asks the detail again.
- */
-function ReportAction({ target, serviceId, onAnswered }: { target: ServiceAskTarget; serviceId: string; onAnswered: () => void }) {
-  return <SpaceActionButtonWeb jwt={target.jwt} spaceId={target.spaceId} values={serviceValuesOf(serviceId)} onAnswered={onAnswered} actionKey={SERVICE_REPORT_ACTION} label="Generar informe de servicio" testId="generar-informe-servicio" Icon={FileText} />;
-}
-
-type ListProps = { detail: ServiceDetail; target: ServiceAskTarget; serviceId: string; links?: ChannelLinks; seesMoney: boolean; admin: boolean; tab: DetailTabKey; startOrderId?: string; startReportId?: string; onReported: () => void; onCreateReport: () => void; onContinueReport: (draft: { type: string; reportId: string }) => void; onOpenEmbed: (report: ServiceReport) => void };
+type ListProps = { detail: ServiceDetail; target: ServiceAskTarget; serviceId: string; links?: ChannelLinks; seesMoney: boolean; admin: boolean; tab: DetailTabKey; startOrderId?: string; startReportId?: string; onReported: () => void; onCreateReport: () => void; /** The service report's private answers, under the button. */ reportPanel?: ReactNode; onContinueReport: (draft: { type: string; reportId: string }) => void; onOpenEmbed: (report: ServiceReport) => void };
 
 /** Pedidos or Informes: the list, its sheets on top and what Portal has beyond the 100 it sent. */
 function ServiceLists(props: ListProps) {
@@ -76,9 +67,9 @@ function ServiceLists(props: ListProps) {
   };
   return (
     <>
-      {tab === 'reports' ? <div className="flex justify-end"><CreateReportButton onPress={props.onCreateReport} /></div> : null}
       {props.admin ? <ServiceStagesWeb detail={detail} /> : null}
-      {tab === 'reports' && props.seesMoney ? <ReportAction target={props.target} serviceId={props.serviceId} onAnswered={props.onReported} /> : null}
+      {tab === 'reports' ? <CreateReportButton onPress={props.onCreateReport} /> : null}
+      {tab === 'reports' ? props.reportPanel : null}
       <ServiceListWeb detail={detail} tab={tab} onOpen={openRow} onOpenDispatch={(id) => setOpened([{ tab: 'dispatches', id }])} onOpenFile={viewer.open} />
       {viewer.viewer}
       {sheet ? <RecordSheetWeb sheet={sheet} onClose={close} onOpenFile={viewer.open} pdf={sheet.pdfOnDemand ? { asking: reportPdf.asking, message: reportPdf.message, readyUrl: reportPdf.readyUrl, onAsk: () => void reportPdf.ask(sheet.pdfOnDemand!, Boolean(sheet.pdfPreview)) } : undefined} onOpenRelated={openDispatch} action={orderLinkAction(props.links, top, props.target)} /> : null}
@@ -174,6 +165,8 @@ function ServiceRecordsDetail(props: ServiceDetailProps & { compact: boolean }) 
   // Back from the report, the detail opens on Informes, where it was.
   const flows = useReportFlows(askAgain, useCallback(() => { setStartOrderId(undefined); setStartReportId(undefined); setTab('reports'); }, []));
   const portalUrl = answer?.ok ? answer.value.service.url : undefined;
+  // «Informe de servicio» carries amounts: only whoever sees money (José 05/11); it runs from the space.
+  const serviceReport = useSpaceActionRunWeb({ jwt: props.target.jwt, spaceId: props.target.spaceId, actionKey: SERVICE_REPORT_ACTION, values: serviceValuesOf(props.service.id), onAnswered: askAgain, wanted: props.seesMoney });
   const mapOpen = tab === 'map' && Boolean(props.links) && Boolean(answer?.ok);
   const { onMapOpen } = props;
   useEffect(() => {
@@ -188,8 +181,8 @@ function ServiceRecordsDetail(props: ServiceDetailProps & { compact: boolean }) 
   const tabs = answer?.ok ? serviceTabs(answer.value, Boolean(props.seesDrive), Boolean(props.links)) : [];
   return (
     <ServiceShellWeb service={props.service} clientName={props.clientName} compact={props.compact} tabs={tabs} tab={tab} onTab={pickTab} onBack={props.onBack} onShare={share.onShare} portalUrl={portalUrl} flush={mapOpen}>
-      <ServiceBody {...props} answer={answer} tab={tab} mapOpen={mapOpen} startOrderId={startOrderId} startReportId={startReportId} askAgain={askAgain} flows={flows} />
-      {flows.picker ? <CreateReportDialog portalUrl={portalUrl} people={props.people ?? []} seesMoney={props.seesMoney} inEditor={(code) => createsInEmbed(window.innerWidth, code)} onPick={(code, responsible) => { flows.setPicker(false); flows.pickNew(code, responsible); }} onClose={() => flows.setPicker(false)} /> : null}
+      <ServiceBody {...props} answer={answer} tab={tab} mapOpen={mapOpen} startOrderId={startOrderId} startReportId={startReportId} askAgain={askAgain} flows={flows} reportPanel={serviceReport.panel} />
+      {flows.picker ? <CreateReportDialog portalUrl={portalUrl} people={props.people ?? []} seesMoney={props.seesMoney} onServiceReport={props.seesMoney && serviceReport.offered ? () => { flows.setPicker(false); serviceReport.run(); } : undefined} inEditor={(code) => createsInEmbed(window.innerWidth, code)} onPick={(code, responsible) => { flows.setPicker(false); flows.pickNew(code, responsible); }} onClose={() => flows.setPicker(false)} /> : null}
       {share.sheet}
       {flows.framed ? <PortalEmbedWeb target={props.target} serviceId={props.service.id} serviceName={props.service.name} report={flows.framed} onClose={flows.closeFramed} {...(croquisMap ? { workMap: croquisMap } : {})} /> : null}
     </ServiceShellWeb>
@@ -205,7 +198,7 @@ function ReportTakeover(props: ServiceDetailProps & { report: ReportOpen; portal
   return <Takeover><ReportDocumentWeb target={props.target} chatId={props.chatId} service={props.service} type={report.type} {...reportId} {...(report.responsible ? { responsible: report.responsible } : {})} portalUrl={props.portalUrl} links={props.links} admin={Boolean(props.admin)} onClose={props.onClose} /></Takeover>;
 }
 
-type BodyProps = ServiceDetailProps & { answer: ServiceAskResult<ServiceDetail> | null; tab: ServiceTabKey; mapOpen: boolean; startOrderId?: string; startReportId?: string; askAgain: () => void; flows: ReturnType<typeof useReportFlows> };
+type BodyProps = ServiceDetailProps & { answer: ServiceAskResult<ServiceDetail> | null; tab: ServiceTabKey; mapOpen: boolean; startOrderId?: string; startReportId?: string; askAgain: () => void; flows: ReturnType<typeof useReportFlows>; reportPanel?: ReactNode };
 
 /** The open section under the bar: the map edge to edge, the Drive, or Pedidos / Informes. */
 function ServiceBody(props: BodyProps) {
@@ -215,7 +208,7 @@ function ServiceBody(props: BodyProps) {
   if (props.mapOpen && props.links) return <MapWorkspace onLift={(lift) => flows.setReport({ type: LIFTING_TYPE, lift })} admin={props.seesMoney} detail={answer.value} service={props.service} links={doorMapLinks(props.links, props.target, props.chatId, props.service.id)} target={props.target} chatId={props.chatId} />;
   if (tab === 'drive') return <ServiceDriveWeb target={props.target} service={props.service} chatId={props.chatId} marks={answer.value.photoMarks} />;
   if (tab !== 'orders' && tab !== 'reports') return null;
-  return <ServiceLists detail={answer.value} target={props.target} serviceId={props.service.id} links={props.links} seesMoney={props.seesMoney} admin={Boolean(props.admin)} tab={tab} startOrderId={tab === 'orders' ? props.startOrderId : undefined} startReportId={tab === 'reports' ? props.startReportId : undefined} onReported={props.askAgain} onCreateReport={() => flows.setPicker(true)} onContinueReport={flows.setReport} onOpenEmbed={flows.setFramed} />;
+  return <ServiceLists detail={answer.value} target={props.target} serviceId={props.service.id} links={props.links} seesMoney={props.seesMoney} admin={Boolean(props.admin)} tab={tab} startOrderId={tab === 'orders' ? props.startOrderId : undefined} startReportId={tab === 'reports' ? props.startReportId : undefined} onReported={props.askAgain} onCreateReport={() => flows.setPicker(true)} reportPanel={props.reportPanel} onContinueReport={flows.setReport} onOpenEmbed={flows.setFramed} />;
 }
 
 type Failed = Extract<ServiceAskResult<ServiceDetail>, { ok: false }>;

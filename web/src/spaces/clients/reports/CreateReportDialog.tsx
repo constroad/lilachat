@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { BadgeCheck, Calculator, ChevronRight, ClipboardCheck, Compass, Droplets, FileSignature, FileWarning, FlaskConical, FolderOpen, Hammer, Handshake, Images, Layers, ListChecks, ScanSearch, Square, Stamp, Truck, UserCheck, type LucideIcon } from 'lucide-react';
-import { asksResponsible, pickerReportTypes, RESPONSIBLE_MAX, reportTypeLabel, type ReportTypeOption } from '@lilachat/shared';
+import { BadgeCheck, Calculator, ChevronRight, ClipboardCheck, Compass, Droplets, FileSignature, FileText, FileWarning, FlaskConical, FolderOpen, Hammer, Handshake, Images, Layers, ListChecks, ScanSearch, Square, Stamp, Truck, UserCheck, type LucideIcon } from 'lucide-react';
+import { asksResponsible, pickerReportTypes, RESPONSIBLE_MAX, reportTypeLabel, SERVICE_REPORT_PICK, withServiceReport, type ReportTypeOption } from '@lilachat/shared';
 import { loadPerfil } from '../../../api';
 import { Overlay } from '../../../ui/Overlay';
 
@@ -8,6 +8,7 @@ const ICONS: Record<string, LucideIcon> = {
   'CTL-IMP': Droplets, IAA: Square, 'CTL-PIS': Truck, 'CON-CAP': Layers, 'RCP-CAM': UserCheck, 'REG-OBS': ScanSearch, 'LEV-OBS': ClipboardCheck, 'FRE-PAV': Hammer, 'SOL-IMP': FileSignature, 'APR-ADI': Stamp,
   // Portal's block sheets (José 16/11), only on the wide web.
   'ACT-CNF': BadgeCheck, 'REC-EXC': FileWarning, 'MET-RES': Calculator, 'CAL-PROT': FlaskConical, 'TOP-CMP': Compass, 'INF-ACT': ListChecks, 'PNL-FOT': Images, 'CONT-SRV': Handshake, 'DOS-OBR': FolderOpen,
+  [SERVICE_REPORT_PICK]: FileText,
 };
 const ROW = 'flex min-h-[64px] w-full items-center gap-3 rounded-xl border bg-surface px-3 py-2.5 text-left';
 
@@ -67,17 +68,22 @@ function ResponsibleStep(props: { code: string; people: readonly string[]; onCon
  * `inEditor`: on the wide web the types Portal's editor creates are picked here too (José 12/11), and born there; so are
  * its block sheets (José 16/11), only for whoever sees money (`seesMoney`; without it, none).
  */
-export function CreateReportDialog(props: { portalUrl?: string; people?: readonly string[]; seesMoney?: boolean; inEditor?: (code: string) => boolean; onPick: (code: string, responsible: string) => void; onClose: () => void }) {
+export function CreateReportDialog(props: { portalUrl?: string; people?: readonly string[]; seesMoney?: boolean; /** «Informe de servicio», first, when the space offers it (José 28/11: one «Crear informe»). */ onServiceReport?: () => void; inEditor?: (code: string) => boolean; onPick: (code: string, responsible: string) => void; onClose: () => void }) {
   const [code, setCode] = useState<string | null>(null);
   if (code) return <Overlay title="Nuevo informe" onClose={props.onClose}><ResponsibleStep code={code} people={props.people ?? []} onConfirm={(name) => props.onPick(code, name)} onBack={() => setCode(null)} /></Overlay>;
-  const options = pickerReportTypes(props.seesMoney ?? false, props.inEditor ?? (() => false));
+  const options = withServiceReport(pickerReportTypes(props.seesMoney ?? false, props.inEditor ?? (() => false)), Boolean(props.onServiceReport));
+  const pick = (picked: string) => {
+    if (picked === SERVICE_REPORT_PICK) props.onServiceReport?.();
+    else if (asksResponsible(picked)) setCode(picked);
+    else props.onPick(picked, '');
+  };
   return (
     <Overlay title="¿Qué informe vas a hacer?" onClose={props.onClose}>
       <div data-testid="crear-informe-tipos" className="flex flex-col gap-2">
         <p className="-mt-1 mb-1 text-sm text-on-surface-variant">Se guarda como borrador mientras lo llenas</p>
         {options.map((option) =>
           option.opensHere || props.inEditor?.(option.code) ? (
-            <button key={option.code} type="button" data-testid={`tipo-informe-${option.code}`} onClick={() => (asksResponsible(option.code) ? setCode(option.code) : props.onPick(option.code, ''))} className={`${ROW} border-primary/40 hover:bg-primary/5`}>
+            <button key={option.code} type="button" data-testid={`tipo-informe-${option.code}`} onClick={() => pick(option.code)} className={`${ROW} border-primary/40 hover:bg-primary/5`}>
               <TypeIcon code={option.code} />
               <TypeText option={option} />
               <ChevronRight size={18} className="shrink-0 text-primary" />

@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { BackHandler, Linking, Pressable, ScrollView, Text, View } from 'react-native';
-import { ExternalLink, FilePlus, FileText } from 'lucide-react-native';
+import { ExternalLink, FilePlus } from 'lucide-react-native';
 import { LIFTING_TYPE, AREA_TYPE, savedAnswerLine, draftToContinue, isObservationType, CLIENT_SERVICE_STATUS_LABELS, SERVICE_REPORT_ACTION, serviceValuesOf, detailRows, detailSheet, serviceTabs, openingSheets, moreInPortal, portalMapTabUrl, type ChannelLinks, type DetailTabKey, type ServiceAskResult, type ServiceTabItem, type ServiceTabKey, type ServiceDetail, type ShownServiceAnswer, type SpaceClientService } from '@lilachat/shared';
 import { useColores } from '../../ui/tema';
 import type { ViewableFile } from '@lilachat/shared';
@@ -15,7 +15,7 @@ import { mapPhotoUploader, mapTraceUploader } from './useDriveUpload';
 import { doorMapLinks, mapEditSender, serviceLinkSender, workProgressSender, workStreetDeleteSender, workStreetSender } from './workMap/workProgressSender';
 import { ServiceLinkSheet } from './ServiceLinkSheet';
 import { ServiceStages } from './ServiceStages';
-import { SpaceActionButton } from './SpaceActionButton';
+import { useSpaceActionRun } from './SpaceActionButton';
 import { STATUS_TONE } from './tones';
 import { useFileViewer } from './useFileViewer';
 import { useReportPdf } from './useReportPdf';
@@ -29,23 +29,18 @@ import { AreasScreen } from './areas/AreasScreen';
 type OpenFile = (file: ViewableFile, siblings?: readonly ViewableFile[]) => void;
 const BODY = { padding: 16, gap: 12, paddingBottom: 40 };
 
-/** «Crear informe» at the right of the tab bar (design cc-03), for everyone with the services (José 05/11). */
+/**
+ * The ONE «Crear informe» of Informes, where «Generar informe de servicio» was (José 28/11: «se siente duplicado;
+ * solamente debería ir un Crear»). It opens the picker; «Informe de servicio» is its first type when offered.
+ */
 function CreateReportButton({ onPress }: { onPress: () => void }) {
   const colors = useColores();
   return (
-    <Pressable testID="crear-informe" onPress={onPress} className="min-h-[44px] flex-row items-center gap-1.5 rounded-xl bg-primary px-3">
-      <FilePlus size={17} color={colors['on-primary']} />
-      <Text className="text-[14px] font-bold text-on-primary">Crear informe</Text>
+    <Pressable testID="crear-informe" onPress={onPress} className="min-h-[48px] flex-row items-center gap-3 rounded-xl border border-primary/30 bg-primary/10 px-3">
+      <FilePlus size={18} color={colors.primary} />
+      <Text className="flex-1 text-[15px] font-semibold text-primary">Crear informe</Text>
     </Pressable>
   );
-}
-
-/**
- * «Generar informe de servicio» above Informes (José 31/10): the liquidation carries amounts, so
- * only for whoever sees money (José 05/11). It runs from the space; an answered one asks again.
- */
-function ReportAction({ target, serviceId, onAnswered }: { target: ServiceAskTarget; serviceId: string; onAnswered: () => void }) {
-  return <SpaceActionButton jwt={target.jwt} spaceId={target.spaceId} values={serviceValuesOf(serviceId)} onAnswered={onAnswered} actionKey={SERVICE_REPORT_ACTION} label="Generar informe de servicio" testID="generar-informe-servicio" Icon={FileText} />;
 }
 
 /** An order's sheet makes its link with what Portal's modal asks (José 31/10); other sheets have no button. */
@@ -60,7 +55,7 @@ function pdfActionOf(sheet: ReturnType<typeof detailSheet>, reportPdf: ReturnTyp
   return { asking: reportPdf.asking, message: reportPdf.message, onAsk: () => void reportPdf.ask(asked, `${sheet.title} · PDF`, Boolean(sheet.pdfPreview)) };
 }
 
-type ListProps = { detail: ServiceDetail; target: ServiceAskTarget; serviceId: string; tab: DetailTabKey; links?: ChannelLinks; seesMoney: boolean; admin: boolean; startOrderId?: string; startReportId?: string; onOpenFile: OpenFile; onReported: () => void; onContinueReport: (draft: { type: string; reportId: string }) => void };
+type ListProps = { detail: ServiceDetail; target: ServiceAskTarget; serviceId: string; tab: DetailTabKey; links?: ChannelLinks; seesMoney: boolean; admin: boolean; startOrderId?: string; startReportId?: string; onOpenFile: OpenFile; onReported: () => void; onCreate: () => void; /** The service report's private answers, under the button. */ reportPanel?: ReactNode; onContinueReport: (draft: { type: string; reportId: string }) => void };
 
 /** Pedidos or Informes: the list, its sheets on top and what Portal has beyond the 100 it sent. */
 function ServiceLists(props: ListProps) {
@@ -91,7 +86,8 @@ function ServiceLists(props: ListProps) {
   return (
     <>
       {props.admin ? <ServiceStages detail={detail} /> : null}
-      {tab === 'reports' && props.seesMoney ? <ReportAction target={props.target} serviceId={props.serviceId} onAnswered={props.onReported} /> : null}
+      {tab === 'reports' ? <CreateReportButton onPress={props.onCreate} /> : null}
+      {tab === 'reports' ? props.reportPanel : null}
       <ServiceList detail={detail} tab={tab} onOpen={openRow} onOpenDispatch={(id) => setOpened([{ tab: 'dispatches', id }])} onOpenFile={props.onOpenFile} />
       {more ? <Text className="text-center text-[12px] text-on-surface-variant">{`${more} · el resto está en el Portal`}</Text> : null}
       <RecordSheet sheet={sheet} onClose={close} onOpenFile={props.onOpenFile} pdf={pdfActionOf(sheet, reportPdf)} onOpenRelated={openDispatch} action={orderLinkAction(props.links, top, props.target)} />
@@ -150,7 +146,7 @@ function ServiceDriveOnly(props: ServiceDetailProps) {
   );
 }
 
-type BodyProps = ServiceDetailProps & { answer: ShownServiceAnswer<ServiceDetail> | null; onRetry: () => void; tab: ServiceTabKey; startTab: DetailTabKey; onOpenFile: OpenFile; onReported: () => void; onCreate: () => void; onContinueReport: (draft: { type: string; reportId: string }) => void; onLift: (row: LiftRow) => void };
+type BodyProps = ServiceDetailProps & { answer: ShownServiceAnswer<ServiceDetail> | null; onRetry: () => void; tab: ServiceTabKey; startTab: DetailTabKey; onOpenFile: OpenFile; onReported: () => void; onCreate: () => void; reportPanel?: ReactNode; onContinueReport: (draft: { type: string; reportId: string }) => void; onLift: (row: LiftRow) => void };
 
 function PortalLink(props: { url: string; label: string; testID: string }) {
   const colors = useColores();
@@ -205,7 +201,7 @@ function ServiceBody(props: BodyProps) {
   if (tab === 'drive') return <ServiceDrive target={target} service={service} chatId={props.chatId} onBack={props.onBack} marks={detail.photoMarks} />;
   if (tab === 'map' && props.links) return <ServiceMapPanel jwt={target.jwt} links={doorMapLinks(props.links, target, props.chatId, serviceId)} target={{ kind: 'service', clientId: target.clientId, serviceId }} title={service.name} badge={<Text className={`rounded-full border px-2 py-0.5 text-[11px] font-bold uppercase ${STATUS_TONE[service.status]}`}>{CLIENT_SERVICE_STATUS_LABELS[service.status]}</Text>} drawUrl={portalMapTabUrl(detail.service.url)} discharges={detail.discharges} mapPhotos={detail.mapPhotos} start={detail.service.location} send={workProgressSender(target, props.chatId, serviceId)} drawStreet={workStreetSender(target, props.chatId, serviceId)} deleteStreet={workStreetDeleteSender(target, props.chatId, serviceId)} editMap={mapEditSender(target, props.chatId, serviceId)} admin={props.seesMoney} uploadPhoto={mapPhotoUploader(target, props.chatId, serviceId)} uploadTrace={mapTraceUploader(target, props.chatId, serviceId)} mapInReport={detail.service.mapInReport} onLift={props.onLift} />;
   if (tab !== 'orders' && tab !== 'reports') return null;
-  return <ServiceLists detail={detail} target={target} serviceId={serviceId} tab={tab} links={props.links} seesMoney={props.seesMoney} admin={Boolean(props.admin)} startOrderId={tab === 'orders' && props.startTab === 'orders' ? props.startOrderId : undefined} startReportId={tab === 'reports' ? props.startReportId : undefined} onOpenFile={props.onOpenFile} onReported={props.onReported} onContinueReport={props.onContinueReport} />;
+  return <ServiceLists detail={detail} target={target} serviceId={serviceId} tab={tab} links={props.links} seesMoney={props.seesMoney} admin={Boolean(props.admin)} startOrderId={tab === 'orders' && props.startTab === 'orders' ? props.startOrderId : undefined} startReportId={tab === 'reports' ? props.startReportId : undefined} onOpenFile={props.onOpenFile} onReported={props.onReported} onCreate={props.onCreate} reportPanel={props.reportPanel} onContinueReport={props.onContinueReport} />;
 }
 
 function ServiceRecordsDetail(props: ServiceDetailProps) {
@@ -226,6 +222,8 @@ function ServiceRecordsDetail(props: ServiceDetailProps) {
   const [tab, setTab] = useState<ServiceTabKey>(props.startReportId ? 'reports' : 'orders');
   const [startReportId, setStartReportId] = useState(props.startReportId);
   const portalUrl = answer?.ok ? answer.value.service.url : undefined;
+  // «Informe de servicio» carries amounts: only whoever sees money (José 05/11); it runs from the space.
+  const serviceReport = useSpaceActionRun({ jwt: props.target.jwt, spaceId: props.target.spaceId, actionKey: SERVICE_REPORT_ACTION, values: serviceValuesOf(props.service.id), onAnswered: askAgain, wanted: props.seesMoney });
   const closeReport = useCallback((changed: boolean) => {
     setReport(null);
     setStartReportId(undefined);
@@ -240,17 +238,17 @@ function ServiceRecordsDetail(props: ServiceDetailProps) {
   const tabs = answer?.ok ? serviceTabs(answer.value, Boolean(props.seesDrive), Boolean(props.links)) : [];
   // José 20/11 (design mapa-v2): the map takes the rest of the screen and moves, outside the scroll.
   const mapOpen = tab === 'map' && Boolean(props.links) && Boolean(answer?.ok);
-  const body = <ServiceBody {...props} answer={answer} onRetry={askAgain} tab={tab} startTab={startTab} startReportId={startReportId} onOpenFile={files.open} onReported={askAgain} onCreate={() => setPicker(true)} onContinueReport={setReport} onLift={(lift) => setReport({ type: LIFTING_TYPE, lift })} />;
+  const body = <ServiceBody {...props} answer={answer} onRetry={askAgain} tab={tab} startTab={startTab} startReportId={startReportId} onOpenFile={files.open} onReported={askAgain} onCreate={() => setPicker(true)} reportPanel={serviceReport.panel} onContinueReport={setReport} onLift={(lift) => setReport({ type: LIFTING_TYPE, lift })} />;
   const extras = (
     <>
-      <CreateReportSheet visible={picker} portalUrl={portalUrl} seesMoney={props.seesMoney} people={props.people ?? []} onPick={(code, responsible) => { setPicker(false); setReport({ type: code, responsible }); }} onClose={() => setPicker(false)} />
+      <CreateReportSheet visible={picker} portalUrl={portalUrl} seesMoney={props.seesMoney} people={props.people ?? []} onServiceReport={props.seesMoney && serviceReport.offered ? () => { setPicker(false); serviceReport.run(); } : undefined} onPick={(code, responsible) => { setPicker(false); setReport({ type: code, responsible }); }} onClose={() => setPicker(false)} />
       {files.notice ? <Text className="text-center text-[13px] text-error">{files.notice}</Text> : null}
       {files.viewer}
     </>
   );
   return (
     <ServiceScopeContext.Provider value={scope}>
-      <ServiceShell service={props.service} clientName={props.clientName} compact={props.compact ?? true} slim={mapOpen} tabs={tabs} tab={tab} onTab={setTab} onBack={props.onBack} onShare={share.onShare} portalUrl={portalUrl} actions={answer?.ok && tab === 'reports' ? <CreateReportButton onPress={() => setPicker(true)} /> : undefined}>
+      <ServiceShell service={props.service} clientName={props.clientName} compact={props.compact ?? true} slim={mapOpen} tabs={tabs} tab={tab} onTab={setTab} onBack={props.onBack} onShare={share.onShare} portalUrl={portalUrl}>
         {mapOpen ? <View testID="detalle-cuerpo" className="flex-1"><SavedCopyLine answer={answer} onRetry={askAgain} /><FieldQueueStrip serviceId={props.service.id} />{body}{extras}</View> : (
           <ScrollView testID="detalle-cuerpo" keyboardShouldPersistTaps="handled" contentContainerStyle={BODY}><SavedCopyLine answer={answer} onRetry={askAgain} /><FieldQueueStrip serviceId={props.service.id} />{body}{extras}</ScrollView>
         )}

@@ -1,5 +1,6 @@
 import { FORMS_LEVEL } from './appForms.js';
 import { dayOf } from './serviceDetail.js';
+import { streetWidthExpression } from './workLineWidth.js';
 import { stationLabel, type WorkMap, type WorkMapLine, type WorkMapPendingStretch } from './workMap.js';
 import { stretchLineOf } from './workMapProgress.js';
 import { sendMapTool, type WorkProgressDeps, type WorkProgressResult } from './workProgressSend.js';
@@ -40,8 +41,8 @@ const NO_STREET = 'Calle sin nombre';
 export const pendingAlready = (toM: number) => `Ya hay un avance por aprobar hasta ${stationLabel(toM)} en esta calle.`;
 export const undoQuestion = (toM: number) => `¿Deshacer el avance hasta ${stationLabel(toM)}? Se borra antes de que lo aprueben.`;
 
-/** MapLibre paint of what waits: the work's color, thinner and dashed, over the approved line. */
-export const WORK_MAP_PENDING_PAINT = { 'line-color': ['get', 'color'], 'line-width': 4, 'line-dasharray': [1.4, 1.1] };
+/** MapLibre paint of what waits: the work's color, solid and half-transparent, as wide as the street (José 28/11: no dashes). */
+export const WORK_MAP_PENDING_PAINT = { 'line-color': ['get', 'color'], 'line-width': streetWidthExpression(4), 'line-opacity': 0.65 };
 
 type Raw = Record<string, unknown>;
 const STATES = new Set<string>(['pendiente', 'rechazado']);

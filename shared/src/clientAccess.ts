@@ -115,3 +115,22 @@ export function toggleInAccess(access: MemberAccess, tab: RestrictableTab): Memb
   const tabs = access.tabs.includes(tab) ? access.tabs.filter((one) => one !== tab) : RESTRICTABLE_TABS.filter((one) => one === tab || access.tabs.includes(one));
   return { ...access, tabs };
 }
+
+/** «Accesos del canal»'s line: who is restricted, or the rule for everyone. */
+export const channelAccessLine = (restrictedCount: number): string =>
+  (restrictedCount ? `${restrictedCount} con acceso restringido` : 'Todos ven el canal; los montos, solo los admins');
+
+export type ClientChannelMenuKey = 'link' | 'access' | 'drive';
+export type ClientChannelMenuItem = { key: ClientChannelMenuKey; label: string; hint?: string };
+
+/**
+ * «Servicios»' one menu beside the search (José 28/11: two big blocks became one button): the client's link,
+ * the channel's accesses (space admins: `accessRestricted` is their count, null for the rest) and its Drive.
+ */
+export function clientChannelMenuOf(can: { link: boolean; accessRestricted: number | null; drive: boolean }): ClientChannelMenuItem[] {
+  return [
+    ...(can.link ? [{ key: 'link' as const, label: 'Enlace del cliente' }] : []),
+    ...(can.accessRestricted !== null ? [{ key: 'access' as const, label: 'Accesos del canal', hint: channelAccessLine(can.accessRestricted) }] : []),
+    ...(can.drive ? [{ key: 'drive' as const, label: 'Drive del cliente' }] : []),
+  ];
+}

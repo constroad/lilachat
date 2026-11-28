@@ -205,6 +205,11 @@ Lo demás (editar, borrar, reenviar, fijar, destacar, info, reacciones, mencione
 - **13/11:** un admin del canal o del espacio borra para todos la tarjeta de una app.
 - **16/11:** avisos: el teléfono suena con la web abierta; leer en otro lado apaga el aviso; todo mensaje que llega se guarda.
 
+- **28/11** Hilo del APK: una respuesta de bot con `card` (p. ej. «Avance del pedido» con barra de
+  progreso) o con `files` (álbum «N fotos y M video») se dibuja con `BotCardView` / `BotFilesAlbum`,
+  como en el chat principal (`threadBotContentOf` en `app/src/chat/threadReply.ts`). Desde el 25/11
+  (3d0af72a) la burbuja del hilo solo pintaba el texto de resumen. La web no tenía la falla.
+
 ## 5. Diseños de Stitch relacionados
 
 | Diseño | Estado | Evidencia |

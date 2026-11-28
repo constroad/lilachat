@@ -247,4 +247,19 @@ describe('PanelDeHilo', () => {
       expect(field().value).toBe(':hug');
     });
   });
+  // José 28/11 (APK): a bot's album and progress card in a thread read as «4 fotos y 1 video» / «Avance del pedido».
+  it('a bot album and a progress card among the replies show as the album and the card, not their summary', () => {
+    Element.prototype.scrollIntoView = vi.fn();
+    const photo = (index: number) => ({ url: `https://media.test/${index}.jpg`, thumbUrl: `https://media.test/${index}-t.jpg`, mime: 'image/jpeg' });
+    const albumReply = { ...raiz, seq: 2, clientKey: 'b2', hiloDe: 1, body: '4 fotos y 1 video', files: [photo(1), photo(2), photo(3), photo(4), { url: 'https://media.test/5.mp4', mime: 'video/mp4' }] } as unknown as MensajeEnPantalla;
+    const progressReply = { ...raiz, seq: 3, clientKey: 'b3', hiloDe: 1, body: 'Avance del pedido', card: { kicker: 'DESPACHO', title: 'Avance del pedido', fields: [], blocks: [{ type: 'progress', value: 15, max: 60, label: 'm³ despachados', tone: 'ok' }] } } as unknown as MensajeEnPantalla;
+    render(
+      <ConversacionContext.Provider value={conversation}>
+        <PanelDeHilo chat={chat} raiz={raiz} respuestas={[albumReply, progressReply]} yo="yo" nombres={new Map()} onEnviar={vi.fn()} onReintentar={vi.fn()} onDescartar={vi.fn()} onEdit={vi.fn()} onCerrar={vi.fn()} />
+      </ConversacionContext.Provider>
+    );
+    expect(screen.getByTestId('album-app-2')).toBeInTheDocument();
+    expect(screen.getByTestId('tarjeta-cabecera')).toBeInTheDocument();
+    expect(screen.queryByText('4 fotos y 1 video')).toBeNull();
+  });
 });

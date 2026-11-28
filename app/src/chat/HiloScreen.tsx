@@ -36,7 +36,9 @@ import type { RespuestaDeReaccion } from './useCambiosDeMensajes';
 import { BarraDeReacciones } from './reacciones/BarraDeReacciones';
 import { PastillaDeReacciones } from './reacciones/PastillaDeReacciones';
 import { useReaccionesEnPantalla } from './reacciones/useReaccionesEnPantalla';
-import { isThreadMediaReply, replyRowOf } from './threadReply';
+import { isThreadMediaReply, replyRowOf, threadBotContentOf } from './threadReply';
+import { BotCardView } from './BotCardView';
+import { BotFilesAlbum } from './BotFilesAlbum';
 
 /** Side of a sticker reply in the thread (dp). */
 const STICKER_IN_THREAD = 120;
@@ -526,6 +528,21 @@ function BurbujaDelHilo(props: { mensaje: Respuesta; mia: boolean; autor: string
         {!mia && props.conAutor ? <Text className="pb-0.5 text-[13px] font-semibold" style={{ color: colorAutor }}>{props.autor}</Text> : null}
         <ChecklistEnElChat checklistId={mensaje.ref.id} jwt={props.jwt} yo={props.yo} nameOf={(userId) => props.nombres.get(userId) ?? 'Alguien'} members={checklistMembers(props.nombres, props.yo)} />
         <Text className={`pt-0.5 text-[11px] text-on-surface-variant ${mia ? 'self-end' : ''}`}>{hora}</Text>
+      </Pressable>
+    );
+  }
+  // A bot's card or album (José 28/11): the card itself, not the summary its `body` keeps for the list.
+  const botContent = threadBotContentOf(mensaje);
+  if (botContent && !pendiente) {
+    return (
+      <Pressable testID={`respuesta-${mensaje.clientKey}`} onLongPress={props.onLongPress} delayLongPress={350} className={`max-w-[92%] overflow-hidden rounded-2xl ${mia ? 'self-end bg-burbuja-propia' : 'self-start bg-burbuja-ajena'}`}>
+        {!mia && props.conAutor ? <Text className="px-3 pt-1.5 text-[13px] font-semibold" style={{ color: colorAutor }}>{props.autor}</Text> : null}
+        {botContent.kind === 'card' ? (
+          <BotCardView card={botContent.card} chatId={mensaje.chatId} seq={mensaje.seq} jwt={props.jwt} visitId={mensaje.clientRef?.visitId} clientRef={mensaje.clientRef} />
+        ) : (
+          <BotFilesAlbum seq={mensaje.seq} files={botContent.files} />
+        )}
+        <Text className={`px-3 pb-1 text-[11px] text-on-surface-variant ${mia ? 'self-end' : 'self-start'}`}>{hora}</Text>
       </Pressable>
     );
   }

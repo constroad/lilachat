@@ -17,3 +17,17 @@ export function threadPhotoMessages<Sent extends { seq: number; pending?: false 
 export function isThreadMediaReply(row: Row): row is ChatMessage {
   return !isPending(row) && Boolean(row.media) && !row.deletedAt && row.kind !== 'sticker';
 }
+
+/** What a bot reply draws instead of its `body` summary: its card or its album. */
+export type ThreadBotContent = { kind: 'card'; card: NonNullable<ChatMessage['card']> } | { kind: 'album'; files: NonNullable<ChatMessage['files']> };
+
+/**
+ * A bot's card or album in a thread (José 28/11: «Avance del pedido» and «4 fotos y 1 video» read as text after
+ * 3d0af72a drew space threads as bubbles). Its `body` is only the summary for the list and the notices.
+ */
+export function threadBotContentOf(row: Row): ThreadBotContent | null {
+  if (isPending(row) || row.deletedAt) return null;
+  if (row.card) return { kind: 'card', card: row.card };
+  if (row.files?.length) return { kind: 'album', files: row.files };
+  return null;
+}

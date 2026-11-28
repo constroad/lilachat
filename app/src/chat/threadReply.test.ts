@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { isThreadMediaReply, replyRowOf, threadPhotoMessages } from './threadReply';
+import { isThreadMediaReply, replyRowOf, threadBotContentOf, threadPhotoMessages } from './threadReply';
 import type { ChatMessage } from './useChat';
 
 const sent = (seq: number) => ({ seq });
@@ -71,5 +71,36 @@ describe('isThreadMediaReply', () => {
   it('a text reply and one still sending stay in the text bubble', () => {
     expect(isThreadMediaReply(reply({ body: 'Listo' }))).toBe(false);
     expect(isThreadMediaReply({ clientKey: 'k12', queuedAt: '2026-11-13T21:00:00Z', pending: true } as never)).toBe(false);
+  });
+});
+
+/**
+ * José 28/11 (APK, «Hilo · # planta»): a bot's album and progress card in a thread read «4 fotos y 1 video» and
+ * «Avance del pedido». 3d0af72a (25/11) moved space threads from the flat rows (which drew the card) to the
+ * bubble, which only drew `body`. The payload is the one Inframaq stored on 28/11 09:01Z.
+ */
+describe('threadBotContentOf', () => {
+  const photo = (index: number) => ({ url: `https://media.test/${index}.jpg`, thumbUrl: `https://media.test/${index}-t.jpg`, mime: 'image/jpeg' });
+  const albumReply = {
+    seq: 41, kind: 'text', hiloDe: 40, body: '4 fotos y 1 video',
+    files: [photo(1), photo(2), photo(3), photo(4), { url: 'https://media.test/5.mp4', mime: 'video/mp4' }],
+  } as unknown as ChatMessage;
+  const progressReply = {
+    seq: 42, kind: 'text', hiloDe: 40, body: 'Avance del pedido',
+    card: { kicker: 'DESPACHO', title: 'Avance del pedido', fields: [], blocks: [{ type: 'progress', value: 15, max: 60, label: 'm³ despachados', tone: 'ok' }] },
+  } as unknown as ChatMessage;
+
+  it('a bot album in a thread is its album, not the summary text', () => {
+    expect(threadBotContentOf(albumReply)).toEqual({ kind: 'album', files: (albumReply as { files: unknown }).files });
+  });
+
+  it('a bot progress card in a thread is its card, even with no fields', () => {
+    expect(threadBotContentOf(progressReply)).toEqual({ kind: 'card', card: (progressReply as { card: unknown }).card });
+  });
+
+  it('plain text, a pending reply or a deleted card stay a text bubble', () => {
+    expect(threadBotContentOf({ seq: 43, kind: 'text', body: 'hola' } as unknown as ChatMessage)).toBeNull();
+    expect(threadBotContentOf({ ...progressReply, deletedAt: '2026-11-28T09:02:00Z' } as unknown as ChatMessage)).toBeNull();
+    expect(threadBotContentOf({ clientKey: 'k', pending: true, body: 'x' } as unknown as ChatMessage)).toBeNull();
   });
 });

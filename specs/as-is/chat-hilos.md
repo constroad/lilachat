@@ -19,7 +19,7 @@ No hay hilos de hilos, de avisos, de lo borrado ni en chats secretos.
   - Lo alimentan `useHilosEnElChat.ts`, `useResumenesDeHilos.ts` y la instantánea por chat `hilosVistos.ts › seenThreadsOf`.
 - **Pantalla del hilo:** `HiloScreen.tsx` (diseño `e3-app-hilo`).
   - Raíz arriba con su tarjeta, su foto o su archivo y el pie (`ThreadRootBody`, 13/11).
-  - Respuestas con la misma burbuja del chat; con «grupos como lista», filas planas (`FlatMessageRow.tsx`, diseño `s-02`). Desde el 25/11 un espacio también dibuja burbujas.
+  - Respuestas con la misma burbuja del chat; con «grupos como lista», filas planas (`FlatMessageRow.tsx`, diseño `s-02`). Desde el 25/11 un espacio también dibuja burbujas. **28/11**: la burbuja de una respuesta de bot dibuja su tarjeta (`BotCardView`, p. ej. el progreso) o su álbum (`BotFilesAlbum`) en vez del `body`, que es solo el resumen para la lista y los avisos (`threadBotContentOf` en `app/src/chat/threadReply.ts`). El cambio del 25/11 (3d0af72a) sacó los hilos de espacio de `FlatMessageRow`, que sí dibujaba la tarjeta, y en el APK se leían «4 fotos y 1 video» y «Avance del pedido». La web ya usaba `BurbujaDeMensaje` y quedó cubierta con un test.
   - Respuesta con foto, nota de voz o archivo: `ThreadMediaReply.tsx`, `threadReply.ts › isThreadMediaReply` (13/11).
   - Visor de fotos que recorre la raíz y las respuestas: `useThreadPhotoViewer.tsx`, `threadReply.ts › threadPhotoMessages`.
   - Campo con @menciones, atajos «:hug» (17/11), editar lo propio y borrar mi respuesta («Eliminar para todos»).

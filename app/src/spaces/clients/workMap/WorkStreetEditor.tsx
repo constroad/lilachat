@@ -19,7 +19,7 @@ const GPS_DENIED = 'Lilachat no tiene permiso de ubicación. Actívalo en Ajuste
 /** A rotated phone or a tablet: the controls go to a side panel this wide and the map keeps the rest (dp). */
 const SIDE_PANEL_WIDTH = 380;
 
-type EditorProps = { open: boolean; title: string; map: WorkMap | null; send: StreetSend; onClose: () => void; onSaved: (message: string) => void; /** «Busca un lugar o pega el enlace» (José 08/11). */ findPlace?: PlaceAsk; /** The service's place (Portal da5382a5): where a map without streets opens. */ start?: WorkMapPoint };
+type EditorProps = { open: boolean; title: string; map: WorkMap | null; send: StreetSend; onClose: () => void; onSaved: (message: string) => void; /** «Busca un lugar o pega el enlace» (José 08/11). */ findPlace?: PlaceAsk; /** The service's place (Portal da5382a5): where a map without streets opens. */ start?: WorkMapPoint; /** ma02's «Trazar a mano» opens it by hand. */ mode?: DrawMode; saveLabel?: string };
 
 /** «Pausa / Seguir / Terminar» while walking, «Empezar a caminar» before (design o-13). */
 function GpsButtons(props: { walk: ReturnType<typeof useGpsWalk> }) {
@@ -52,7 +52,7 @@ function GpsButtons(props: { walk: ReturnType<typeof useGpsWalk> }) {
  * folds under it; rotated or on a tablet, the band and the form go to a side panel.
  */
 export function WorkStreetEditor(props: EditorProps) {
-  const [draft, setDraft] = useState<StreetDraft>(EMPTY_STREET);
+  const [draft, setDraft] = useState<StreetDraft>(() => (props.mode ? setDrawMode(EMPTY_STREET, props.mode) : EMPTY_STREET));
   const [entryId] = useState(() => randomUUID());
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -111,7 +111,7 @@ export function WorkStreetEditor(props: EditorProps) {
       {draft.mode === 'gps' ? <GpsButtons walk={gps} /> : null}
     </View>
   );
-  const form = <StreetForm draft={draft} stages={props.map?.stages ?? []} error={error} saving={saving} change={change} onSave={() => void save()} foldable={!amplia} />;
+  const form = <StreetForm draft={draft} stages={props.map?.stages ?? []} error={error} saving={saving} change={change} onSave={() => void save()} foldable={!amplia} saveLabel={props.saveLabel} />;
   // overflow-hidden: with the keyboard open the map shrinks and its buttons spilled over the header (E2E 12/11).
   const mapArea = (
     <View className="flex-1 overflow-hidden">

@@ -9,8 +9,8 @@ describe('«Más» on the work map', () => {
     // Arrange / Act
     const items = mapMoreItems({ draws: true, edits: true, admin: true });
     // Assert
-    expect(items.map((item) => item.key)).toEqual(['draw', 'stages', 'works', 'export', 'open', 'deleted']);
-    expect(items.map((item) => item.label)).toEqual(['Nueva calle', 'Etapas', 'Trabajos', 'Exportar', 'Abrir en Portal', 'Borrados']);
+    expect(items.map((item) => item.key)).toEqual(['area', 'draw', 'stages', 'works', 'export', 'open', 'deleted']);
+    expect(items.map((item) => item.label)).toEqual(['Marcar calles', 'Una sola calle', 'Etapas', 'Trabajos', 'Exportar', 'Abrir en Portal', 'Borrados']);
   });
 
   it('someone who only looks keeps export and open; «Borrados» needs both admin and editing', () => {

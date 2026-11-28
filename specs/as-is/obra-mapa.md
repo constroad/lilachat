@@ -382,6 +382,27 @@ Motores puros, con test, usados por web y APK:
   diseño: sin «Campo / Oficina», escala ni «Configuración de trazado»; las calles no se destildan
   una a una (todas o la brocha); en el APK «Crear capa» va al final de la hoja, no fijo; una calle
   con tramos parciales recibe la capa en sus tramos, no en los huecos.
+- **28/11** «Marcar calles del área» como ma02 (web y APK; prototipo aprobado de Portal
+  `claude.ai/artifact/L8iULepUHhNJukC7MJkpF9`). En «Más» del mapa, «Marcar calles» (primero) y «Una
+  sola calle» (el editor o-02 de siempre, antes «Nueva calle»). Cada toque en una vía del mapa base la
+  trae entera con su nombre, numerada 1, 2, 3… en el mapa (número a la mitad de la línea) y en la
+  lista: nombre editable, largo, ancho opcional y «Quitar»; arriba «Área de trabajo · N calles · L m».
+  Tocar otra vez una numerada la quita; si tiene cambios (otro nombre, ancho o trazada a mano)
+  pregunta en la banda. Regla contra repetidas (`sameStreetLine`): misma calle si los puntos al 25,
+  50 y 75 % de una línea quedan a ≤15 m de la otra (un cruce toca uno solo); una calle ya guardada en
+  la obra, aunque sea un tramo de esa vía, no entra («… ya está en la obra»). «Trazar a mano (si la
+  calle no sale en el mapa)» abre el editor de una calle en modo «A mano» (aros arrastrables) con
+  «Agregar a la lista» y vuelve a la lista. «Listo · N calles» guarda de a una por
+  `guardar_calle_de_obra` (el mismo `StreetSend`, con etapa si se eligió a mano), cada calle con su
+  `entry_id` estable (reenvío seguro), «Guardando 2 de 5…» en el botón; el primer rechazo corta, las
+  no guardadas quedan con el mensaje de Portal y el mapa se recarga en silencio; al terminar, aviso y
+  recarga. Motores puros `shared/src/workStreetBatch.ts` y `workStreetBatchScreen.ts` (transiciones y
+  manejadores para los dos hooks). APK `WorkStreetBatch.tsx` + `WorkStreetBatchParts.tsx` (teléfono:
+  banda, mapa y lista abajo hasta 30 % de alto; girado o tablet: panel lateral de 380 dp), web
+  `WorkStreetBatch.tsx` (lista al lado del mapa en pantalla ancha). Diferencias con el diseño: sin
+  «Campo / Oficina», escala, «Configuración de trazado» ni «Paso 1 de 2» (no hay paso 2); el ancho va
+  en cada fila (no está en el prototipo); la etiqueta con el largo sobre cada línea no se dibuja
+  (solo el número).
 - **28/11** «Mapa por capas» como ma01 (web y APK; prototipo aprobado de Portal
   `claude.ai/artifact/L8iULepUHhNJukC7MJkpF9`). Sobre el mapa, primera fila flotante: un chip por capa
   (trabajo) con su punto de color, nombre COMPLETO y % (`LayerChips.tsx`, extraído de la tira de «Modo
@@ -429,6 +450,7 @@ Motores puros, con test, usados por web y APK:
 | o-06 registrar avance | Implementado | `ManualProgress.tsx` |
 | av-01 modo avance | Implementado web y APK (27/11) | `AvanceMode.tsx`, `AvancePanel.tsx`, `shared/src/workAvanceMode.ts` |
 | ma01 mapa por capas | Implementado web y APK (28/11) | `LayerChips.tsx`, `LayerSheet.tsx`, `WorkMapBoard.tsx`, `shared/src/workLayerSummary.ts` |
+| ma02 marcar calles del área | Implementado web y APK (28/11) | `WorkStreetBatch.tsx` (web y APK), `WorkStreetBatchParts.tsx` (APK), `shared/src/workStreetBatch.ts`, `shared/src/workStreetBatchScreen.ts` |
 | o-07 avance por unidades | Implementado; falta «Ancho útil» y botón fijo en APK (auditoría 08/11, no verificado si se cerró) | `WorkMapDischarges.tsx` |
 | o-08 avance parcial y enlace | Implementado | `ShareProgress.tsx`, `PdfAction.tsx` |
 | o-09 vista del cliente | **No es de Lilachat**: página pública de Portal; le falta «Línea de tiempo» y filtro por etapa (según spec) | sin referencia en código |

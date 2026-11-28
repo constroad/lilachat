@@ -10,6 +10,7 @@ import { WorkMapFirst } from './workMap/WorkMapFirst';
 import { EMPTY_WORK_MAP } from '@lilachat/shared';
 import { ImportTrace } from './workMap/ImportTrace';
 import { WorkStreetEditor } from './workMap/WorkStreetEditor';
+import { WorkStreetBatch } from './workMap/WorkStreetBatch';
 import { ServiceCroquisButton } from './workMap/ServiceCroquis';
 import { placeAsker, type StreetSend } from './workMap/workProgressSender';
 import type { StreetDeleteSend } from './workMap/StreetDelete';
@@ -53,10 +54,13 @@ function TraceAndCroquis(props: { send: MapEditSend; upload?: TraceUpload<File>;
 
 export function ServiceMapWeb(props: MapProps) {
   const { state, retry, refresh } = useWorkMap(props.jwt, props.links, props.target);
-  const [drawing, setDrawing] = useState(false);
+  /** `area`: ma02's several streets; `single`: the one-street editor (o-02). */
+  const [drawing, setDrawing] = useState<'area' | 'single' | null>(null);
   /** What the last save answered («Calle guardada…»): the editor closes, so the board says it. */
   const [notice, setNotice] = useState<string | null>(null);
-  const onDraw = props.drawStreet ? () => { setNotice(null); setDrawing(true); } : undefined;
+  const drawWith = (way: 'area' | 'single') => (props.drawStreet ? () => { setNotice(null); setDrawing(way); } : undefined);
+  const onDraw = drawWith('single');
+  const saved = (message: string) => { setNotice(message); setDrawing(null); void retry(); };
   const pageOf = (url: string) => serviceMapPage(url, props.target.serviceId);
   const deleteStreet = deleteThenReload(props.deleteStreet, refresh);
   const editMap = editThenReload(props.editMap, refresh);
@@ -72,9 +76,10 @@ export function ServiceMapWeb(props: MapProps) {
       </Frame>
     );
   }
-  if (drawing && props.drawStreet) return <WorkStreetEditor title={props.title} map={state.map} send={props.drawStreet} findPlace={placeAsker(props.jwt)} start={props.start} onClose={() => setDrawing(false)} onSaved={(message) => { setNotice(message); setDrawing(false); void retry(); }} />;
+  if (drawing === 'single' && props.drawStreet) return <WorkStreetEditor title={props.title} map={state.map} send={props.drawStreet} findPlace={placeAsker(props.jwt)} start={props.start} onClose={() => setDrawing(null)} onSaved={saved} />;
+  if (drawing === 'area' && props.drawStreet) return <WorkStreetBatch title={props.title} map={state.map} send={props.drawStreet} start={props.start} onClose={() => setDrawing(null)} onSaved={saved} onPartial={() => void refresh()} />;
   // Photos or units with a place and no street yet: the map still shows where they are (Portal via José 09/11).
   const media = Boolean(props.mapPhotos?.length || props.discharges?.length);
   if (!state.map && !media) return <Frame head={props.head}><WorkMapFirst drawUrl={props.drawUrl ?? null} onDraw={onDraw} trace={editMap ? <TraceAndCroquis send={editMap} upload={props.uploadTrace} title={props.title} onDone={() => void refresh()} /> : null} /></Frame>;
-  return <WorkMapBoard onLift={props.onLift} map={state.map ?? EMPTY_WORK_MAP} pageUrl={pageOf(state.url)} title={props.title} serviceId={props.target.serviceId} head={props.head} badge={props.badge} discharges={props.discharges} mapPhotos={props.mapPhotos} send={props.send} onDraw={onDraw} deleteStreet={deleteStreet} editMap={editMap} admin={props.admin} uploadPhoto={props.uploadPhoto} uploadTrace={props.uploadTrace} mapInReport={props.mapInReport} notice={notice} reload={() => void refresh()} />;
+  return <WorkMapBoard onLift={props.onLift} map={state.map ?? EMPTY_WORK_MAP} pageUrl={pageOf(state.url)} title={props.title} serviceId={props.target.serviceId} head={props.head} badge={props.badge} discharges={props.discharges} mapPhotos={props.mapPhotos} send={props.send} onDraw={onDraw} onArea={drawWith('area')} deleteStreet={deleteStreet} editMap={editMap} admin={props.admin} uploadPhoto={props.uploadPhoto} uploadTrace={props.uploadTrace} mapInReport={props.mapInReport} notice={notice} reload={() => void refresh()} />;
 }

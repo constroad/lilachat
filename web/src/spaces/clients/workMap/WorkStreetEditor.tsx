@@ -17,11 +17,11 @@ const NUDGE = 'flex h-9 items-center justify-center rounded-lg bg-on-primary/15 
 const GPS_DENIED = 'El navegador no deja usar tu ubicación. Permítela o dibuja la calle de otra forma.';
 const FIELD = 'h-11 w-full rounded-xl border border-outline/25 bg-background px-3 text-[15px] outline-none focus:border-primary';
 
-type EditorProps = { title: string; map: WorkMap | null; send: StreetSend; onClose: () => void; onSaved: (message: string) => void; /** «Busca un lugar o pega el enlace» (José 08/11). */ findPlace?: PlaceAsk; /** The service's place (Portal da5382a5): where a map without streets opens. */ start?: WorkMapPoint };
+type EditorProps = { title: string; map: WorkMap | null; send: StreetSend; onClose: () => void; onSaved: (message: string) => void; /** «Busca un lugar o pega el enlace» (José 08/11). */ findPlace?: PlaceAsk; /** The service's place (Portal da5382a5): where a map without streets opens. */ start?: WorkMapPoint; /** ma02's «Trazar a mano» opens it by hand. */ mode?: DrawMode; saveLabel?: string };
 
 /** Design o-02: tap the start, the bends and the end of a street; Portal measures and keeps it (José 07/11: everyone draws). */
 export function WorkStreetEditor(props: EditorProps) {
-  const [draft, setDraft] = useState(EMPTY_STREET);
+  const [draft, setDraft] = useState<StreetDraft>(() => (props.mode ? setDrawMode(EMPTY_STREET, props.mode) : EMPTY_STREET));
   const [entryId] = useState(() => crypto.randomUUID());
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -102,7 +102,7 @@ export function WorkStreetEditor(props: EditorProps) {
       <StreetFields draft={draft} stages={props.map?.stages ?? []} onChange={(change) => { setError(null); setDraft((before) => ({ ...before, ...change })); }} />
       <div className="border-t border-outline/15 bg-surface px-4 pb-4">
         {error ? <p data-testid="editor-calle-error" role="alert" className="pt-2 text-[13px] font-semibold text-error">{error}</p> : null}
-        <button type="button" data-testid="editor-calle-guardar" disabled={saving} onClick={() => void save()} className="mt-3 flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-primary text-[15px] font-semibold text-on-primary disabled:opacity-60"><Save size={18} />{saving ? 'Guardando…' : 'Guardar calle'}</button>
+        <button type="button" data-testid="editor-calle-guardar" disabled={saving} onClick={() => void save()} className="mt-3 flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-primary text-[15px] font-semibold text-on-primary disabled:opacity-60"><Save size={18} />{saving ? 'Guardando…' : (props.saveLabel ?? 'Guardar calle')}</button>
       </div>
       </div>
       </div>

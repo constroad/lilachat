@@ -5,7 +5,7 @@ import { percentLabel, type WorkMapFilter, type WorkMapView, type WorkMapWork } 
  * actions: «Registrar avance», «Compartir» and one more; everything else goes under «Más».
  * The works filter is a select and the legend folds. PURE: the APK and the web draw from here.
  */
-export type MapMoreKey = 'share' | 'screen' | 'draw' | 'stages' | 'works' | 'export' | 'open' | 'deleted';
+export type MapMoreKey = 'share' | 'screen' | 'area' | 'draw' | 'stages' | 'works' | 'export' | 'open' | 'deleted';
 /** «Pantalla completa» to enter it, or the way out once inside. */
 export type MapScreenItem = 'open' | 'close';
 export type MapMoreItem = { key: MapMoreKey; label: string };
@@ -22,7 +22,9 @@ export function mapMoreItems(can: { draws: boolean; edits: boolean; admin: boole
   const items: Array<MapMoreItem | false> = [
     Boolean(can.share) && { key: 'share', label: 'Compartir avance' },
     Boolean(can.screen) && { key: 'screen', label: can.screen === 'close' ? 'Salir de pantalla completa' : 'Pantalla completa' },
-    can.draws && { key: 'draw', label: 'Nueva calle' },
+    // ma02 (28/11): several streets at once first; the one-street editor stays for a single one.
+    can.draws && { key: 'area', label: 'Marcar calles' },
+    can.draws && { key: 'draw', label: 'Una sola calle' },
     can.edits && { key: 'stages', label: 'Etapas' },
     can.edits && { key: 'works', label: 'Trabajos' },
     { key: 'export', label: 'Exportar' },

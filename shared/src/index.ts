@@ -222,6 +222,8 @@ export * from './workImport.js';
 export * from './workProgressPdf.js';
 export * from './workMapInReport.js';
 export * from './workStreetDelete.js';
+export * from './workStreetBatch.js';
+export * from './workStreetBatchScreen.js';
 export * from './photoStamp.js';
 export * from './signingForm.js';
 export * from './appItems.js';

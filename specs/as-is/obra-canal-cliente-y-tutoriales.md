@@ -433,3 +433,4 @@ Un Control de imprimación con fotos ubicadas y dos días de avance aprobado (o-
 - **28/11** Mapa: «Registrar avance» por GPS con aro arrastrable y foto (ma04) y lista «Avances» Hoy/Semana/Todo (ma05) (detalle en `obra-mapa.md`).
 - **28/11** Mapa: «Nueva capa» con catálogo de capas y color fijo, «Todas las calles de la obra» y metrado (ma03) (detalle en `obra-mapa.md`).
 - **28/11** Mapa por capas (ma01): chips de capa con %, hoja de la capa con m², calles, «Último» y «Registrar avance de <capa>» (detalle en `obra-mapa.md`).
+- **28/11** Mapa: «Marcar calles» (ma02) toca varias calles del mapa base, las numera en una lista y «Listo · N calles» las guarda de a una; «Una sola calle» sigue (detalle en `obra-mapa.md`).

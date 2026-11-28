@@ -15,6 +15,7 @@ import { EMPTY_WORK_MAP } from '@lilachat/shared';
 import { ImportTrace } from './workMap/ImportTrace';
 import { ServiceCroquisButton } from './workMap/ServiceCroquis';
 import { WorkStreetEditor } from './workMap/WorkStreetEditor';
+import { WorkStreetBatch } from './workMap/WorkStreetBatch';
 import type { StreetDeleteSend } from './workMap/StreetDelete';
 import { placeAsker, type StreetSend } from './workMap/workProgressSender';
 
@@ -80,10 +81,12 @@ const PortalLink = (props: { url: string }) => (
  */
 export function ServiceMapPanel(props: { jwt: string; links: ChannelLinks; target: ServiceTarget; title: string; badge?: ReactNode; /** Where the streets are drawn today (Portal's «Mapa» tab). */ drawUrl?: string | null; discharges?: UnitDischarge[]; /** Field photos with their place (José 08/11). */ mapPhotos?: MapPhoto[]; /** The service's place (Portal da5382a5). */ start?: { lat: number; lng: number }; send?: ProgressSend; /** «Guardar calle» (o-02): everyone draws (José 07/11). */ drawStreet?: StreetSend; /** «Borrar calle»: anyone, an admin restores (José 07/11). */ deleteStreet?: StreetDeleteSend; /** Stretches, stages and works (o-03 to o-05). */ editMap?: MapEditSend; /** A space admin: «Borrados» (José 07/11). */ admin?: boolean; /** Photos of «Registrar avance» (o-06). */ uploadPhoto?: ManualPhotoUpload<PhotoAsset>; /** KMZ or KML for «Importar» (o-12). */ uploadTrace?: TraceUpload<TraceFile>; /** «Incluir en el informe» as Portal has it. */ mapInReport?: ServiceMapInReport; /** «Levantar» on an open observation (José 27/11). */ onLift?: (row: LiftRow) => void }) {
   const { state, ask } = useServiceMap(props.jwt, props.links, props.target);
-  const [drawing, setDrawing] = useState(false);
+  /** `area`: ma02's several streets; `single`: the one-street editor (o-02). */
+  const [drawing, setDrawing] = useState<'area' | 'single' | null>(null);
   /** What the last save answered («Calle guardada…»): the editor closes, so the board says it. */
   const [notice, setNotice] = useState<string | null>(null);
-  const onDraw = props.drawStreet ? () => { setNotice(null); setDrawing(true); } : undefined;
+  const drawWith = (way: 'area' | 'single') => (props.drawStreet ? () => { setNotice(null); setDrawing(way); } : undefined);
+  const onDraw = drawWith('single');
   const pageOf = (url: string) => serviceMapPage(url, props.target.serviceId);
   const deleteStreet = deleteThenReload(props.deleteStreet, () => ask(true));
   const editMap = editThenReload(props.editMap, () => ask(true));
@@ -101,9 +104,15 @@ export function ServiceMapPanel(props: { jwt: string; links: ChannelLinks; targe
       </ScrollView>
     );
   }
-  const editor = props.drawStreet ? <WorkStreetEditor open={drawing} title={props.title} map={state.map} send={props.drawStreet} findPlace={placeAsker(props.jwt)} start={props.start} onClose={() => setDrawing(false)} onSaved={(message) => { setNotice(message); setDrawing(false); void ask(); }} /> : null;
+  const saved = (message: string) => { setNotice(message); setDrawing(null); void ask(); };
+  const editor = props.drawStreet ? (
+    <>
+      <WorkStreetEditor open={drawing === 'single'} title={props.title} map={state.map} send={props.drawStreet} findPlace={placeAsker(props.jwt)} start={props.start} onClose={() => setDrawing(null)} onSaved={saved} />
+      {drawing === 'area' ? <WorkStreetBatch open title={props.title} map={state.map} send={props.drawStreet} start={props.start} onClose={() => setDrawing(null)} onSaved={saved} onPartial={() => void ask(true)} /> : null}
+    </>
+  ) : null;
   // Photos or units with a place and no street yet: the map still shows where they are (Portal via José 09/11).
   const media = Boolean(props.mapPhotos?.length || props.discharges?.length);
   if (!state.map && !media) return <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={BODY}>{editor}<WorkMapFirst drawUrl={props.drawUrl ?? null} onDraw={onDraw} trace={editMap ? <View className="gap-2">{props.uploadTrace ? <ImportTrace send={editMap} upload={props.uploadTrace} /> : null}<ServiceCroquisButton send={editMap} title={props.title} onDone={() => void ask(true)} /></View> : null} /></ScrollView>;
-  return <>{editor}<WorkMapBoard onLift={props.onLift} map={state.map ?? EMPTY_WORK_MAP} pageUrl={state.url ? pageOf(state.url) : ''} title={props.title} serviceId={props.target.serviceId} badge={props.badge} discharges={props.discharges} mapPhotos={props.mapPhotos} send={props.send} onDraw={onDraw} deleteStreet={deleteStreet} editMap={editMap} admin={props.admin} uploadPhoto={props.uploadPhoto} uploadTrace={props.uploadTrace} mapInReport={props.mapInReport} notice={notice} reload={() => void ask(true)} /></>;
+  return <>{editor}<WorkMapBoard onLift={props.onLift} map={state.map ?? EMPTY_WORK_MAP} pageUrl={state.url ? pageOf(state.url) : ''} title={props.title} serviceId={props.target.serviceId} badge={props.badge} discharges={props.discharges} mapPhotos={props.mapPhotos} send={props.send} onDraw={onDraw} onArea={drawWith('area')} deleteStreet={deleteStreet} editMap={editMap} admin={props.admin} uploadPhoto={props.uploadPhoto} uploadTrace={props.uploadTrace} mapInReport={props.mapInReport} notice={notice} reload={() => void ask(true)} /></>;
 }

@@ -22,18 +22,20 @@ const ICON_BUTTON = 'h-10 w-10 items-center justify-center rounded-xl';
  * José 27/11: «el área del mapa es muy muy pequeña». One line of title with «Deshacer» and «Cancelar»
  * as icons beside it; the band of o-02 kept its words in two full-width buttons.
  */
-export function EditorTopBar(props: { kicker: string; canUndo: boolean; onUndo: () => void; onCancel: () => void }) {
+export function EditorTopBar(props: { kicker: string; /** ma02 names its own screen. */ heading?: string; canUndo: boolean; /** Without it there is no «Deshacer». */ onUndo?: () => void; onCancel: () => void }) {
   const colors = useColores();
   const tone = useBandTone();
   return (
     <View className="flex-row items-center gap-2">
       <View className="flex-1">
         <Text className={`font-mono text-[10px] font-bold uppercase tracking-[2px] ${tone.muted}`} numberOfLines={1}>{props.kicker}</Text>
-        <Text className={`text-[17px] font-bold ${tone.text}`} numberOfLines={1}>Definir área de trabajo</Text>
+        <Text className={`text-[17px] font-bold ${tone.text}`} numberOfLines={1}>{props.heading ?? 'Definir área de trabajo'}</Text>
       </View>
-      <Pressable testID="editor-calle-deshacer" accessibilityLabel="Deshacer" disabled={!props.canUndo} onPress={props.onUndo} className={`${ICON_BUTTON} ${tone.soft} ${props.canUndo ? '' : 'opacity-50'}`}>
-        <Undo2 size={18} color={colors[tone.icon]} />
-      </Pressable>
+      {props.onUndo ? (
+        <Pressable testID="editor-calle-deshacer" accessibilityLabel="Deshacer" disabled={!props.canUndo} onPress={props.onUndo} className={`${ICON_BUTTON} ${tone.soft} ${props.canUndo ? '' : 'opacity-50'}`}>
+          <Undo2 size={18} color={colors[tone.icon]} />
+        </Pressable>
+      ) : null}
       <Pressable testID="editor-calle-cancelar" accessibilityLabel="Cancelar" onPress={props.onCancel} className={`${ICON_BUTTON} ${tone.soft}`}>
         <X size={18} color={colors[tone.icon]} />
       </Pressable>
@@ -56,14 +58,14 @@ export function ModeSwitch({ mode, onMode }: { mode: DrawMode; onMode: (mode: Dr
 }
 
 /** «Cambiar de forma borra lo que marcaste»: asked before a switch erases a street (audit 08/11). */
-export function SwitchQuestion(props: { question: string; onYes: () => void; onNo: () => void }) {
+export function SwitchQuestion(props: { question: string; onYes: () => void; onNo: () => void; /** ma02 asks other things with the same card. */ yes?: string; no?: string }) {
   const tone = useBandTone();
   return (
     <View testID="editor-calle-cambiar-modo" className={`mt-2 rounded-xl ${tone.soft} p-3`}>
       <Text className={`text-[14px] font-semibold ${tone.text}`}>{props.question}</Text>
       <View className="mt-2 flex-row gap-2">
-        <Pressable testID="editor-calle-cambiar-si" onPress={props.onYes} className={`h-11 flex-1 items-center justify-center rounded-xl ${tone.raised}`}><Text className="text-[14px] font-semibold text-primary">Cambiar</Text></Pressable>
-        <Pressable testID="editor-calle-cambiar-no" onPress={props.onNo} className={`h-11 flex-1 items-center justify-center rounded-xl ${tone.soft}`}><Text className={`text-[14px] font-semibold ${tone.text}`}>Seguir aquí</Text></Pressable>
+        <Pressable testID="editor-calle-cambiar-si" onPress={props.onYes} className={`h-11 flex-1 items-center justify-center rounded-xl ${tone.raised}`}><Text className="text-[14px] font-semibold text-primary">{props.yes ?? 'Cambiar'}</Text></Pressable>
+        <Pressable testID="editor-calle-cambiar-no" onPress={props.onNo} className={`h-11 flex-1 items-center justify-center rounded-xl ${tone.soft}`}><Text className={`text-[14px] font-semibold ${tone.text}`}>{props.no ?? 'Seguir aquí'}</Text></Pressable>
       </View>
     </View>
   );
@@ -124,7 +126,7 @@ export function EndNudges({ onNudge }: { onNudge: (handle: StreetEnd, deltaM: nu
   );
 }
 
-type StreetFormProps = { draft: StreetDraft; stages: WorkMapStage[]; error: string | null; saving: boolean; change: (next: Partial<StreetDraft>) => void; onSave: () => void; /** A side panel has room: no folding. */ foldable: boolean };
+type StreetFormProps = { draft: StreetDraft; stages: WorkMapStage[]; error: string | null; saving: boolean; change: (next: Partial<StreetDraft>) => void; onSave: () => void; /** A side panel has room: no folding. */ foldable: boolean; /** ma02's «Trazar a mano» adds to the list instead. */ saveLabel?: string };
 
 /** «Jr. Los Pinos · 65 m · 6 m de ancho»: what a folded form still tells. */
 const foldedSummary = (draft: StreetDraft): string => [draft.name.trim() || 'Sin nombre', metersLabel(streetDraftWorkLengthM(draft)), draft.widthM === null ? null : `${draft.widthM} m de ancho`].filter(Boolean).join(' · ');
@@ -172,7 +174,7 @@ export function StreetForm(props: StreetFormProps) {
       )}
       {props.error ? <Text testID="editor-calle-error" className="mt-2 text-[13px] font-semibold text-error">{props.error}</Text> : null}
       <Pressable testID="editor-calle-guardar" disabled={props.saving} onPress={props.onSave} className={`mt-2 h-12 flex-row items-center justify-center gap-2 rounded-xl bg-primary ${props.saving ? 'opacity-60' : ''}`}>
-        <Save size={18} color={colors['on-primary']} /><Text className="text-[15px] font-semibold text-on-primary">{props.saving ? 'Guardando…' : 'Guardar calle'}</Text>
+        <Save size={18} color={colors['on-primary']} /><Text className="text-[15px] font-semibold text-on-primary">{props.saving ? 'Guardando…' : (props.saveLabel ?? 'Guardar calle')}</Text>
       </Pressable>
     </View>
   );

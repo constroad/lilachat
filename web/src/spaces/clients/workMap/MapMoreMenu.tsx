@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
-import { ArchiveRestore, Download, ExternalLink, Layers, Maximize2, MoreHorizontal, MoreVertical, Paintbrush, Plus, Share2, type LucideIcon } from 'lucide-react';
+import { ArchiveRestore, Download, ExternalLink, Layers, Maximize2, MoreHorizontal, MoreVertical, Paintbrush, Plus, Route, Share2, type LucideIcon } from 'lucide-react';
 import { mapMoreItems, type MapMoreKey, type MapScreenItem } from '@lilachat/shared';
 
-const ICONS: Record<MapMoreKey, LucideIcon> = { share: Share2, screen: Maximize2, draw: Plus, stages: Layers, works: Paintbrush, export: Download, open: ExternalLink, deleted: ArchiveRestore };
+const ICONS: Record<MapMoreKey, LucideIcon> = { share: Share2, screen: Maximize2, area: Route, draw: Plus, stages: Layers, works: Paintbrush, export: Download, open: ExternalLink, deleted: ArchiveRestore };
 /** The test ids the buttons had before they moved under «Más»: the E2E and the tutorials keep them. */
-const TEST_IDS: Record<MapMoreKey, string> = { share: 'mapa-compartir', screen: 'mapa-pantalla-completa', draw: 'mapa-nueva-calle', stages: 'mapa-etapas-abrir', works: 'mapa-trabajos-abrir', export: 'mapa-exportar', open: 'mapa-abrir', deleted: 'mapa-borrados-abrir' };
+const TEST_IDS: Record<MapMoreKey, string> = { share: 'mapa-compartir', screen: 'mapa-pantalla-completa', area: 'mapa-marcar-calles', draw: 'mapa-nueva-calle', stages: 'mapa-etapas-abrir', works: 'mapa-trabajos-abrir', export: 'mapa-exportar', open: 'mapa-abrir', deleted: 'mapa-borrados-abrir' };
 const ITEM = 'flex h-11 w-full items-center gap-3 rounded-lg px-3 text-left text-[14px] font-semibold text-on-surface hover:bg-background';
 
 /** Closes a popover on Escape or a press outside its holder. */

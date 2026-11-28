@@ -102,7 +102,7 @@ describe('ma04: what it reads', () => {
 
   it('what blocks it before the camera opens: what waits, no length, past the street', () => {
     expect(recordProblem(mapOf(), 's1', 284, draft)).toBeNull();
-    expect(recordProblem(mapOf([{ streetId: 's1', workId: 'imp', fromM: 100, toM: 180 }]), 's1', 284, draft)).toContain('Ya hay un avance por aprobar hasta 0+180');
+    expect(recordProblem(mapOf([{ streetId: 's1', workId: 'imp', fromM: 100, toM: 180 }]), 's1', 284, draft)).toContain('Ya hay un avance registrado hasta 0+180');
     expect(recordProblem(mapOf(), 's1', 284, { ...draft, toM: 120 })).toBe('Indica hasta dónde avanzó.');
     expect(recordProblem(mapOf(), 's1', 284, { ...draft, workId: null })).toBe('Elige qué trabajo avanzó.');
   });

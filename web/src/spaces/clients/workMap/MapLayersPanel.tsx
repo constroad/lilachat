@@ -80,8 +80,8 @@ export function MapLayersPanel(props: PanelProps) {
   const on = (group: MapLayerGroup, key: string) => isLayerOn(props.layers, group, key);
   return (
     <div data-testid="mapa-capas" className="shrink-0 bg-surface">
-      <p className="px-4 pt-4 md:px-5"><span className={KICKER}>Capas y leyenda</span></p>
-      {props.controls ? <Section title="Ver"><div className="space-y-3">{props.controls}</div></Section> : null}
+      <p className="px-4 pt-4 md:px-5"><span className={KICKER}>Ver</span></p>
+      {props.controls ? <Section title="Corte y leyenda"><div className="space-y-3">{props.controls}</div></Section> : null}
       {rows.works.length ? (
         <Section title={`Partidas (trabajos) · ${rows.works.length}`} aside="Avance">
           {rows.works.map((work) => (

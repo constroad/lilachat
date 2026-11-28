@@ -38,7 +38,7 @@ function OtherLayer(props: { pick: LayerPick; onPick: (next: Partial<LayerPick>)
   }
   return (
     <View className={`${CARD} border-on-surface p-3`}>
-      <TextInput testID="capa-otra-nombre" autoFocus value={props.pick.otherName} maxLength={60} placeholder="Nombre de la capa" onChangeText={(otherName) => props.onPick({ otherName })} className="h-12 rounded-xl border border-outline/25 bg-background px-3 text-[15px] text-on-surface" />
+      <TextInput testID="capa-otra-nombre" autoFocus value={props.pick.otherName} maxLength={60} placeholder="Nombre del trabajo" onChangeText={(otherName) => props.onPick({ otherName })} className="h-12 rounded-xl border border-outline/25 bg-background px-3 text-[15px] text-on-surface" />
       <LabelColors testID="capa-otra" colors={WORK_TAG_COLORS} value={props.pick.otherColor} onPick={(otherColor) => props.onPick({ otherColor })} />
     </View>
   );
@@ -63,7 +63,7 @@ function Streets(props: { map: WorkMap; pick: LayerPick; onPick: (next: Partial<
             {row.area ? <Text className="font-mono text-[14px] font-semibold text-on-surface">{row.area}</Text> : null}
           </View>
         ))
-        : <Text className="text-[14px] text-on-surface-variant">Después tocas en el mapa las calles que la llevan.</Text>}
+        : <Text className="text-[14px] text-on-surface-variant">Después tocas en el mapa las calles que lo llevan.</Text>}
       {props.pick.allStreets && metrado.areaM2 ? <Text className="text-[13px] text-on-surface-variant">Metrado = largo × ancho de cada calle</Text> : null}
     </View>
   );
@@ -95,9 +95,9 @@ export function NewLayerSheet(props: Props) {
   };
   return (
     <PanelSheet open={props.open} onClose={props.onClose} testID="mapa-nueva-capa" keyboard="avoid">
-      <Text className="text-[22px] font-bold text-on-surface">Nueva capa</Text>
+      <Text className="text-[22px] font-bold text-on-surface">Nuevo trabajo</Text>
       <View className="gap-2">
-        <Text className={SHEET_LABEL}>Paso 1 · Qué capa</Text>
+        <Text className={SHEET_LABEL}>Paso 1 · Qué trabajo</Text>
         <View accessibilityRole="radiogroup" className="flex-row flex-wrap justify-between gap-y-2">
           {layerChoicesOf(props.map).map((choice) => <LayerChip key={choice.key} choice={choice} on={pick.key === choice.key} onPick={() => change({ key: choice.key })} />)}
         </View>

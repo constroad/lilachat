@@ -66,7 +66,6 @@ describe('work map lines carry the street width', () => {
 
   it('paints no dashes in the viewer', async () => {
     const { LAYER_BASE_PAINT, LAYER_PLANNED_PAINT, LAYER_DONE_PAINT, WORK_MAP_STRETCH_PAINT } = await import('./workLayerLines.js');
-    const { WORK_MAP_PENDING_PAINT } = await import('./workByApprove.js');
-    for (const paint of [LAYER_BASE_PAINT, LAYER_PLANNED_PAINT, LAYER_DONE_PAINT, WORK_MAP_PENDING_PAINT, WORK_MAP_STRETCH_PAINT]) expect(paint).not.toHaveProperty('line-dasharray');
+    for (const paint of [LAYER_BASE_PAINT, LAYER_PLANNED_PAINT, LAYER_DONE_PAINT, WORK_MAP_STRETCH_PAINT]) expect(paint).not.toHaveProperty('line-dasharray');
   });
 });

@@ -1,4 +1,5 @@
 import { percentLabel, type WorkMapFilter, type WorkMapView, type WorkMapWork } from './workMap.js';
+import { STREET_DEFINED_COLOR, STREET_DEFINED_LEGEND } from './workLayerLines.js';
 
 /**
  * The work map's bar, kept short (José 09/11: «todo amontonado»). The design (o-01) has three
@@ -10,7 +11,7 @@ export type MapMoreKey = 'share' | 'screen' | 'record' | 'avance' | 'croquis' | 
 export type MapScreenItem = 'open' | 'close';
 export type MapMoreItem = { key: MapMoreKey; label: string };
 export type WorkChoice = { id: string; label: string; color: string | null };
-export type MapLegendEntry = { key: string; kind: 'work' | 'todo' | 'waiting'; label: string; color: string | null };
+export type MapLegendEntry = { key: string; kind: 'work' | 'todo' | 'defined'; label: string; color: string | null };
 
 const ALL_WORKS = 'Todos los trabajos';
 
@@ -50,13 +51,16 @@ export function workChoiceLabel(view: Pick<WorkMapView, 'works'>, workId: string
   return work ? workLabel(work) : ALL_WORKS;
 }
 
-/** «Convenciones»: each work, what is still to build and, when something waits, what is to approve. */
-export function mapLegendEntries(view: Pick<WorkMapView, 'works'>, waiting: number): MapLegendEntry[] {
+/** «Convenciones»: each work and what is still to build; nothing waits for approval (José 28/11). */
+export function mapLegendEntries(view: Pick<WorkMapView, 'works'>): MapLegendEntry[] {
   const works = view.works.map((work) => ({ key: work.id, kind: 'work' as const, label: work.name, color: work.color }));
   const todo: MapLegendEntry = { key: 'todo', kind: 'todo', label: 'Pendiente de ejecución', color: null };
-  const toApprove: MapLegendEntry[] = waiting > 0 ? [{ key: 'waiting', kind: 'waiting', label: `Por aprobar (${waiting})`, color: null }] : [];
-  return [...works, todo, ...toApprove];
+  return [...works, todo];
 }
+
+/** The orange of a street drawn with no work painted yet, when the map has one. */
+export const definedLegendEntries = (count: number): MapLegendEntry[] =>
+  (count > 0 ? [{ key: 'defined', kind: 'defined', label: STREET_DEFINED_LEGEND, color: STREET_DEFINED_COLOR }] : []);
 
 const PAVING = /carpeta|asfalt/;
 /** Asphalt that is not the mat: the prime coat and the tack coat have their own report. */

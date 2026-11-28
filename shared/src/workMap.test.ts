@@ -421,3 +421,18 @@ describe('loadWorkMap', () => {
     expect(state).toEqual({ kind: 'ready', url, map: null });
   });
 });
+
+describe('workMapOf · the id of each progress (José 28/11: an admin undoes a record)', () => {
+  it('keeps Portal\'s id when it comes, and nothing when it does not', () => {
+    // Arrange
+    const street = { _id: 's1', name: 'Jr. Lima', geometry: [{ lat: -12, lng: -77 }, { lat: -12, lng: -76.999 }], lengthM: 108 };
+    const progress = [{ _id: 'p1', streetId: 's1', tagId: 't1', fromM: 0, toM: 20, date: '2026-11-28' }, { streetId: 's1', tagId: 't1', fromM: 20, toM: 30, date: '2026-11-28' }];
+
+    // Act
+    const map = workMapOf({ workStreets: { streets: [street], scopes: [], progress, tags: [], stages: [] } });
+
+    // Assert
+    expect(map?.progress.map((one) => one.id)).toEqual(['p1', undefined]);
+    expect(map?.progress[1]).not.toHaveProperty('id');
+  });
+});

@@ -9,8 +9,8 @@ import { WALK_MAX_ACCURACY_M, type GpsFix } from './workStreetWalk.js';
 /**
  * «Registrar avance de <trabajo>» (design ma04, José 28/11; Portal's approved prototype): the street
  * comes from the phone's GPS, a big ring is dragged along its axis from where the work stopped, and
- * «Tomar foto y registrar» sends the same `work_manual_progress` as before (pending until an admin
- * approves it). PURE: the APK and the web draw what this decides.
+ * «Tomar foto y registrar» sends the same `work_manual_progress` as before; it counts at once
+ * (José 28/11). PURE: the APK and the web draw what this decides.
  */
 export type GpsStreet = { streetId: string; name: string; accuracyM: number; distanceM: number };
 /** No street by GPS: `problem` says why (null when there was no position at all). */
@@ -28,7 +28,6 @@ export const RECORD_LOCATING = 'Buscando tu calle…';
 export const RECORD_WHICH_STREET = '¿En qué calle?';
 export const RECORD_ADD_NOTE = 'Agregar nota';
 export const RECORD_NOTE_PLACEHOLDER = 'Nota (opcional)';
-export const RECORD_PENDING_NOTE = 'Queda pendiente hasta que un admin lo apruebe.';
 export const recordTitle = (workName: string | null) => (workName ? `Registrar avance de ${workName}` : 'Registrar avance');
 export const recordHint = (workName: string) => `Arrastra el círculo hasta donde llegó ${workName}`;
 export const youAreOn = (located: Pick<GpsStreet, 'name' | 'accuracyM'>) => `Estás en ${located.name} · ±${Math.round(located.accuracyM)} m`;

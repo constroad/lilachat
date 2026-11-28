@@ -38,7 +38,7 @@ const END_TOLERANCE_M = 0.5;
 export const MANUAL_PICK_WORK = 'Elige qué trabajo avanzó.';
 export const MANUAL_NO_LENGTH = 'Indica hasta dónde avanzó.';
 export const MANUAL_PAST_STREET = (lengthM: number) => `El avance pasa el largo de la calle (${Math.round(lengthM)} m).`;
-export const MANUAL_SENT = 'Avance registrado. Queda pendiente hasta que un admin lo apruebe.';
+export const MANUAL_SENT = 'Avance registrado.';
 export const MANUAL_FAILED = 'No se pudo registrar el avance. Revisa tu señal y vuelve a enviar.';
 export const MANUAL_PHOTO_UNLINKED = 'La foto subió al Drive, pero no se pudo adjuntar. Vuelve a intentarlo.';
 
@@ -61,7 +61,7 @@ export function manualStartOf(map: Pick<WorkMap, 'progress' | 'scopes' | 'pendin
   return Math.max(start, pendingEndOf(map, streetId, workId) ?? start);
 }
 
-/** «Ya hay un avance por aprobar hasta…» when the end does not pass what waits; null otherwise. */
+/** «Ya hay un avance registrado hasta…» when the end does not pass what waits; null otherwise. */
 export function pendingProblem(map: Pick<WorkMap, 'pending'>, streetId: string, workId: string | null, toM: number): string | null {
   const pendingM = workId ? pendingEndOf(map, streetId, workId) : null;
   return pendingM !== null && toM <= pendingM ? pendingAlready(pendingM) : null;
@@ -120,7 +120,7 @@ export function workManualProgressRequest(map: WorkMap, streetId: string, draft:
 
 /** The same `entry_id` on a resend: Portal answers it was already marked. */
 export const sendWorkManualProgress = (deps: WorkProgressDeps, note: string): Promise<WorkProgressResult> =>
-  sendMapTool(deps, note.trim() ? { nota: note.trim().slice(0, MANUAL_NOTE_MAX) } : {}, { sent: MANUAL_SENT, failed: MANUAL_FAILED });
+  sendMapTool(deps, note.trim() ? { nota: note.trim().slice(0, MANUAL_NOTE_MAX) } : {}, { sent: MANUAL_SENT, failed: MANUAL_FAILED, own: true });
 
 /** A photo for the progress: uploaded to the service's Drive first, its id rides with the progress. */
 export type ManualPhotoUpload<F> = (file: F) => Promise<{ ok: true; mediaId: string } | { ok: false; message: string }>;

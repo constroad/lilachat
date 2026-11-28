@@ -60,7 +60,6 @@ function StreetHead(props: { target: AvanceTarget }) {
         <Text className="font-mono text-[13px] text-on-surface-variant">{progress.line}</Text>
         <Text className="font-mono text-[13px] font-bold text-primary">{progress.percent} % completado</Text>
       </View>
-      {props.target.pendingM !== null ? <Text testID="avance-por-aprobar" className="font-mono text-[13px] text-on-surface-variant">Por aprobar hasta {stationLabel(props.target.pendingM)}</Text> : null}
     </View>
   );
 }

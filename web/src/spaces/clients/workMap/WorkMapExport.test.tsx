@@ -37,7 +37,7 @@ describe('ShareProgress (o-08)', () => {
   it('says when the cut has no approved progress yet', () => {
     render(<ShareProgress map={mapOf([])} filter={{}} onFilter={vi.fn()} onClose={vi.fn()} />);
     expect(screen.queryByTestId('compartir-crear-enlace')).toBeNull();
-    expect(screen.getByText('Todavía no hay avance aprobado en este corte.')).toBeTruthy();
+    expect(screen.getByText('Todavía no hay avance registrado en este corte.')).toBeTruthy();
   });
 });
 

@@ -93,6 +93,22 @@ describe('useBrush', () => {
     expect(result.current.canUndo).toBe(false);
   });
 
+  it('paints the street at once and counts the saves behind it', async () => {
+    // Arrange
+    let answer: (value: { ok: true; message: string }) => void = () => undefined;
+    const send = vi.fn<MapEditSend>(() => new Promise((resolve) => { answer = resolve; }));
+    const { result } = renderHook(() => useBrush(map, send));
+    act(() => result.current.setBrush({ kind: 'work', id: 'base' }));
+    // Act
+    act(() => { result.current.tap({ lat: -12.01, lng: -76.999 }); });
+    // Assert
+    expect(result.current.lines.map((one) => one.streetId)).toEqual(['s1', 's2']);
+    expect(result.current.label).toBe('1 calle · guardando…');
+    await waitFor(() => expect(send).toHaveBeenCalledTimes(1));
+    await act(async () => { answer({ ok: true, message: 'ok' }); });
+    await waitFor(() => expect(result.current.label).toBe('1 calle guardada'));
+  });
+
   it('the last work of a stretch is not removed: Portal refuses an empty stretch', async () => {
     const send = vi.fn<MapEditSend>(ok);
     const unstaged: WorkMap = { ...map, scopes: [{ id: 'c1', streetId: 's1', fromM: 0, toM: 218, workIds: ['base'] }] };

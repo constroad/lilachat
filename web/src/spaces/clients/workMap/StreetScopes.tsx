@@ -65,7 +65,7 @@ function ScopeCard(props: { row: StreetScopeRow; send?: MapEditSend; onEdit: () 
       {asking && props.send ? (
         <div role="alertdialog" aria-label={`¿Borrar ${row.title}?`} className="mt-3 rounded-xl border border-error/30 bg-error/5 p-3">
           <p className="text-[14px] font-bold">¿Borrar {row.title} ({row.range})?</p>
-          <p className="mt-1 text-[12px] text-on-surface-variant">Un admin puede restaurarlo. Un tramo con avance aprobado no se borra.</p>
+          <p className="mt-1 text-[12px] text-on-surface-variant">Un admin puede restaurarlo. Un tramo con avance no se borra.</p>
           {error ? <p role="alert" className="mt-2 text-[13px] font-semibold text-error">{error}</p> : null}
           <div className="mt-3 flex gap-2">
             <button type="button" disabled={busy} onClick={() => { setAsking(false); setError(null); }} className="h-10 flex-1 rounded-xl border border-outline/20 text-[13px] font-semibold">Cancelar</button>

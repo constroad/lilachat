@@ -78,8 +78,8 @@ export function MapLayersPanel(props: PanelProps) {
   const on = (group: MapLayerGroup, key: string) => isLayerOn(props.layers, group, key);
   return (
     <View testID="mapa-capas" className="mb-2">
-      <Text className="text-[13px] font-bold uppercase tracking-[1.5px] text-primary">Capas y leyenda</Text>
-      {props.controls ? <Section title="Ver">{props.controls}</Section> : null}
+      <Text className="text-[13px] font-bold uppercase tracking-[1.5px] text-primary">Ver</Text>
+      {props.controls ? <Section title="Corte y leyenda">{props.controls}</Section> : null}
       {rows.works.length ? (
         <Section title={`Partidas (trabajos) · ${rows.works.length}`} aside="Avance">
           {rows.works.map((work) => (

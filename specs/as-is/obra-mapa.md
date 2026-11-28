@@ -27,13 +27,13 @@ ingeniero de campo desde el celular y lo mira el cliente desde una computadora.
   `shared/src/serviceDetail.ts`).
 - Ven avance por trabajo, etapa y calle, con fecha de corte («Hasta el 5 nov»).
 - Dibujan calles, tramos, etapas y trabajos, y registran avance (José 07/11:
-  «para todos»). El avance entra **pendiente de aprobación** en Portal.
+  «para todos»). **Sin aprobación** (José 28/11): el avance cuenta al registrarlo, ver «Sin aprobación».
 - Buscan un lugar o pegan un enlace de Google Maps (`/api/places`, solo Perú).
 
 ### Solo admins del espacio
 
 - Confirman el avance sugerido por el Control de pista (o-07).
-- Aprueban o rechazan el avance «Pendiente de aprobar».
+- Deshacen cualquier avance desde la lista «Avances» (José 28/11), para corregir un error.
 - Ven «Borrados» y restauran calles, tramos, etapas y trabajos.
 
 ### Funciones, una por una
@@ -52,7 +52,7 @@ ingeniero de campo desde el celular y lo mira el cliente desde una computadora.
 | Registrar avance a mano | o-06 | Calle → trabajo → «Hasta dónde» (±10 m o «Mi GPS») → foto con sello |
 | Avance sugerido por unidades | o-07 | Ubica las descargas del Control de pista sobre la calle (`suggestDischarges`) |
 | Avance sugerido de imprimación | — | Desde el Control de imprimación (`PrimeCoat.tsx`); usa la herramienta manual |
-| Pendiente de aprobar | — | Barra arriba del mapa con Aprobar y Rechazar (admins) |
+| Deshacer avance | ma05 | Quien lo marcó, mientras Portal lo guarda pendiente; un admin, cualquiera (28/11) |
 | Compartir avance | o-08 | Avance parcial por trabajo y calle; enlace firmado con el corte |
 | Incluir en el informe | o-08 | Interruptor «Incluir en el informe del servicio» |
 | Exportar | o-12 | KMZ para Google Earth, PDF para el cliente, Plano PDF A3/A1, copiar enlace |
@@ -62,7 +62,7 @@ ingeniero de campo desde el celular y lo mira el cliente desde una computadora.
 | Servicio sin calles | o-10 | Abre igual sobre fotos y unidades (`EMPTY_WORK_MAP`); si no hay nada, invita a dibujar |
 | Encuadre inicial | — | Todas las calles del servicio JUNTO con los dibujos y las observaciones de Portal (José 19/11, OBRA GRAU: el tramo quedaba fuera hasta alejar el zoom). Con una etapa o un trabajo elegidos, solo sus calles. Nunca menos de `WORK_MAP_MIN_FRAME_DEG` (~110 m): un punto solo no abre al zoom máximo (`shared/src/workMap.ts` › `frameOf`) |
 
-### Capas y leyenda (José 19/11, diseño cc-04)
+### Ver (antes «Capas y leyenda»; José 19/11, diseño cc-04; renombrado el 28/11)
 
 - El panel abre con «Capas y leyenda» y el avance debajo. Partidas (trabajos del mapa) en su color con
   su % y un interruptor; etapas como chips «Todas · Etapa 1…» (el mismo filtro de etapa); dibujos por
@@ -314,6 +314,19 @@ Motores puros, con test, usados por web y APK:
   pantalla completa; web: tira y pista sobre el mapa, panel en la hoja/lateral. Sin trabajos, ofrece
   «Agregar trabajo» (`NewLabel`). Diferencia con el diseño: sin la barra blanca «Mapa Operativo
   Vial» (Stitch la inventó) ni los botones de zoom propios (se usan los del mapa).
+- **28/11** Brocha sin esperas (José: cada toque decía «Guardando», luego «guardado», y recién ahí
+  la siguiente calle). Cada toque pinta la calle al instante y su guardado entra a una cola que va a
+  Portal de a uno, en el orden de los toques, detrás del mapa (`shared/src/workBrushQueue.ts`:
+  `startBrushQueue`/`createBrushQueue`, `mapOf`, `snapshot`, `idle`). La banda dice «3 calles ·
+  guardando…» y luego «3 calles guardadas» (`brocha-cuenta`); el título es «Pintando <trabajo> · Toca
+  las calles que lo llevan». Cada guardado se arma en su turno contra el último mapa de Portal: una
+  calle ya guardada en la sesión espera la recarga (hasta 2 s, `BRUSH_FRESH_MAP_WAIT_MS`). El tramo
+  nuevo conserva el `entry_id` de su toque. Otro toque sobre una calle en cola la devuelve sin enviar;
+  sobre una que se está guardando no hace nada (nunca dos guardados). «Deshacer» deshace el último
+  toque: en cola se quita, guardado se envía como estaba (`undoStroke`). Un guardado rechazado
+  despinta su calle y muestra el motivo una vez, hasta el próximo toque. «Listo» cierra al instante y
+  la cola termina detrás. Web: `useBrush` (`WorkLayers.tsx`) y `BrushBand` (`WorkMapBoard.tsx`); APK:
+  `useStrokes`/`BrushMap` (`WorkLayers.tsx`).
 - **28/11** Lo que espera aprobación, en el mapa (web y APK; Portal ya publicó las herramientas).
   Con el mapa se pide `work_by_approve` → `avances_por_aprobar_de_obra({ servicioId })` (lectura de
   miembro, por la puerta de sesión; nunca por el enlace del cliente): TODO lo pendiente del servicio
@@ -456,6 +469,56 @@ Motores puros, con test, usados por web y APK:
   `decimalText` pasó a shared); los tres (deslizador, % y aro) van juntos: `recordAtPercent`,
   `chainageAtPercent` (al centímetro, sin pasar la calle ni quedar antes del frente) y
   `streetPercentOf` en `workProgressRecord.ts`. Verificado: tests y tsc; falta E2E en el dispositivo.
+- **28/11** **Sin aprobación del avance de campo** (José: «ningún admin lo aprueba, simplemente que
+  lo complete»; web y APK). Cuenta al registrarlo: «Registrar avance» (deslizador o círculo), «Marcar
+  a mano» y Modo Avance, con foto o sin ella.
+  - Dónde se decidía «pendiente»: en PORTAL. `registrar_avance_manual_de_obra` y
+    `registrar_avance_de_obra` crean el registro con `status: 'pending'` fijo
+    (`portalManualWorkProgressTool.ts:86`, `portalWorkProgressTool.ts:178` de origin/main) y el
+    enlace del cliente solo lee `status: 'approved'` (`findApprovedLocatedByObra`). Lilachat no
+    elige el estado: el server abre el formulario y Agentes llama la herramienta.
+  - Lo que hace Lilachat (`shared/src/workAutoApprove.ts`): la puerta del mapa de un admin
+    (`approvingMapSend`, `approvingProgressSend`, en ambos `WorkMapBoard`) aprueba su propio registro
+    apenas Portal responde `avanceId` con `estado: 'pendiente'`, con la herramienta ya aprobada
+    `resolver_avance_de_obra` («aprobar»). Nunca un `ya_marcada`. Un rechazo solo deja un `warn`.
+    El de un miembro queda pendiente en Portal: `resolver_avance_de_obra` exige `services:manage`.
+  - En el mapa, lo que Portal guarda pendiente cuenta como hecho (`withPendingOf` lo suma a
+    `progress[]` con su id, sin duplicar si Portal ya lo trae): línea sólida, %, «Último» y Modo
+    Avance. Se quitaron la capa `work-map-pending`, `WORK_MAP_PENDING_PAINT`, «Por aprobar (N)» de la
+    leyenda, la barra rayada, la píldora «por aprobar», «Por aprobar hasta…», la tarjeta «Pendiente de
+    aprobar» con Aprobar/Rechazar (`PendingProgressCard`, `Decide`) y «Queda pendiente hasta que un
+    admin lo apruebe.». Los textos de envío dicen «Avance registrado.» aunque Portal diga otra cosa
+    (`MapToolTexts.own`).
+  - «Avances» (ma05) es el historial: sin píldoras salvo «DESHECHO». «Deshacer»: quien lo marcó, su
+    último pendiente (`deshacer_avance_de_obra`); un admin, cualquier registro con id que cuente
+    (`resolver_avance_de_obra` «rechazar» con la nota «Deshecho desde el mapa.»;
+    `undoRequestOf`). El id de lo aprobado sale del `_id` del detalle (`WorkMapProgress.id`).
+  - Foto después: el modelo lo permite (`evidenceMediaIds` del registro) pero no hay herramienta que
+    agregue fotos a un avance ya creado; reenviar con el mismo `entradaId` responde `ya_marcada` sin
+    tocarlo. Falta en Portal (ver §6).
+  - Lo que hace falta en Portal para que el avance de un miembro llegue al enlace del cliente: ver §6.
+- **28/11** Las partidas del servicio son trabajos sin paso manual (José, Pachacamac - Resanes:
+  imprimación y colocación las tuvo que crear a mano). Causa: `worksFrom` (`shared/src/workMap.ts`)
+  solo listaba las partidas que algún tramo ya llevaba (`scopes.flatMap(workIds)`); un servicio nuevo
+  no tiene tramos, así que sus partidas no salían aunque Portal las manda en `detail.partidas`. Ahora
+  salen TODAS, en el orden del contrato, después de las etiquetas, sin crear nada en Portal (el tramo
+  y el avance ya aceptan `partidaIds`/`partidaId`). No se repite una que alguien creó a mano con el
+  mismo nombre: comparación sin mayúsculas, tildes ni espacios (`foldWorkName`, `shared/src/workNames.ts`,
+  el mismo plegado de «Nueva capa»); «Asfaltado» y «Colocación» siguen siendo dos. Una partida que un
+  tramo ya lleva se queda aunque una etiqueta tenga su nombre. También sin calles: `workMapOf` devuelve
+  el mapa con sus trabajos aunque el servicio no tenga calles, dibujos ni observaciones. Test:
+  `workMapPartidas.test.ts`.
+- **28/11** «Capa» pasa a «Trabajo» en toda la pantalla (José): «Nuevo trabajo», «Paso 1 · Qué
+  trabajo», «Nombre del trabajo», «Crear trabajo <nombre>», «Ese trabajo ya está en el servicio.»,
+  «Ver más del trabajo», «Estructura del KMZ». El botón flotante «Capas» y su panel «Capas y leyenda»
+  se llaman **«Ver»** con el ícono del ojo (`Eye` de lucide en APK y web; la web no usa react-icons);
+  la sección interna que se llamaba «Ver» es «Corte y leyenda». Los test ids no cambian
+  (`mapa-capas-abrir`, `mapa-capas`, `capa-*`). Calle **definida sin trabajo pintado** (ningún tramo con
+  trabajo): naranja `STREET_DEFINED_COLOR` (#FF6A00) opaca y del ancho de la calle
+  (`LAYER_BASE_PAINT`: opacidad 1 para ese color, 0,35 para la base neutra; mismo
+  `streetWidthExpression(2)`), en claro y oscuro (`definedStreetIdsOf`, `baseLinesOf` en
+  `shared/src/workLayerLines.ts`). La leyenda del mapa suma «Calle sin trabajo» en naranja cuando hay
+  alguna (`definedLegendEntries`, `workMapMenu.ts`), también sin trabajos creados.
 - **28/11** Auditoría stitch-fidelity de ma01 tras las quejas de José (botones grandes, botones
   sobre las capas, «Capas y leyenda» abierta y enorme, líneas punteadas fuera de «Editar croquis»).
   Auditoría: `design/stitch/auditorias/ma01-mapa-capas.md` (16 diferencias del revisor independiente
@@ -551,8 +614,23 @@ usa los filtros del mapa («Sale lo que ves»).
   Platform con facturación. No hay llave en Lilachat ni en Portal (según spec, 12/11).
 - **OSRM en producción:** no está verificado qué valor tiene `OSRM_BASE_URL` (según spec §8).
 - **Decisiones abiertas** (según spec §8): qué tipo de foto marca el tramo de una
-  unidad (propuesta: de `ingreso` a `vacia`); si el avance del ingeniero entra
-  `pending` o `approved`.
+  unidad (propuesta: de `ingreso` a `vacia`). Si el avance del ingeniero entra `pending` o
+  `approved` lo decidió José el 28/11: aprobado.
+- **Portal, sin aprobación (José 28/11):** el avance de un MIEMBRO sigue `pending` en Portal y no
+  sale en el enlace del cliente hasta que Portal lo cree `approved`:
+  - `src/server/agentes/portalManualWorkProgressTool.ts:86` y `portalWorkProgressTool.ts:178`:
+    `status: 'approved'`, `resolvedAt: new Date()`, y tras crearlo `recomputePartidaExecuted` si hay
+    `partidaId` (lo que hace `resolveWorkProgress`). `createProgressOnce` (`portalWorkProgressTool.ts:209-210`)
+    debe responder `estado: 'aprobado'` y otro texto. La descripción de la herramienta dice «Entra pendiente»: cambiarla
+    obliga a que José la reapruebe.
+  - `src/server/agentes/portalFieldProgressTool.ts:113` (`deshacer_avance_de_obra`) y
+    `src/repositories/service-partida-progress.repository.ts:44` (`deleteOne` con `status: 'pending'`): hoy solo borran lo
+    pendiente propio; con registros aprobados el autor ya no podría deshacer. Debe aceptar lo propio
+    aprobado (y recomputar la partida).
+  - Foto después: no hay herramienta para sumar `evidenceMediaIds` a un avance existente; hace falta
+    una nueva (p. ej. `agregar_foto_a_avance_de_obra { servicioId, avanceId, fotoIds }`) que José apruebe.
+  - Mientras tanto la cola sin señal del APK (`manualProgressJobs.ts`) envía sin la puerta del mapa:
+    el registro de un admin hecho sin señal queda pendiente en Portal.
 - **Servicio sin calles** con el caso real de Globofast: solo tests del motor, sin
   verificar en el teléfono (según spec, 09/11).
 - **Avance sugerido de imprimación:** sin verificar en vivo; en Test no hay un

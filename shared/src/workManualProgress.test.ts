@@ -109,9 +109,9 @@ describe('manual progress: what is sent', () => {
     expect(request).not.toHaveProperty('tag_id');
   });
 
-  it('sends the note trimmed, and says it is pending; a refusal comes back as Portal said it', async () => {
+  it('sends the note trimmed, and says it is registered whatever Portal\'s text; a refusal comes back as Portal said it', async () => {
     // Arrange
-    const deps: WorkProgressDeps = { open: vi.fn(async () => ({ ok: true as const, data: form })), submit: vi.fn(async () => answered('')), notice: vi.fn(async () => null) };
+    const deps: WorkProgressDeps = { open: vi.fn(async () => ({ ok: true as const, data: form })), submit: vi.fn(async () => answered('Avance registrado. Queda pendiente hasta que el residente lo apruebe.')), notice: vi.fn(async () => null) };
     // Act
     const sent = await sendWorkManualProgress(deps, '  base compactada  ');
     const failed = await sendWorkManualProgress({ ...deps, open: async () => ({ ok: false as const }) }, '');
@@ -162,7 +162,7 @@ describe('manual progress: what waits for approval', () => {
     const twin = await runManualProgress({ ...base, draft: { workId: 'base', fromM: 120, toM: 200, photoIds: [], note: '' } });
     const farther = await runManualProgress({ ...base, draft: { workId: 'base', fromM: 200, toM: 240, photoIds: [], note: '' } });
     // Assert
-    expect(twin).toEqual({ ok: false, message: 'Ya hay un avance por aprobar hasta 0+200 en esta calle.' });
+    expect(twin).toEqual({ ok: false, message: 'Ya hay un avance registrado hasta 0+200 en esta calle.' });
     expect(send).toHaveBeenCalledTimes(1);
     expect(farther.ok).toBe(true);
   });

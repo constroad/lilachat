@@ -26,7 +26,7 @@ function OtherLayer(props: { pick: LayerPick; onPick: (next: Partial<LayerPick>)
   }
   return (
     <div className={`${CARD} border-on-surface p-3`}>
-      <input data-testid="capa-otra-nombre" autoFocus value={props.pick.otherName} maxLength={60} placeholder="Nombre de la capa" onChange={(event) => props.onPick({ otherName: event.target.value })} className="h-11 w-full rounded-xl border border-outline/25 bg-background px-3 text-[15px] outline-none focus:border-primary" />
+      <input data-testid="capa-otra-nombre" autoFocus value={props.pick.otherName} maxLength={60} placeholder="Nombre del trabajo" onChange={(event) => props.onPick({ otherName: event.target.value })} className="h-11 w-full rounded-xl border border-outline/25 bg-background px-3 text-[15px] outline-none focus:border-primary" />
       <LabelColors testId="capa-otra" colors={WORK_TAG_COLORS} value={props.pick.otherColor} onPick={(otherColor) => props.onPick({ otherColor })} />
     </div>
   );
@@ -51,7 +51,7 @@ function Streets(props: { map: WorkMap; pick: LayerPick; onPick: (next: Partial<
           {row.area ? <span className="font-mono text-[13px] font-semibold text-on-surface">{row.area}</span> : null}
         </div>
       ))}
-      {props.pick.allStreets ? null : <p className="text-[13px] text-on-surface-variant">Después tocas en el mapa las calles que la llevan.</p>}
+      {props.pick.allStreets ? null : <p className="text-[13px] text-on-surface-variant">Después tocas en el mapa las calles que lo llevan.</p>}
       {props.pick.allStreets && metrado.areaM2 ? <p className="text-[12px] text-on-surface-variant">Metrado = largo × ancho de cada calle</p> : null}
     </section>
   );
@@ -81,13 +81,13 @@ export function NewLayer(props: Props) {
   return (
     <div data-testid="mapa-nueva-capa" className="flex min-h-0 flex-1 flex-col bg-background">
       <div className="flex items-center justify-between gap-2 border-b border-outline/15 p-4">
-        <p className="text-xl font-extrabold text-on-surface">Nueva capa</p>
+        <p className="text-xl font-extrabold text-on-surface">Nuevo trabajo</p>
         <button type="button" aria-label="Cerrar" onClick={props.onClose} className="grid h-9 w-9 place-items-center rounded-xl border border-outline/20 text-on-surface"><X size={16} /></button>
       </div>
       <div className="min-h-0 flex-1 space-y-5 overflow-y-auto p-4">
         <section className="space-y-2">
-          <p className={KICKER}>Paso 1 · Qué capa</p>
-          <div role="radiogroup" aria-label="Qué capa" className="grid grid-cols-2 gap-2">{layerChoicesOf(props.map).map((choice) => <LayerChip key={choice.key} choice={choice} on={pick.key === choice.key} onPick={() => change({ key: choice.key })} />)}</div>
+          <p className={KICKER}>Paso 1 · Qué trabajo</p>
+          <div role="radiogroup" aria-label="Qué trabajo" className="grid grid-cols-2 gap-2">{layerChoicesOf(props.map).map((choice) => <LayerChip key={choice.key} choice={choice} on={pick.key === choice.key} onPick={() => change({ key: choice.key })} />)}</div>
           <OtherLayer pick={pick} onPick={change} />
         </section>
         <Streets map={props.map} pick={pick} onPick={change} />

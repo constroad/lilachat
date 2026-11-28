@@ -3,25 +3,22 @@ import type { WorkMap } from './workMap.js';
 import type { MapEditSend } from './workScopeDraft.js';
 import {
   byApproveActions,
-  byApproveDetail,
-  byApproveLinesOf,
   byApproveOf,
   loadByApprove,
   pendingAlready,
-  pendingCountOf,
   pendingEndOf,
-  rejectedOf,
   undoableIds,
   undoableOf,
   undoByApprove,
   undoQuestion,
+  undoRequestOf,
   withPendingOf,
   workByApproveRequest,
   workUndoRequest,
   UNDONE,
 } from './workByApprove.js';
 
-/** José 28/11: what waits for approval shows on the map, counts against a twin, and the author can undo it. */
+/** José 28/11: field progress counts once recorded; its author, or an admin, can undo it. */
 const line = [{ lat: -12, lng: -77 }, { lat: -12, lng: -76.999 }];
 const MAP: WorkMap = {
   streets: [{ id: 's1', name: 'Jr. Lima', line, lengthM: 120 }, { id: 's2', name: 'Jr. Grau', line, lengthM: 80 }],
@@ -69,54 +66,37 @@ describe('byApproveOf', () => {
   });
 });
 
-describe('the pending stretches inside the map', () => {
-  it('keeps only pending ones with a whole stretch; rejected never count', () => {
+describe('field progress counts as soon as it is recorded (José 28/11: no approval)', () => {
+  it('adds every pending one with a whole stretch to the done progress, with its id; rejected never count', () => {
     // Act
     const map = withPendingOf(MAP, byApproveOf(DATA));
     // Assert
-    expect(map.pending).toEqual([
-      { streetId: 's1', workId: 'imp', fromM: 30, toM: 60 },
-      { streetId: 's1', workId: 'asf', fromM: 0, toM: 40 },
-      { streetId: 's1', workId: 'imp', fromM: 30, toM: 45 },
+    expect(map.progress).toEqual([
+      MAP.progress[0],
+      { id: 'a3', streetId: 's1', workId: 'imp', fromM: 30, toM: 60, date: '2026-11-28', rework: false },
+      { id: 'a2', streetId: 's1', workId: 'asf', fromM: 0, toM: 40, date: '2026-11-27', rework: false },
+      { id: 'a1', streetId: 's1', workId: 'imp', fromM: 30, toM: 45, date: '2026-11-26', rework: false },
     ]);
+    expect(map.pending).toBeUndefined();
     expect(withPendingOf(MAP, null)).toBe(MAP);
   });
 
-  it('says where the pending progress of a work on a street ends', () => {
+  it('does not add one twice when Portal already lists it as done', () => {
     // Arrange
-    const map = withPendingOf(MAP, byApproveOf(DATA));
+    const approved: WorkMap = { ...MAP, progress: [...MAP.progress, { id: 'a3', streetId: 's1', workId: 'imp', fromM: 30, toM: 60, date: '2026-11-28', rework: false }] };
+    // Act
+    const map = withPendingOf(approved, byApproveOf(DATA));
+    // Assert
+    expect(map.progress.filter((one) => one.id === 'a3')).toHaveLength(1);
+  });
+
+  it('says where the pending progress of a work on a street ends, when a map still carries one', () => {
+    // Arrange
+    const map: WorkMap = { ...MAP, pending: [{ streetId: 's1', workId: 'imp', fromM: 30, toM: 60 }] };
     // Act / Assert
     expect(pendingEndOf(map, 's1', 'imp')).toBe(60);
-    expect(pendingEndOf(map, 's1', 'asf')).toBe(40);
     expect(pendingEndOf(map, 's2', 'imp')).toBeNull();
-    expect(pendingEndOf(MAP, 's1', 'imp')).toBeNull();
-  });
-
-  it('counts what waits and lists the rejected', () => {
-    // Arrange
-    const list = byApproveOf(DATA);
-    // Act / Assert
-    expect(pendingCountOf(list)).toBe(3);
-    expect(rejectedOf(list).map((one) => one.id)).toEqual(['r1']);
-    expect(pendingCountOf(null)).toBe(0);
-  });
-});
-
-describe('drawing what waits', () => {
-  it('draws each pending one in its work color; rejected and stretchless are not drawn', () => {
-    // Act
-    const lines = byApproveLinesOf(MAP, byApproveOf(DATA));
-    // Assert
-    expect(lines.map((one) => [one.workId, one.color, one.fromM, one.toM])).toEqual([['imp', '#2563eb', 30, 60], ['asf', '#111827', 0, 40], ['imp', '#2563eb', 30, 45]]);
-    expect(byApproveLinesOf(MAP, null)).toEqual([]);
-  });
-
-  it('describes one with the map\'s names', () => {
-    // Arrange
-    const [first] = byApproveOf(DATA).items;
-    // Act / Assert
-    expect(byApproveDetail(MAP, first!)).toBe('Jr. Lima · 0+030 a 0+060 · Imprimación · 28 nov · por Ana Ruiz');
-    expect(byApproveDetail(MAP, { ...first!, streetId: 'gone', fromM: null, workId: null, author: null, date: '' })).toBe('Calle sin nombre');
+    expect(pendingEndOf(withPendingOf(MAP, byApproveOf(DATA)), 's1', 'imp')).toBeNull();
   });
 });
 
@@ -132,8 +112,8 @@ describe('undo', () => {
   });
 
   it('asks and refuses in words', () => {
-    expect(undoQuestion(60)).toBe('¿Deshacer el avance hasta 0+060? Se borra antes de que lo aprueben.');
-    expect(pendingAlready(60)).toBe('Ya hay un avance por aprobar hasta 0+060 en esta calle.');
+    expect(undoQuestion(60)).toBe('¿Deshacer el avance hasta 0+060? Deja de sumar al avance de la obra.');
+    expect(pendingAlready(60)).toBe('Ya hay un avance registrado hasta 0+060 en esta calle.');
   });
 
   it('builds the requests the door opens', () => {
@@ -141,14 +121,27 @@ describe('undo', () => {
     expect(workUndoRequest('a3')).toMatchObject({ kind: 'work_undo', progress_id: 'a3' });
   });
 
+  it('deletes the caller\'s own pending one, and an admin takes back anything else with the existing reject', () => {
+    // Arrange
+    const list = byApproveOf(DATA);
+    // Act / Assert
+    expect(undoRequestOf(list, 'a3')).toMatchObject({ kind: 'work_undo', progress_id: 'a3' });
+    expect(undoRequestOf(list, 'a2')).toMatchObject({ kind: 'work_resolve', progress_id: 'a2', decision: 'rechazar' });
+    expect(undoRequestOf(list, 'done-1')).toMatchObject({ kind: 'work_resolve', progress_id: 'done-1', decision: 'rechazar' });
+    expect(undoRequestOf(null, 'a3')).toMatchObject({ kind: 'work_resolve', decision: 'rechazar' });
+  });
+
   it('answers null when undone, Portal\'s reason when not', async () => {
     // Arrange
     const ok = vi.fn<MapEditSend>(async () => ({ ok: true, message: UNDONE }));
-    const refused = vi.fn<MapEditSend>(async () => ({ ok: false, message: 'Ya fue aprobado.' }));
+    const refused = vi.fn<MapEditSend>(async () => ({ ok: false, message: 'No es tuyo.' }));
+    const list = byApproveOf(DATA);
     // Act / Assert
-    expect(await undoByApprove(ok, 'a3')).toBeNull();
+    expect(await undoByApprove(ok, 'a3', list)).toBeNull();
     expect(ok.mock.calls[0]![0]).toMatchObject({ kind: 'work_undo', progress_id: 'a3' });
-    expect(await undoByApprove(refused, 'a3')).toBe('Ya fue aprobado.');
+    expect(await undoByApprove(ok, 'a2', list)).toBeNull();
+    expect(ok.mock.calls[1]![0]).toMatchObject({ kind: 'work_resolve', progress_id: 'a2', decision: 'rechazar' });
+    expect(await undoByApprove(refused, 'a3', list)).toBe('No es tuyo.');
   });
 });
 

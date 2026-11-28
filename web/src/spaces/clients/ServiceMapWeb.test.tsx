@@ -103,7 +103,7 @@ describe('ServiceMapWeb', () => {
 
     // Assert
     expect(screen.getByTestId('mapa-servicio')).toHaveAttribute('data-wide', 'true');
-    expect(screen.getByTestId('mapa-herramientas')).toHaveTextContent('Capas');
+    expect(screen.getByTestId('mapa-herramientas')).toHaveTextContent('Ver');
     expect(screen.getByTestId('mapa-panel')).toHaveAttribute('data-open', 'true');
     act(() => report(600));
     expect(screen.getByTestId('mapa-servicio')).toHaveAttribute('data-wide', 'false');
@@ -344,7 +344,7 @@ describe('ServiceMapWeb', () => {
 
   it('picks the work, adjusts the stretch and confirms it with the units that did it', async () => {
     // Arrange
-    const send = vi.fn<ProgressSend>(async () => ({ ok: true, message: 'Avance registrado. Queda pendiente de aprobación del residente.' }));
+    const send = vi.fn<ProgressSend>(async () => ({ ok: true, message: 'Avance registrado.' }));
     showMap(undefined, { discharges, send });
     await screen.findByTestId('mapa-lienzo');
     // Act: two works on that street, so nothing goes until one is picked.
@@ -356,7 +356,7 @@ describe('ServiceMapWeb', () => {
     fireEvent.click(screen.getByTestId('avance-confirmar'));
     // Assert
     expect(missing).toBe('Elige el trabajo que se hizo en el tramo.');
-    await waitFor(() => expect(screen.getByTestId('avance-respuesta')).toHaveTextContent('pendiente de aprobación'));
+    await waitFor(() => expect(screen.getByTestId('avance-respuesta')).toHaveTextContent('Avance registrado.'));
     expect(send).toHaveBeenCalledTimes(1);
     expect(send.mock.calls[0]?.[0]).toMatchObject({ servicioId: serviceId, calleId: 's1', etiquetaId: 'asfalto', desdeM: 10, hastaM: 65, despachoIds: ['a', 'b'] });
     expect(screen.getByTestId('avance-confirmar')).toHaveTextContent('Confirmar avance (55 m)');

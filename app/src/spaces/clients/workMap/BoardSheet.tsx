@@ -48,7 +48,7 @@ type BoardSheetProps = {
 /** The grip on top of a folded sheet: it grows one step. */
 function Grip(props: { sheet: MapSheet; onSheet: (next: MapSheet) => void }) {
   return (
-    <Pressable testID="mapa-hoja-asa" accessibilityLabel="Ver más de la capa" onPress={() => props.onSheet(expandLayerSheet(props.sheet))} className="-mt-3 mb-2 h-6 items-center justify-center">
+    <Pressable testID="mapa-hoja-asa" accessibilityLabel="Ver más del trabajo" onPress={() => props.onSheet(expandLayerSheet(props.sheet))} className="-mt-3 mb-2 h-6 items-center justify-center">
       <View className="h-1 w-10 rounded-full bg-outline/30" />
     </Pressable>
   );

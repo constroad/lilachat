@@ -1,13 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import { workMapView, type WorkMap } from './workMap.js';
-import { LAYER_BASE_COLOR, layerMapLinesOf, STATION_MIN_ZOOM } from './workLayerLines.js';
+import { definedStreetIdsOf, LAYER_BASE_COLOR, LAYER_BASE_PAINT, layerMapLinesOf, STATION_MIN_ZOOM, STREET_DEFINED_COLOR, STREET_DEFINED_LEGEND } from './workLayerLines.js';
+import { streetWidthExpression } from './workLineWidth.js';
 import { isShortSheet, collapseSheet, initialMapSheet, expandLayerSheet, sheetForLayerPick, toggleLayersSheet } from './workMapSheet.js';
 import { colorLuminance, lineHaloOf, LINE_HALO_COLOR, workMapCollection } from './workMap.js';
 
 /** Design ma01 (José 28/11): the map by layer, no grey dashes outside «Editar croquis». */
 const LINE = [{ lat: -12, lng: -77 }, { lat: -12, lng: -76.999 }];
 const MAP: WorkMap = {
-  streets: [{ id: 'a', name: 'Jr. Progreso', line: LINE, lengthM: 109 }, { id: 'b', name: 'Jr. Monje', line: LINE, lengthM: 109 }, { id: 'c', name: 'Pje. Sin capa', line: LINE, lengthM: 109 }],
+  streets: [{ id: 'a', name: 'Jr. Progreso', line: LINE, lengthM: 109 }, { id: 'b', name: 'Jr. Monje', line: LINE, lengthM: 109 }, { id: 'c', name: 'Pje. Sin trabajo', line: LINE, lengthM: 109 }],
   scopes: [{ id: 's1', streetId: 'a', fromM: 0, toM: 109, workIds: ['imp', 'asf'] }, { id: 's2', streetId: 'b', fromM: 0, toM: 109, workIds: ['asf'] }],
   progress: [{ streetId: 'a', workId: 'imp', fromM: 0, toM: 40, date: '2026-11-20', rework: false }, { streetId: 'b', workId: 'asf', fromM: 0, toM: 50, date: '2026-11-20', rework: false }],
   works: [{ id: 'imp', name: 'Imprimación', color: '#d97706' }, { id: 'asf', name: 'Asfaltado', color: '#2563eb' }],
@@ -21,7 +22,7 @@ describe('the map by layer', () => {
     // Act
     const lines = layerMapLinesOf({ map: MAP, view, filter: {}, workId: 'imp', rows, hidden: false });
     // Assert
-    expect(lines.base.map((line) => [line.streetId, line.color])).toEqual([['a', LAYER_BASE_COLOR], ['b', LAYER_BASE_COLOR], ['c', LAYER_BASE_COLOR]]);
+    expect(lines.base.map((line) => [line.streetId, line.color])).toEqual([['a', LAYER_BASE_COLOR], ['b', LAYER_BASE_COLOR], ['c', STREET_DEFINED_COLOR]]);
     expect(lines.planned.map((line) => [line.streetId, line.color])).toEqual([['a', '#d97706']]);
     expect(lines.done.map((line) => [line.streetId, line.workId, line.color])).toEqual([['a', 'imp', '#d97706']]);
     expect(lines.labels).toEqual([expect.objectContaining({ streetId: 'a', label: '37 %' })]);
@@ -38,6 +39,25 @@ describe('the map by layer', () => {
     const bare = layerMapLinesOf({ map: MAP, view, filter: {}, workId: null, rows: [], hidden: false });
     expect(bare.planned).toEqual([]);
     expect(bare.done).toBe(view.done);
+  });
+
+  it('a defined street with no work painted is bright orange, opaque and as wide as the street', () => {
+    // Arrange
+    const unworked: WorkMap = { ...MAP, scopes: [...MAP.scopes, { id: 's3', streetId: 'c', fromM: 0, toM: 50, workIds: [] }] };
+    // Act
+    const defined = definedStreetIdsOf(unworked);
+    const lines = layerMapLinesOf({ map: unworked, view: workMapView(unworked), filter: {}, workId: null, rows: [], hidden: false });
+    // Assert
+    expect([...defined]).toEqual(['c']);
+    expect(lines.base.find((line) => line.streetId === 'c')?.color).toBe(STREET_DEFINED_COLOR);
+    expect(STREET_DEFINED_COLOR).toBe('#FF6A00');
+    expect(LAYER_BASE_PAINT['line-width']).toEqual(streetWidthExpression(2));
+    expect(LAYER_BASE_PAINT['line-opacity']).toEqual(['case', ['==', ['get', 'color'], STREET_DEFINED_COLOR], 1, 0.35]);
+    expect(STREET_DEFINED_LEGEND).toBe('Calle sin trabajo');
+  });
+
+  it('without streets nothing is defined', () => {
+    expect(definedStreetIdsOf({ streets: [], scopes: [] }).size).toBe(0);
   });
 
   it('the stations wait for a close zoom', () => {

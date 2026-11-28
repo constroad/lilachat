@@ -34,7 +34,7 @@ function DeleteAsk(props: { row: StreetScopeRow; send: MapEditSend; onCancel: ()
   return (
     <View className="mt-3 rounded-xl border border-error/30 bg-error/5 p-3">
       <Text className="text-[15px] font-bold text-on-surface">¿Borrar {props.row.title} ({props.row.range})?</Text>
-      <Text className="mt-1 text-[13px] text-on-surface-variant">Un admin puede restaurarlo. Un tramo con avance aprobado no se borra.</Text>
+      <Text className="mt-1 text-[13px] text-on-surface-variant">Un admin puede restaurarlo. Un tramo con avance no se borra.</Text>
       {error ? <Text className="mt-2 text-[13px] font-semibold text-error">{error}</Text> : null}
       <View className="mt-3 flex-row gap-2">
         <Pressable disabled={busy} onPress={props.onCancel} className="h-11 flex-1 items-center justify-center rounded-xl border border-outline/20"><Text className="text-[14px] font-semibold text-on-surface">Cancelar</Text></Pressable>

@@ -27,7 +27,7 @@ export function LayerChips(props: ChipsProps) {
     ) : null;
   }
   return (
-    <div role="group" aria-label="Capas" className="pointer-events-auto -mx-3 flex gap-2 overflow-x-auto px-3 pb-1 [mask-image:linear-gradient(to_right,black_calc(100%_-_28px),transparent)]">
+    <div role="group" aria-label="Trabajos" className="pointer-events-auto -mx-3 flex gap-2 overflow-x-auto px-3 pb-1 [mask-image:linear-gradient(to_right,black_calc(100%_-_28px),transparent)]">
       {props.chips.map((chip) => (
         <button key={chip.id} type="button" data-testid={`${props.testPrefix}-${chip.id}`} aria-pressed={chip.selected} aria-label={chip.label} onClick={() => props.onPick(chip.id)} className={`flex h-10 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-xl border px-3 text-[14px] text-on-surface shadow-md ${chip.selected ? 'border-primary/60 bg-surface font-bold' : 'border-outline/15 bg-surface/90 font-medium hover:bg-background'}`}>
           <span aria-hidden className={LAYER_DOT} style={{ backgroundColor: chip.color }} />

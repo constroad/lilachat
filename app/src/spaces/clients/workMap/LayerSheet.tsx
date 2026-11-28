@@ -4,23 +4,12 @@ import { ChevronDown, ChevronUp, Pencil } from 'lucide-react-native';
 import { LAYER_LEGEND, layerBarOf, layerStreetsToggle, type LayerLatest, type LayerStreetSummary, type LayerSummary } from '@lilachat/shared';
 import { useColores } from '../../../ui/tema';
 
-/** Stripes of what waits for approval: enough to fill the widest bar. */
-const HATCH_STRIPES = 60;
-const HATCH_STEP = { width: 3, marginRight: 4, opacity: 0.55, transform: [{ skewX: '-35deg' }] } as const;
-const HATCH_FILL_OPACITY = 0.18;
-
-/** Approved solid from the left, what waits hatched right after it (design ma01). */
+/** What is done, solid from the left (design ma01; José 28/11: nothing waits for approval). */
 function LayerBar(props: { row: Pick<LayerStreetSummary, 'donePct' | 'pendingPct'>; color: string; tall?: boolean }) {
   const bar = layerBarOf(props.row);
   return (
     <View className={`overflow-hidden rounded-full bg-surface-variant ${props.tall ? 'h-3' : 'h-2'}`}>
       <View className="absolute inset-y-0 left-0" style={{ width: bar.done, backgroundColor: props.color }} />
-      {props.row.pendingPct > 0 ? (
-        <View testID="capa-por-aprobar" className="absolute inset-y-0 flex-row overflow-hidden" style={{ left: bar.pendingLeft, width: bar.pending }}>
-          <View className="absolute inset-0" style={{ backgroundColor: props.color, opacity: HATCH_FILL_OPACITY }} />
-          {Array.from({ length: HATCH_STRIPES }, (_unused, index) => <View key={index} style={{ ...HATCH_STEP, backgroundColor: props.color }} />)}
-        </View>
-      ) : null}
     </View>
   );
 }
@@ -40,9 +29,8 @@ function StreetRow(props: { row: LayerStreetSummary; color: string }) {
 
 function Latest(props: { latest: LayerLatest }) {
   return (
-    <View testID="capa-ultimo" className="flex-row flex-wrap items-center gap-2">
+    <View testID="capa-ultimo">
       <Text className="text-[14px] text-on-surface-variant">{props.latest.text}</Text>
-      {props.latest.pill ? <Text className="rounded-md border border-warning/40 bg-warning/10 px-2 py-0.5 text-[12px] font-bold uppercase text-warning">{props.latest.pill}</Text> : null}
     </View>
   );
 }

@@ -1,7 +1,7 @@
 import { Suspense, useEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from 'react';
 import { lazyChunk } from '../../../ui/lazyChunk';
 import { Paintbrush, Undo2 } from 'lucide-react';
-import { isShortSheet, collapseSheet, expandLayerSheet, initialMapSheet, layerMapLinesOf, sheetForLayerPick, toggleLayersSheet, type LayerStreetSummary, type MapSheet, activeLayerOf, limaDayKey, workMapWorkFilter, viewWithLayers, visibleMarks, visibleObservations, mapCardOf, mapPickAnchor, type MapPick, type WorkMapPoint, visibleStationMarks, brushLinesOf, brushTitle, progressTargetOf, type Brush, type ManualPhotoUpload, type MapEditSend, type TraceUpload, type ServiceMapInReport, unitPinsOfDay, withMediaBounds, pendingLinesOf, byApproveLinesOf, pendingCountOf, undoableOf, withPendingOf, showsUnitPins, type DischargePin, type PendingProgress, type MapMoreKey, stretchLinesOf, suggestDischarges, workMapStageGroups, workMapView, type UnitDischarge, type WorkMap, type WorkMapFilter, type StretchRange, type MapPhoto, type ManualProgressDraft } from '@lilachat/shared';
+import { definedStreetIdsOf, isShortSheet, collapseSheet, expandLayerSheet, initialMapSheet, layerMapLinesOf, sheetForLayerPick, toggleLayersSheet, type LayerStreetSummary, type MapSheet, activeLayerOf, limaDayKey, workMapWorkFilter, viewWithLayers, visibleMarks, visibleObservations, mapCardOf, mapPickAnchor, type MapPick, type WorkMapPoint, visibleStationMarks, brushTitle, progressTargetOf, type ManualPhotoUpload, type MapEditSend, type TraceUpload, type ServiceMapInReport, unitPinsOfDay, withMediaBounds, undoableOf, withPendingOf, approvingMapSend, approvingProgressSend, showsUnitPins, type DischargePin, type MapMoreKey, stretchLinesOf, suggestDischarges, workMapStageGroups, workMapView, type UnitDischarge, type WorkMap, type WorkMapFilter, type StretchRange, type MapPhoto, type ManualProgressDraft } from '@lilachat/shared';
 import { WorkMapDischarges, type ProgressSend } from './WorkMapDischarges';
 import { WorkMapExport } from './WorkMapExport';
 import { ShareProgress } from './ShareProgress';
@@ -16,7 +16,7 @@ import { useBrush, WorkLayers, type LayersKind } from './WorkLayers';
 import { usePhotoLayer } from './MapPhotos';
 import { MapDayChips, useMapDays } from './MapDays';
 import { PrimeCoatSuggestions } from './PrimeCoat';
-import { PendingProgressCard, useByApprove } from './PendingProgress';
+import { useByApprove } from './PendingProgress';
 import { ProgressFeed } from './ProgressFeed';
 import { ManualProgress } from './ManualProgress';
 import { MapMoreMenu } from './MapMoreMenu';
@@ -149,13 +149,13 @@ function MapTop(props: { tools: ToolProps; wide: boolean; chips: ReactNode; noti
 }
 
 /** The band over the map while the brush is on (o-04, o-05): what is painted, «Deshacer» and «Listo». */
-function BrushBand(props: { title: string; error: string | null; busy: boolean; canUndo: boolean; onUndo: () => void; onDone: () => void }) {
+function BrushBand(props: { title: string; label: string | null; error: string | null; canUndo: boolean; onUndo: () => void; onDone: () => void }) {
   return (
     <div data-testid="mapa-brocha" className="absolute inset-x-3 top-3 z-10 rounded-xl border border-primary/30 bg-surface/95 p-3 shadow-lg backdrop-blur">
       <div className="flex items-center gap-2">
         <Paintbrush size={16} className="shrink-0 text-primary" />
-        <p className="min-w-0 flex-1 text-[13px] font-semibold text-on-surface">{props.busy ? 'Guardando…' : props.title}</p>
-        <button type="button" data-testid="brocha-deshacer" disabled={!props.canUndo || props.busy} onClick={props.onUndo} className="flex h-9 items-center gap-1 rounded-lg px-2 text-[13px] font-semibold text-primary disabled:opacity-40"><Undo2 size={14} />Deshacer</button>
+        <p className="min-w-0 flex-1 text-[13px] font-semibold text-on-surface">{props.title}{props.label ? <span data-testid="brocha-cuenta" className="block text-[12px] font-normal text-on-surface-variant">{props.label}</span> : null}</p>
+        <button type="button" data-testid="brocha-deshacer" disabled={!props.canUndo} onClick={props.onUndo} className="flex h-9 items-center gap-1 rounded-lg px-2 text-[13px] font-semibold text-primary disabled:opacity-40"><Undo2 size={14} />Deshacer</button>
         <button type="button" data-testid="brocha-listo" onClick={props.onDone} className="h-9 rounded-lg bg-primary px-3 text-[13px] font-semibold text-on-primary">Listo</button>
       </div>
       {props.error ? <p role="alert" data-testid="brocha-error" className="mt-1.5 text-[12px] font-semibold text-error">{props.error}</p> : null}
@@ -163,6 +163,7 @@ function BrushBand(props: { title: string; error: string | null; busy: boolean; 
   );
 }
 
+const NO_LINES: ReturnType<typeof stretchLinesOf> = [];
 const NO_MARKS: NonNullable<WorkMap['marks']> = [];
 const NO_OBSERVATIONS: NonNullable<WorkMap['observations']> = [];
 
@@ -186,9 +187,6 @@ function useMapPick(map: WorkMap, onLift?: (row: LiftRow) => void) {
   return { selected, setSelected, focus, items, openPhoto: viewer.open, viewer: viewer.viewer };
 }
 
-const NO_BRUSH_LINES: ReturnType<typeof brushLinesOf> = [];
-const linesFor = (map: WorkMap, brush: Brush | null) => (brush ? brushLinesOf(map, brush) : NO_BRUSH_LINES);
-
 /**
  * The map of the work as the design draws it (`o-01-mapa-obra`): the bar with the service's tabs,
  * the literal map with its filters floating, and the panel of progress on the right; on a narrow
@@ -196,8 +194,11 @@ const linesFor = (map: WorkMap, brush: Brush | null) => (brush ? brushLinesOf(ma
  */
 export function WorkMapBoard(props: BoardProps) {
   const { pageUrl } = props;
-  // José 28/11: what waits for approval comes with the map; «desde» skips it. Without the list, today's map.
-  const byApprove = useByApprove(props.editMap, props.map);
+  // José 28/11: no approval. An admin's record approves itself; a member's counts on the map anyway.
+  const editMap = useMemo(() => (props.admin && props.editMap ? approvingMapSend(props.editMap) : props.editMap), [props.admin, props.editMap]);
+  const progressSend = useMemo(() => (props.admin && props.editMap && props.send ? approvingProgressSend(props.send, props.editMap) : props.send), [props.admin, props.editMap, props.send]);
+  // What Portal still keeps pending comes with the map and counts as done. Without the list, today's map.
+  const byApprove = useByApprove(editMap, props.map);
   const map = useMemo(() => withPendingOf(props.map, byApprove.list), [props.map, byApprove.list]);
   const [filter, setFilter] = useState<WorkMapFilter>({});
   const [side, setSide] = useState<'export' | 'share' | null>(null);
@@ -205,8 +206,7 @@ export function WorkMapBoard(props: BoardProps) {
   const [streetId, setStreetId] = useState<string | null>(null);
   const [seeingDeleted, setSeeingDeleted] = useState(false);
   const [layers, setLayers] = useState<LayersKind | null>(null);
-  const brushing = useBrush(map, props.editMap);
-  const brushLines = useMemo(() => linesFor(map, brushing.brush), [map, brushing.brush]);
+  const brushing = useBrush(map, editMap);
   const closeLayers = () => { setLayers(null); brushing.setBrush(null); };
   const avance = useAvanceMode(map, filter);
   // «Nueva capa» (ma03): opened from «Trabajos» or from «Modo Avance», where the new layer is picked.
@@ -232,26 +232,21 @@ export function WorkMapBoard(props: BoardProps) {
   const units = showsUnitPins(map, filter);
   const unitPins = units ? pista.pins : NO_UNIT_PINS;
   const photoLayer = usePhotoLayer(map, mapDays.photos, mapDays.days);
-  const [pendingItems, setPendingItems] = useState<PendingProgress[]>([]);
-  const stretches = units ? pista.stretches : NO_BRUSH_LINES;
-  const pendingLines = useMemo(() => (byApprove.list ? byApproveLinesOf(map, byApprove.list) : pendingLinesOf(map, pendingItems)), [map, byApprove.list, pendingItems]);
-  const waiting = byApprove.list ? pendingCountOf(byApprove.list) : pendingItems.length;
+  const stretches = units ? pista.stretches : NO_LINES;
   const { holder, expanded, open, close } = useFullScreen();
   const picks = useMapPick(map, props.onLift);
   const wide = useWide(holder);
-  const discharges = pista.suggestion.units.length ? <WorkMapDischarges map={map} serviceId={props.serviceId} suggestion={pista.suggestion} send={props.send} ranges={pista.ranges} onRange={pista.onRange} /> : null;
-  const primeCoat = props.editMap && props.mapPhotos?.length ? <PrimeCoatSuggestions map={map} photos={props.mapPhotos} onRecord={(id, draft) => openStreet(id, true, draft)} /> : null;
-  // José 09/11: what was sent waits here until approved, instead of vanishing. It is drawn over its street too.
-  // José 28/11 (design ma05): «Avances» with Hoy / Semana / Todo once Portal lists them; an older Portal keeps «Por aprobar».
-  const feed = props.editMap && byApprove.list ? <ProgressFeed map={map} list={byApprove.list} send={props.editMap} admin={Boolean(props.admin)} onUndo={byApprove.undo} onChanged={() => { byApprove.reload(); props.reload?.(); }} /> : null;
-  const pending = feed ?? (props.editMap ? <PendingProgressCard send={props.editMap} admin={Boolean(props.admin)} reloadKey={props.map} onList={setPendingItems} byApprove={{ list: byApprove.list, map, onUndo: byApprove.undo }} /> : null);
-  const top = discharges || primeCoat || pending ? <div className="space-y-5">{pending}{discharges}{primeCoat}</div> : null;
-  const streetPanel = streetId ? <StreetScopes key={`${streetId}|${recordingStart}|${recordDraft?.fromM}-${recordDraft?.toM}`} map={map} streetId={streetId} send={props.editMap} uploadPhoto={props.uploadPhoto} startRecording={recordingStart} recordDraft={recordDraft} onBack={() => openStreet(null)} /> : null;
-  const deletedPanel = seeingDeleted && props.editMap ? <DeletedWork map={map} send={props.editMap} onClose={() => setSeeingDeleted(false)} /> : null;
+  const discharges = pista.suggestion.units.length ? <WorkMapDischarges map={map} serviceId={props.serviceId} suggestion={pista.suggestion} send={progressSend} ranges={pista.ranges} onRange={pista.onRange} /> : null;
+  const primeCoat = editMap && props.mapPhotos?.length ? <PrimeCoatSuggestions map={map} photos={props.mapPhotos} onRecord={(id, draft) => openStreet(id, true, draft)} /> : null;
+  // José 28/11 (design ma05): «Avances» with Hoy / Semana / Todo; an admin undoes any record there.
+  const feed = editMap && byApprove.list ? <ProgressFeed map={map} list={byApprove.list} admin={Boolean(props.admin)} onUndo={(id) => byApprove.undo(id).then((failure) => { if (!failure) props.reload?.(); return failure; })} /> : null;
+  const top = discharges || primeCoat || feed ? <div className="space-y-5">{feed}{discharges}{primeCoat}</div> : null;
+  const streetPanel = streetId ? <StreetScopes key={`${streetId}|${recordingStart}|${recordDraft?.fromM}-${recordDraft?.toM}`} map={map} streetId={streetId} send={editMap} uploadPhoto={props.uploadPhoto} startRecording={recordingStart} recordDraft={recordDraft} onBack={() => openStreet(null)} /> : null;
+  const deletedPanel = seeingDeleted && editMap ? <DeletedWork map={map} send={editMap} onClose={() => setSeeingDeleted(false)} /> : null;
   const sidePanel = side === 'export'
-    ? <WorkMapExport map={map} filter={filter} onFilter={setFilter} title={props.title} pageUrl={pageUrl} send={props.editMap} uploadTrace={props.uploadTrace} onClose={() => setSide(null)} />
-    : side === 'share' ? <ShareProgress map={map} filter={filter} onFilter={setFilter} send={props.editMap} mapInReport={props.mapInReport} onClose={() => setSide(null)} /> : null;
-  const layersPanel = layers && props.editMap ? <WorkLayers map={map} kind={layers} send={props.editMap} brush={brushing.brush} onBrush={brushing.setBrush} onNewLayer={() => { closeLayers(); setNewLayer('map'); }} onClose={closeLayers} /> : null;
+    ? <WorkMapExport map={map} filter={filter} onFilter={setFilter} title={props.title} pageUrl={pageUrl} send={editMap} uploadTrace={props.uploadTrace} onClose={() => setSide(null)} />
+    : side === 'share' ? <ShareProgress map={map} filter={filter} onFilter={setFilter} send={editMap} mapInReport={props.mapInReport} onClose={() => setSide(null)} /> : null;
+  const layersPanel = layers && editMap ? <WorkLayers map={map} kind={layers} send={editMap} brush={brushing.brush} onBrush={brushing.setBrush} onNewLayer={() => { closeLayers(); setNewLayer('map'); }} onClose={closeLayers} /> : null;
   const mapLayers = useMapLayers();
   const drawn = useMemo(() => ({ view: viewWithLayers(view, mapLayers.layers), marks: visibleMarks(map.marks ?? NO_MARKS, mapLayers.layers), observations: visibleObservations(map.observations ?? NO_OBSERVATIONS, mapLayers.layers) }), [view, map, mapLayers.layers]);
   // Modo Avance draws its picked work the same way (José 28/11: no grey dashes there either).
@@ -259,9 +254,9 @@ export function WorkMapBoard(props: BoardProps) {
   const lines = useMemo(() => layerMapLinesOf({ map, view: drawn.view, filter, workId: linesWork, rows: avance.on ? NO_ROWS : layer.summary?.streets ?? NO_ROWS, hidden: !avance.on && Boolean(linesWork && mapLayers.layers.works.includes(linesWork)) }), [map, drawn.view, filter, linesWork, avance.on, layer.summary, mapLayers.layers]);
   const layered = useMemo(() => ({ ...drawn.view, planned: lines.planned, done: lines.done }), [drawn.view, lines]);
   // «Hasta hoy», the work and the days moved here from the top of the map (José 28/11), with the legend.
-  const controls = <><MapFilters map={map} view={view} filter={filter} onFilter={setFilter} /><MapDayChips options={mapDays.options} day={mapDays.day} onDay={mapDays.setDay} /><MapLegendCard view={view} waiting={waiting} /></>;
+  const controls = <><MapFilters map={map} view={view} filter={filter} onFilter={setFilter} /><MapDayChips options={mapDays.options} day={mapDays.day} onDay={mapDays.setDay} /><MapLegendCard view={view} defined={definedStreetIdsOf(map).size} /></>;
   const layersNode = mapLayers.open ? <MapLayersPanel map={map} view={view} filter={filter} onFilter={setFilter} layers={mapLayers.layers} onToggle={mapLayers.toggle} controls={controls} photos={photoLayer.available ? { count: photoLayer.count, shown: photoLayer.shown, onToggle: photoLayer.toggle, reports: photoLayer.reports, onToggleReport: photoLayer.toggleReport } : undefined} /> : null;
-  const avancePanel = avance.on && props.editMap && (wide || avance.target) ? <AvancePanel map={map} target={avance.target} manual={avance.manual} send={props.editMap} undoable={avance.target ? undoableOf(byApprove.list, avance.target.streetId, avance.target.workId) : null} onUndo={byApprove.undo} /> : null;
+  const avancePanel = avance.on && editMap && (wide || avance.target) ? <AvancePanel map={map} target={avance.target} manual={avance.manual} send={editMap} undoable={avance.target ? undoableOf(byApprove.list, avance.target.streetId, avance.target.workId) : null} onUndo={byApprove.undo} /> : null;
   const layerCreated = (id: string, paint: boolean) => {
     const from = newLayer;
     setNewLayer(null);
@@ -269,9 +264,9 @@ export function WorkMapBoard(props: BoardProps) {
     else if (from === 'avance') avance.pick(id);
     else setFilter({ workId: id });
   };
-  const newLayerPanel = newLayer && props.editMap ? <NewLayer map={map} send={props.editMap} onCreated={layerCreated} onClose={() => setNewLayer(null)} /> : null;
+  const newLayerPanel = newLayer && editMap ? <NewLayer map={map} send={editMap} onCreated={layerCreated} onClose={() => setNewLayer(null)} /> : null;
   const other = newLayerPanel ?? avancePanel ?? deletedPanel ?? layersPanel ?? sidePanel ?? streetPanel;
-  const onLayerRecord = props.editMap && target.kind !== 'none' ? record : undefined;
+  const onLayerRecord = editMap && target.kind !== 'none' ? record : undefined;
   // A phone (design ma01, José 28/11): the layer's peek opens with the map; «Capas y leyenda» only from its button.
   const [sheet, setSheet] = useState<MapSheet>(() => initialMapSheet(props.map.works.length));
   const [croquisOpen, setCroquisOpen] = useState(false);
@@ -310,9 +305,8 @@ export function WorkMapBoard(props: BoardProps) {
     else if (key === 'stages' || key === 'works') { setSide(null); brushing.setBrush(null); setLayers((shown) => (shown === key ? null : key)); }
     else setSeeingDeleted((shown) => !shown);
   };
-  const editMap = props.editMap;
   const openAvance = () => { setSheet(null); setSide(null); closeLayers(); setStreetId(null); setSeeingDeleted(false); avance.open(); };
-  const tools: ToolProps = { pageUrl, expanded, layersOpen: wide ? mapLayers.open : sheet === 'layers', onLayersPanel: showLayers, onPick: pick, draws: Boolean(props.onDraw), edits: Boolean(props.editMap), admin: Boolean(props.admin && props.editMap), record: Boolean(onLayerRecord) && !summary };
+  const tools: ToolProps = { pageUrl, expanded, layersOpen: wide ? mapLayers.open : sheet === 'layers', onLayersPanel: showLayers, onPick: pick, draws: Boolean(props.onDraw), edits: Boolean(editMap), admin: Boolean(props.admin && editMap), record: Boolean(onLayerRecord) && !summary };
   const notice = props.notice ? <p role="status" data-testid="mapa-aviso" className="pointer-events-auto rounded-xl border border-primary/30 bg-surface px-3 py-2 text-[13px] font-semibold text-on-surface shadow-md">{props.notice}</p> : null;
   const layerChips = <LayerChips testPrefix="mapa-capa" chips={layer.chips} onPick={pickLayer} />;
   return (
@@ -321,9 +315,9 @@ export function WorkMapBoard(props: BoardProps) {
       <div className={wide ? 'flex min-h-0 flex-1' : 'relative flex min-h-0 flex-1 flex-col'}>
         <div className={`relative min-h-[320px] overflow-hidden bg-surface-variant ${wide ? 'min-w-0 flex-1' : 'flex-1'}`}>
           <Suspense fallback={<div data-testid="mapa-cargando-lienzo" className="absolute inset-0 animate-pulse bg-surface-variant" />}>
-            <WorkMapCanvas controlsInset={wide || other || !isShortSheet(sheet) ? 0 : sheetHeight} view={layered} labels={lines.labels} expanded={expanded} stations={stations} bare={lines.base} marks={drawn.marks} observations={drawn.observations} selected={picks.selected} onSelect={picks.setSelected} onCardPhoto={(photo, all) => picks.openPhoto(photo, all)} focus={picks.focus} pins={photoLayer.shown ? photoLayer.pins : unitPins} onPin={photoLayer.shown ? photoLayer.openPin : undefined} stretches={brushing.brush ? brushLines : avance.on ? avance.lines : stretches} pending={avance.on ? pendingLines.filter((line) => line.workId === avance.workId) : pendingLines} onTap={brushing.brush ? (place) => void brushing.tap(place) : avance.on ? avance.tap : undefined} handles={avance.on ? avance.manual.handles : undefined} onHandleDrop={avance.on ? avance.manual.drop : undefined} />
+            <WorkMapCanvas controlsInset={wide || other || !isShortSheet(sheet) ? 0 : sheetHeight} view={layered} labels={lines.labels} expanded={expanded} stations={stations} bare={lines.base} marks={drawn.marks} observations={drawn.observations} selected={picks.selected} onSelect={picks.setSelected} onCardPhoto={(photo, all) => picks.openPhoto(photo, all)} focus={picks.focus} pins={photoLayer.shown ? photoLayer.pins : unitPins} onPin={photoLayer.shown ? photoLayer.openPin : undefined} stretches={brushing.brush ? brushing.lines : avance.on ? avance.lines : stretches} onTap={brushing.brush ? (place) => void brushing.tap(place) : avance.on ? avance.tap : undefined} handles={avance.on ? avance.manual.handles : undefined} onHandleDrop={avance.on ? avance.manual.drop : undefined} />
           </Suspense>
-          {brushing.brush ? <BrushBand title={brushTitle(map, brushing.brush)} error={brushing.error} busy={brushing.busy} canUndo={brushing.canUndo} onUndo={() => void brushing.undo()} onDone={() => brushing.setBrush(null)} /> : null}
+          {brushing.brush ? <BrushBand title={brushTitle(map, brushing.brush)} label={brushing.label} error={brushing.error} canUndo={brushing.canUndo} onUndo={() => void brushing.undo()} onDone={() => brushing.setBrush(null)} /> : null}
           {avance.on && editMap ? <AvanceTop mode={avance} title={props.title} onNewLayer={() => setNewLayer('avance')} /> : null}
           {brushing.brush || avance.on ? null : <MapTop tools={tools} wide={wide} chips={layerChips} notice={notice} />}
         </div>
@@ -335,7 +329,7 @@ export function WorkMapBoard(props: BoardProps) {
       {photoLayer.viewer}
       {picks.viewer}
       {editMap && croquisOpen ? <ServiceCroquisFrame send={editMap} title={props.title} onClose={() => { setCroquisOpen(false); props.reload?.(); }} /> : null}
-      {props.editMap && recording ? <ManualProgress map={map} streetId={recording.streetId} send={props.editMap} uploadPhoto={props.uploadPhoto} workId={recording.workId} onDone={() => { setRecording(null); byApprove.reload(); }} /> : null}
+      {editMap && recording ? <ManualProgress map={map} streetId={recording.streetId} send={editMap} uploadPhoto={props.uploadPhoto} workId={recording.workId} onDone={() => { setRecording(null); byApprove.reload(); }} /> : null}
     </div>
   );
 }

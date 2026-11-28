@@ -32,7 +32,7 @@ describe('NewLayer (web)', () => {
     render(<NewLayer map={MAP} send={send} onCreated={onCreated} onClose={vi.fn()} />);
     // Act
     fireEvent.click(screen.getByTestId('capa-riego-liga'));
-    expect(screen.getByTestId('capa-crear')).toHaveTextContent('Crear capa Riego de liga');
+    expect(screen.getByTestId('capa-crear')).toHaveTextContent('Crear trabajo Riego de liga');
     fireEvent.click(screen.getByTestId('capa-crear'));
     // Assert
     await waitFor(() => expect(onCreated).toHaveBeenCalledWith('n1', false));

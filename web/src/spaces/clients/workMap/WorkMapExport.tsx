@@ -81,7 +81,7 @@ function ClientLink(props: { pageUrl: string }) {
   return (
     <section className={CARD}>
       <p className="flex items-center gap-2 text-[15px] font-semibold text-on-surface"><span className="grid h-9 w-9 place-items-center rounded-lg bg-primary/10 text-primary"><Link2 size={16} /></span>Enlace para el cliente</p>
-      <p className="mt-1 text-[12px] text-on-surface-variant">Solo lo aprobado.</p>
+      <p className="mt-1 text-[12px] text-on-surface-variant">El avance registrado.</p>
       <p className="mt-2 truncate rounded-lg border border-outline/20 bg-background px-2.5 py-1.5 font-mono text-[12px] text-on-surface-variant">{props.pageUrl}</p>
       <div className="mt-3 flex justify-end"><button type="button" data-testid="mapa-copiar-enlace-visor" onClick={() => void copy()} className="flex h-10 items-center gap-2 rounded-xl bg-primary px-4 text-[13px] font-semibold text-on-primary">{copied === 'done' ? <Check size={15} /> : <Copy size={15} />}{copied === 'done' ? 'Enlace copiado' : 'Copiar enlace de visor'}</button></div>
       {copied === 'failed' ? <p role="alert" className="mt-1 text-[12px] text-error">El navegador no dejó copiar. Selecciona el enlace y cópialo.</p> : null}
@@ -89,12 +89,12 @@ function ClientLink(props: { pageUrl: string }) {
   );
 }
 
-/** «Estructura de capas KMZ generada»: the folders Google Earth will show, with their metres. */
+/** «Estructura del KMZ generado»: the folders Google Earth will show, with their metres. */
 function KmzTree(props: { map: WorkMap; filter: WorkMapFilter; fileName: string }) {
   const layers = kmzLayersOf(props.map, props.filter);
   return (
     <section data-testid="exportar-capas" className="rounded-xl bg-on-surface p-4 font-mono text-[12px] text-surface">
-      <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-surface/70">Estructura de capas KMZ generada</p>
+      <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-surface/70">Estructura del KMZ generado</p>
       <p className="mt-2 flex items-center gap-1.5"><FolderOpen size={14} />{props.fileName.replace(/\.kmz$/, '')}/</p>
       <p className="ml-4 mt-1 flex items-center gap-1.5 text-primary-container"><Folder size={14} />Ejecutado/</p>
       {layers.done.map((layer) => <p key={layer.workId} className="ml-9 flex items-center gap-2"><span aria-hidden className="h-2 w-2 rounded-full" style={{ backgroundColor: layer.color }} />{layer.name} ({layer.meters})</p>)}

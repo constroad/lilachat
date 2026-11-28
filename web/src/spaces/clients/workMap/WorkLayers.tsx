@@ -1,11 +1,12 @@
-import { useRef, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Paintbrush, Plus, X } from 'lucide-react';
-import { BRUSH_NO_EDIT as NO_EDIT, createdOrRefusal, paintAt, percentLabel, sendWorkScope, sendWorkStage, stageCardsOf, undoStroke, workRowsOf, workStageRequest, type Brush, type BrushStroke, type MapEditSend, type StageCard, type WorkMap, type WorkMapPoint, type WorkRow } from '@lilachat/shared';
+import { BRUSH_QUEUE_IDLE, brushLinesOf, createdOrRefusal, percentLabel, sendWorkStage, stageCardsOf, startBrushQueue, workRowsOf, workStageRequest, type Brush, type BrushQueue, type MapEditSend, type WorkMapLine, type StageCard, type WorkMap, type WorkMapPoint, type WorkRow } from '@lilachat/shared';
 import { NewLabel } from './ScopeForm';
 import { LayerActions } from './LayerActions';
 import { KICKER } from './WorkMapPanel';
 
 export type LayersKind = 'stages' | 'works';
+const NO_LINES: WorkMapLine[] = [];
 type Props = { map: WorkMap; kind: LayersKind; send: MapEditSend; brush: Brush | null; onBrush: (brush: Brush | null) => void; /** «Agregar trabajo» opens «Nueva capa» (ma03). */ onNewLayer: () => void; onClose: () => void };
 
 /** «Agregar trabajo»: «Nueva capa» (design ma03) instead of a name field. */
@@ -95,32 +96,28 @@ export function WorkLayers(props: Props) {
   );
 }
 
-/** The brush over the map: a tap toggles the street, «Deshacer» puts the last one back. */
+/**
+ * The brush over the map (José 28/11): a tap paints the street at once and its save waits in line;
+ * «Deshacer» walks back the last tap. «Listo» closes at once and the queue finishes behind it.
+ */
 export function useBrush(map: WorkMap, send: MapEditSend | undefined) {
   const [brush, setBrushState] = useState<Brush | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
-  const [strokes, setStrokes] = useState<BrushStroke[]>([]);
-  const current = useRef(map);
-  current.current = map;
-  const sendScope = (request: Parameters<MapEditSend>[0]) => (send ? send(request, sendWorkScope) : Promise.resolve({ ok: false as const, message: NO_EDIT }));
-  const setBrush = (next: Brush | null) => { setError(null); setStrokes([]); setBrushState(next); };
-  const tap = async (place: WorkMapPoint) => {
-    if (!brush || busy) return;
-    setBusy(true);
-    const { failure, stroke } = await paintAt(current.current, brush, place, sendScope, () => crypto.randomUUID());
-    setBusy(false);
-    setError(failure);
-    if (stroke) setStrokes((done) => [...done, stroke]);
+  const [snapshot, setSnapshot] = useState(BRUSH_QUEUE_IDLE);
+  const queue = useRef<BrushQueue | null>(null);
+  const door = useRef(send);
+  door.current = send;
+  useEffect(() => {
+    queue.current?.mapChanged(map);
+    return undefined;
+  }, [map]);
+  const setBrush = (next: Brush | null) => {
+    const opened: BrushQueue | null = next ? startBrushQueue({ brush: next, map, send: () => door.current, newEntryId: () => crypto.randomUUID(), onChange: (changed) => { if (queue.current === opened) setSnapshot(changed); } }) : null;
+    queue.current = opened;
+    setSnapshot(BRUSH_QUEUE_IDLE);
+    setBrushState(next);
   };
-  const undo = async () => {
-    const last = strokes[strokes.length - 1];
-    if (!last || busy) return;
-    setBusy(true);
-    const failure = await undoStroke(last, current.current, sendScope);
-    setBusy(false);
-    setError(failure);
-    if (!failure) setStrokes((done) => done.slice(0, -1));
-  };
-  return { brush, setBrush, tap, undo, error, busy, canUndo: strokes.length > 0 };
+  const lines = useMemo(() => (brush && queue.current ? brushLinesOf(queue.current.mapOf(map), brush) : NO_LINES), [brush, map, snapshot]);
+  const tap = (place: WorkMapPoint) => queue.current?.tap(place);
+  const undo = () => queue.current?.undo();
+  return { brush, setBrush, tap, undo, lines, ...snapshot };
 }

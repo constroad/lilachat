@@ -138,8 +138,8 @@ describe('what waits for approval', () => {
 
   it('refuses an end that the pending one already reaches, and lets a farther one through', () => {
     const target = avanceTargetOf(waiting, 's1', 'imp')!;
-    expect(avanceProblem(target, 90)).toBe('Ya hay un avance por aprobar hasta 0+090 en esta calle.');
-    expect(avanceProblem(target, 75)).toBe('Ya hay un avance por aprobar hasta 0+090 en esta calle.');
+    expect(avanceProblem(target, 90)).toBe('Ya hay un avance registrado hasta 0+090 en esta calle.');
+    expect(avanceProblem(target, 75)).toBe('Ya hay un avance registrado hasta 0+090 en esta calle.');
     expect(avanceProblem(target, 120)).toBeNull();
   });
 
@@ -150,7 +150,7 @@ describe('what waits for approval', () => {
     const answer = await runAvanceSave({ map: waiting, target: avanceTargetOf(waiting, 's1', 'imp')!, toM: 90, ids: IDS, now: NOW, send });
     // Assert
     expect(send).not.toHaveBeenCalled();
-    expect(answer).toEqual({ ok: false, message: 'Ya hay un avance por aprobar hasta 0+090 en esta calle.' });
+    expect(answer).toEqual({ ok: false, message: 'Ya hay un avance registrado hasta 0+090 en esta calle.' });
   });
 });
 

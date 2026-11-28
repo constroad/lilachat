@@ -40,16 +40,37 @@ describe('ma05: the feed', () => {
     const cards = progressFeedOf(mapOf(), list, TODAY);
     // Assert
     expect(cards.map((card) => card.state)).toEqual(['pendiente', 'pendiente', 'rechazado', 'aprobado', 'pendiente', 'aprobado']);
-    expect(cards[0]).toMatchObject({ id: 'a2', title: 'Imprimación · Jr. Progreso', color: '#d97706', stretch: '0+120 → 0+166', meters: '46 m', area: '276 m²', when: 'Hoy', author: 'Juan Quispe', pill: FEED_PILL.pendiente, undoable: true, toM: 166 });
+    expect(cards[0]).toMatchObject({ id: 'a2', title: 'Imprimación · Jr. Progreso', color: '#d97706', stretch: '0+120 → 0+166', meters: '46 m', area: '276 m²', when: 'Hoy', author: 'Juan Quispe', pill: '', undoable: true, toM: 166 });
     expect(cards[1]).toMatchObject({ title: 'Imprimación · Av. Lima', area: null, undoable: false });
-    expect(cards[2]).toMatchObject({ pill: 'RECHAZADO', rejectNote: 'La foto no muestra el tramo', when: 'Ayer' });
-    expect(cards[3]).toMatchObject({ title: 'Carpeta 2" · Jr. Progreso', pill: 'APROBADO', author: null, meters: '60 m', resolvable: false });
+    expect(cards[2]).toMatchObject({ pill: 'DESHECHO', rejectNote: 'La foto no muestra el tramo', when: 'Ayer' });
+    expect(cards[3]).toMatchObject({ title: 'Carpeta 2" · Jr. Progreso', pill: '', author: null, meters: '60 m' });
+    expect(FEED_PILL).toEqual({ pendiente: '', aprobado: '', rechazado: 'DESHECHO' });
   });
 
-  it('«Deshacer» only on the newest own pending one of each street and work', () => {
+  it('«Deshacer» for anyone only on the newest own pending one of each street and work', () => {
     const cards = progressFeedOf(mapOf(), list, TODAY);
     expect(cards.filter((card) => card.undoable).map((card) => card.id)).toEqual(['a2']);
-    expect(cards.filter((card) => card.resolvable).map((card) => card.id)).toEqual(['a2', 'a1', 'a0']);
+  });
+
+  it('an admin undoes any record that counts and has an id, never one already undone (José 28/11)', () => {
+    // Arrange: Portal sends the id of what is done; the first one has it.
+    const map = mapOf();
+    const withId: WorkMap = { ...map, progress: [{ ...map.progress[0]!, id: 'p9' }, map.progress[1]!] };
+    // Act
+    const cards = progressFeedOf(withId, list, TODAY, true);
+    // Assert
+    expect(cards.filter((card) => card.undoable).map((card) => card.id)).toEqual(['a2', 'a1', 'p9', 'a0']);
+  });
+
+  it('lists once a pending record the map already counts', () => {
+    // Arrange: the map with what Portal keeps pending folded in, as the boards pass it.
+    const map = mapOf();
+    const folded: WorkMap = { ...map, progress: [...map.progress, { id: 'a2', streetId: 's1', workId: 'imp', fromM: 120, toM: 166, date: TODAY, rework: false }] };
+    // Act
+    const cards = progressFeedOf(folded, list, TODAY);
+    // Assert
+    expect(cards.filter((card) => card.id === 'a2')).toHaveLength(1);
+    expect(cards).toHaveLength(6);
   });
 
   it('without the list (an older Portal) it still shows what was approved', () => {

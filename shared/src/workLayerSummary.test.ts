@@ -4,7 +4,7 @@ import { avanceChipsOf } from './workAvanceMode.js';
 import { layerRowsOf } from './workMapLayers.js';
 import { layerPercentOf, layerScopeOf } from './workLayerPercent.js';
 import type { ByApproveList, ByApproveProgress } from './workByApprove.js';
-import { activeLayerOf, LAYER_PENDING_PILL, layerBarOf, layerChipsOf, layerDraftFor, layerLatestOf, layerRecordMap, layerSummaryOf, layerWidthNote } from './workLayerSummary.js';
+import { activeLayerOf, layerBarOf, layerChipsOf, layerDraftFor, layerLatestOf, layerRecordMap, layerSummaryOf, layerWidthNote } from './workLayerSummary.js';
 
 /** Design ma01 (José 28/11): the sheet of the active layer, in m² when every street has a width. */
 const line = [{ lat: -12, lng: -77 }, { lat: -12, lng: -76.999 }];
@@ -173,11 +173,11 @@ describe('layerChipsOf', () => {
 });
 
 describe('layerLatestOf', () => {
-  it('names the newest progress of the layer, pending first on the same day', () => {
+  it('names the newest progress of the layer, a record Portal keeps pending counting like any other', () => {
     // Act
     const latest = layerLatestOf(MAP, 'imp', listOf(pending({})), '2026-11-28');
     // Assert
-    expect(latest).toEqual({ text: 'Último: hoy · Jr. Progreso +46 m', pill: LAYER_PENDING_PILL });
+    expect(latest).toEqual({ text: 'Último: hoy · Jr. Progreso +46 m' });
   });
 
   it('shows the Lima time when the date carries one', () => {
@@ -191,11 +191,11 @@ describe('layerLatestOf', () => {
     expect(layerLatestOf(MAP, 'imp', listOf(pending({ date: '2026-11-27T08:05' })), '2026-11-28')?.text).toBe('Último: ayer 08:05 · Jr. Progreso +46 m');
   });
 
-  it('falls back to the approved progress, without the pill', () => {
+  it('falls back to the done progress', () => {
     // Act
     const latest = layerLatestOf(MAP, 'imp', null, '2026-11-28');
     // Assert
-    expect(latest).toEqual({ text: 'Último: 26 nov · Jr. Progreso +120 m', pill: null });
+    expect(latest).toEqual({ text: 'Último: 26 nov · Jr. Progreso +120 m' });
   });
 
   it('leaves the rejected and the rework out', () => {
@@ -204,7 +204,6 @@ describe('layerLatestOf', () => {
     // Act
     const latest = layerLatestOf(MAP, 'imp', list, '2026-11-28');
     // Assert
-    expect(latest?.pill).toBeNull();
     expect(latest?.text).toContain('26 nov');
   });
 

@@ -125,12 +125,12 @@ describe('Modo Avance (web)', () => {
   });
 });
 
-/** José 28/11: the twin of a pending save is refused, and the author can undo it from the panel. */
-describe('Modo Avance with what waits for approval (web)', () => {
+/** José 28/11: a record Portal keeps pending counts as done; its twin is refused, and the author can undo it. */
+describe('Modo Avance with a record Portal keeps pending (web)', () => {
   const list = byApproveOf({ avances: [{ avanceId: 'a9', estado: 'pendiente', calleId: 's1', desdeM: 60, hastaM: 90, tagId: 'imp', propio: true }] });
   const waiting = withPendingOf(MAP, list);
 
-  it('the same 75 % again says it already waits and sends nothing', async () => {
+  it('the same 75 % again says it is already done and sends nothing', async () => {
     // Arrange
     const send = okSend();
     render(<Harness map={waiting} send={send} />);
@@ -140,8 +140,9 @@ describe('Modo Avance with what waits for approval (web)', () => {
     fireEvent.click(screen.getByTestId('avance-pct-75'));
     fireEvent.click(screen.getByTestId('avance-guardar'));
     // Assert
-    expect(screen.getByTestId('avance-por-aprobar')).toHaveTextContent('Por aprobar hasta 0+090');
-    await waitFor(() => expect(screen.getByTestId('avance-respuesta-modo')).toHaveTextContent('Ya hay un avance por aprobar hasta 0+090 en esta calle.'));
+    expect(screen.queryByTestId('avance-por-aprobar')).toBeNull();
+    await waitFor(() => expect(screen.getByTestId('avance-respuesta-modo')).toHaveTextContent('Imprimación'));
+    expect(screen.getByTestId('avance-panel')).not.toHaveTextContent(/aprobar/i);
     expect(send).not.toHaveBeenCalled();
   });
 

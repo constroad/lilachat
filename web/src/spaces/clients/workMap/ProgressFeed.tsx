@@ -1,10 +1,9 @@
 import { useMemo, useState } from 'react';
 import { Camera, TriangleAlert } from 'lucide-react';
-import { FEED_EMPTY, FEED_RANGES, FEED_SUMMARY_KICKER, FEED_TITLE, feedCounts, feedInRange, feedSummaryOf, limaDayKey, progressFeedOf, resolvePendingProgress, type ByApproveList, type FeedCard, type FeedRange, type FeedState, type MapEditSend, type PendingDecision, type WorkMap } from '@lilachat/shared';
-import { Decide, UndoProgress } from './PendingProgress';
+import { FEED_EMPTY, FEED_RANGES, FEED_SUMMARY_KICKER, FEED_TITLE, feedCounts, feedInRange, feedSummaryOf, limaDayKey, progressFeedOf, type ByApproveList, type FeedCard, type FeedRange, type WorkMap } from '@lilachat/shared';
+import { UndoProgress } from './PendingProgress';
 
 const KICKER = 'text-[11px] font-bold uppercase tracking-[0.12em] text-on-surface-variant';
-const PILL_TONE: Record<FeedState, string> = { pendiente: 'border-warning/40 bg-warning/10 text-warning', aprobado: 'border-en-linea/40 bg-en-linea/10 text-en-linea', rechazado: 'border-error/40 bg-error/10 text-error' };
 
 /** «Hoy 2 · Semana 11 · Todo 38» (design ma05). */
 function RangeTabs(props: { range: FeedRange; counts: Record<FeedRange, number>; onRange: (range: FeedRange) => void }) {
@@ -35,14 +34,9 @@ function Summary(props: { cards: FeedCard[]; label: string }) {
   );
 }
 
-type CardActions = { admin: boolean; onUndo: (id: string) => Promise<string | null>; onResolve: (id: string, decision: PendingDecision) => Promise<string | null> };
-
-/** One progress: its work and street, chainages, metres, when and who, and its state. */
-function FeedRow(props: { card: FeedCard; actions: CardActions }) {
-  const { card, actions } = props;
-  const [busy, setBusy] = useState<PendingDecision | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const resolve = async (decision: PendingDecision) => { setBusy(decision); setError(await actions.onResolve(card.id, decision)); setBusy(null); };
+/** One progress: its work and street, chainages, metres, when and who; only an undone one has a pill. */
+function FeedRow(props: { card: FeedCard; onUndo: (id: string) => Promise<string | null> }) {
+  const { card } = props;
   const figures = [card.stretch, card.meters, card.area].filter(Boolean).join(' · ');
   return (
     <li data-testid={`avance-${card.id}`} className="space-y-2 rounded-2xl border border-outline/15 bg-surface p-3" style={card.color ? { borderLeftWidth: 4, borderLeftColor: card.color } : undefined}>
@@ -53,36 +47,28 @@ function FeedRow(props: { card: FeedCard; actions: CardActions }) {
           {figures ? <p className="truncate font-mono text-[14px] text-on-surface">{figures}</p> : null}
           <p className="text-[13px] text-on-surface-variant">{[card.when, card.author].filter(Boolean).join(' · ')}</p>
         </div>
-        <span data-testid={`avance-estado-${card.id}`} className={`self-start rounded-md border px-2 py-1 text-[11px] font-bold ${PILL_TONE[card.state]}`}>{card.pill}</span>
+        {card.pill ? <span data-testid={`avance-estado-${card.id}`} className="self-start rounded-md border border-error/40 bg-error/10 px-2 py-1 text-[11px] font-bold text-error">{card.pill}</span> : null}
       </div>
       {card.rejectNote ? <p className="flex items-center gap-2 rounded-xl border border-error/30 bg-error/5 p-3 text-[14px] text-error"><TriangleAlert size={16} className="shrink-0" />Nota: {card.rejectNote}</p> : null}
-      {error ? <p role="alert" className="text-[13px] font-semibold text-error">{error}</p> : null}
-      {card.undoable && card.toM !== null ? <UndoProgress id={card.id} toM={card.toM} onUndo={actions.onUndo} /> : null}
-      {actions.admin && card.resolvable ? <Decide id={card.id} busy={busy} onResolve={(decision) => void resolve(decision)} /> : null}
+      {card.undoable && card.toM !== null ? <UndoProgress id={card.id} toM={card.toM} onUndo={props.onUndo} /> : null}
     </li>
   );
 }
 
-type FeedProps = { map: WorkMap; list: ByApproveList | null; send: MapEditSend; admin: boolean; onUndo: (id: string) => Promise<string | null>; /** After «Aprobar» / «Rechazar»: the list and the map again. */ onChanged: () => void; /** Today in Lima; a test fixes it. */ today?: string };
+type FeedProps = { map: WorkMap; list: ByApproveList | null; /** An admin undoes any record; anyone else, their own. */ admin: boolean; onUndo: (id: string) => Promise<string | null>; /** Today in Lima; a test fixes it. */ today?: string };
 
-/** «Avances» (design ma05, José 28/11): what waits, what was approved and what was refused, by Hoy / Semana / Todo. */
+/** «Avances» (design ma05, José 28/11): every record, by Hoy / Semana / Todo; none waits for approval. */
 export function ProgressFeed(props: FeedProps) {
   const [range, setRange] = useState<FeedRange>('hoy');
   const today = props.today ?? limaDayKey(new Date());
-  const cards = useMemo(() => progressFeedOf(props.map, props.list, today), [props.map, props.list, today]);
+  const cards = useMemo(() => progressFeedOf(props.map, props.list, today, props.admin), [props.map, props.list, today, props.admin]);
   const shown = feedInRange(cards, range, today);
-  const onResolve = async (id: string, decision: PendingDecision) => {
-    const failure = await resolvePendingProgress(props.send, id, decision);
-    if (!failure) props.onChanged();
-    return failure;
-  };
-  const actions: CardActions = { admin: props.admin, onUndo: props.onUndo, onResolve };
   return (
     <section data-testid="avances-lista" className="space-y-3">
       <p className={KICKER}>{FEED_TITLE}</p>
       <RangeTabs range={range} counts={feedCounts(cards, today)} onRange={setRange} />
       <Summary cards={shown} label={FEED_RANGES.find((option) => option.id === range)?.label ?? ''} />
-      {shown.length ? <ul className="space-y-3">{shown.map((card) => <FeedRow key={card.id} card={card} actions={actions} />)}</ul> : <p className="text-[13px] text-on-surface-variant">{FEED_EMPTY}</p>}
+      {shown.length ? <ul className="space-y-3">{shown.map((card) => <FeedRow key={card.id} card={card} onUndo={props.onUndo} />)}</ul> : <p className="text-[13px] text-on-surface-variant">{FEED_EMPTY}</p>}
     </section>
   );
 }

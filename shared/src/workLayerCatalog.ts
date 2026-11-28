@@ -1,5 +1,6 @@
 import { metersLabel, type WorkMap } from './workMap.js';
 import { brushRequests } from './workMapBrush.js';
+import { foldWorkName } from './workNames.js';
 import type { WorkProgressResult } from './workProgressSend.js';
 import { labelProblem, sendWorkScope, sendWorkTag, workTagRequest, type MapEditSend, type WorkScopeRequest } from './workScopeDraft.js';
 
@@ -31,14 +32,12 @@ export const OTHER_LAYER_COLOR = '#dc2626';
 export const OTHER_LAYER_KEY = 'otra';
 
 export const LAYER_TAKEN = 'Ya está';
-export const LAYER_EXISTS = 'Esa capa ya está en el servicio.';
-export const LAYER_PICK_ONE = 'Elige una capa.';
-export const LAYER_NOT_FOUND = 'La capa se creó, pero el mapa aún no la muestra. Búscala en «Trabajos».';
+export const LAYER_EXISTS = 'Ese trabajo ya está en el servicio.';
+export const LAYER_PICK_ONE = 'Elige un trabajo.';
+export const LAYER_NOT_FOUND = 'El trabajo se creó, pero el mapa aún no lo muestra. Búscalo en «Trabajos».';
 
 /** «Carpeta Asfáltica 2”» and «carpeta asfaltica 2"» are the same layer: no case, accents, spaces nor quote style. */
-export function foldLayerName(name: string): string {
-  return name.normalize('NFD').replace(/\p{M}/gu, '').replace(/[“”″'’]/g, '"').replace(/\s+/g, ' ').trim().toLowerCase();
-}
+export const foldLayerName = foldWorkName;
 
 const takenNames = (map: Pick<WorkMap, 'works'>) => new Set(map.works.map((work) => foldLayerName(work.name)));
 
@@ -156,7 +155,7 @@ export function createMapWaiter(timeoutMs: number) {
 export const LAYER_MAP_WAIT_MS = 15_000;
 
 /** «Crear capa Imprimación» on the button, «Crear capa» while nothing is picked. */
-export const layerButtonLabel = (plan: LayerPlan | null, busy: boolean): string => (busy ? 'Creando…' : plan?.name.trim() ? `Crear capa ${plan.name.trim()}` : 'Crear capa');
+export const layerButtonLabel = (plan: LayerPlan | null, busy: boolean): string => (busy ? 'Creando…' : plan?.name.trim() ? `Crear trabajo ${plan.name.trim()}` : 'Crear trabajo');
 
 /** What the screen holds: the chip picked (or «Otra…» with its name and color) and the switch. */
 export type LayerPick = { key: string | null; otherName: string; otherColor: string; allStreets: boolean };

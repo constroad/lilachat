@@ -19,7 +19,7 @@ const map: WorkMap = workMapOf({
 const list: ByApproveList = { total: 1, items: [{ id: 'a2', state: 'pendiente', date: TODAY, streetId: 's1', fromM: 120, toM: 166, workId: 'imp', quantity: 46, author: 'Juan', own: true, rejectNote: null }] };
 
 describe('LayerSheet', () => {
-  it('shows the layer figure, its streets, what waits hatched and the latest line', () => {
+  it('shows the layer figure, its streets and the latest line, with nothing waiting for approval', () => {
     // Arrange
     const layer = activeLayerOf(map, list, null, TODAY);
     const onRecord = vi.fn();
@@ -30,9 +30,8 @@ describe('LayerSheet', () => {
     expect(screen.getByTestId('mapa-avance').textContent).toContain('720 de 1 704 m²');
     expect(screen.getByTestId('mapa-avance').textContent).toContain('42 %');
     expect(screen.getByTestId('capa-calle-s1')).toBeTruthy();
-    expect(screen.getAllByTestId('capa-por-aprobar').length).toBeGreaterThan(0);
-    expect(screen.getByTestId('capa-ultimo').textContent).toContain('Último: hoy · Jr. Progreso +46 m');
-    expect(screen.getByTestId('capa-ultimo').textContent).toContain('por aprobar');
+    expect(screen.queryByTestId('capa-por-aprobar')).toBeNull();
+    expect(screen.getByTestId('capa-ultimo').textContent).toBe('Último: hoy · Jr. Progreso +46 m');
     expect(screen.getByText('Registrar avance de Imprimación')).toBeTruthy();
     expect(onRecord).toHaveBeenCalledOnce();
   });

@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { ArrowLeft, Pointer } from 'lucide-react-native';
-import { AVANCE_MANUAL_HINT, AVANCE_MANUAL_ONE, AVANCE_PICK_STREET, AVANCE_TITLE, addManualMark, avanceLinesOf, avanceStreetAtTap, manualHandlesOf, manualRangeOf, measureOnStreet, moveManualMark, tapReachM, type StreetEnd, avanceChipsOf, avanceHint, avancePickedWork, avanceTargetOf, byApproveLinesOf, undoableOf, type ByApproveList, workMapView, layerMapLinesOf, type MapEditSend, type WorkMap, type WorkMapFilter, type WorkMapPoint } from '@lilachat/shared';
+import { AVANCE_MANUAL_HINT, AVANCE_MANUAL_ONE, AVANCE_PICK_STREET, AVANCE_TITLE, addManualMark, avanceLinesOf, avanceStreetAtTap, manualHandlesOf, manualRangeOf, measureOnStreet, moveManualMark, tapReachM, type StreetEnd, avanceChipsOf, avanceHint, avancePickedWork, avanceTargetOf, undoableOf, type ByApproveList, workMapView, layerMapLinesOf, type MapEditSend, type WorkMap, type WorkMapFilter, type WorkMapPoint } from '@lilachat/shared';
 import { Modal } from '../../../ui/Modal';
 import { useColores } from '../../../ui/tema';
 import { useMargenes } from '../../../ui/useMargenes';
@@ -83,7 +83,6 @@ export function AvanceMode(props: { map: WorkMap; /** The board's stage and day 
   const view = useMemo(() => ({ ...whole, planned: lines.planned, done: lines.done }), [whole, lines]);
   const target = workId && streetId ? avanceTargetOf(map, streetId, workId) : null;
   const workName = chips.find((chip) => chip.selected)?.name ?? '';
-  const pending = useMemo(() => byApproveLinesOf(map, props.byApprove).filter((one) => one.workId === workId), [map, props.byApprove, workId]);
   const manual = useManualMarks(map, streetId);
   // A short patch on a long road is hard to hit: the reach grows as the map zooms out (José 28/11).
   const tap = (place: WorkMapPoint, _roads?: unknown, zoom?: number) => {
@@ -96,7 +95,7 @@ export function AvanceMode(props: { map: WorkMap; /** The board's stage and day 
   return (
     <Modal visible animationType="slide" onRequestClose={props.onExit}>
       <View testID="avance-modo" className="flex-1 bg-background">
-        <WorkMapSurface view={view} bare={lines.base} moves controlsInset={margins.pie} stretches={avanceLinesOf(map, workId, streetId, manual.range)} pending={pending} onTap={workId ? tap : undefined} handles={manual.handles} onHandleDrop={manual.drop} />
+        <WorkMapSurface view={view} bare={lines.base} moves controlsInset={margins.pie} stretches={avanceLinesOf(map, workId, streetId, manual.range)} onTap={workId ? tap : undefined} handles={manual.handles} onHandleDrop={manual.drop} />
         <View pointerEvents="box-none" className="absolute inset-x-0 gap-3" style={{ top: margins.cabecera + 8 }}>
           <Head title={props.title} onExit={props.onExit} />
           <LayerChips testPrefix="avance-trabajo" chips={chips} onPick={(id) => { setChosen(id); setError(null); }} onNewLayer={() => setNewLayer(true)} />

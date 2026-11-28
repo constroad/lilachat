@@ -28,7 +28,7 @@ export type WorkProgressDeps = {
 /** `data`: the tool's structured answer, when the app sends one (agentes 890b02e). */
 export type WorkProgressResult = { ok: true; message: string; data?: Record<string, unknown> } | { ok: false; message: string };
 
-export const PROGRESS_SENT = 'Avance registrado. Queda pendiente de aprobación del residente.';
+export const PROGRESS_SENT = 'Avance registrado.';
 export const PROGRESS_FAILED = 'No se pudo registrar el avance. Revisa tu señal y vuelve a confirmar.';
 
 export const workProgressRequest = (entry: ProgressEntry): WorkProgressRequest => ({
@@ -44,7 +44,8 @@ export const workProgressRequest = (entry: ProgressEntry): WorkProgressRequest =
   forms: FORMS_LEVEL,
 });
 
-type MapToolTexts = { sent: string; failed: string };
+/** `own`: say `sent`, not Portal's text (José 28/11: field progress counts at once, Portal still says it waits). */
+type MapToolTexts = { sent: string; failed: string; own?: boolean };
 
 function refusalOf(reply: Extract<FormSubmitReply, { ok: false }>, failed: string): string {
   const said = reply.errors?._ ?? Object.values(reply.errors ?? {})[0] ?? reply.message ?? failed;
@@ -61,9 +62,10 @@ export async function sendMapTool(deps: WorkProgressDeps, values: FormValues, te
   const { outcome } = reply;
   if (outcome.outcome === 'failed') return { ok: false, message: outcome.message ?? texts.failed };
   const response = outcome.outcome === 'pending' ? (await deps.notice(commandId))?.response : outcome.response;
-  return { ok: true, message: response?.text?.trim() || texts.sent, ...(response?.data ? { data: response.data } : {}) };
+  const said = texts.own ? '' : response?.text?.trim();
+  return { ok: true, message: said || texts.sent, ...(response?.data ? { data: response.data } : {}) };
 }
 
 /** The same `entradaId` on a resend: Portal answers `ya_marcada` and agentes turns it into a normal answer, «Ya estaba registrado.». */
 export const sendWorkProgress = (deps: WorkProgressDeps, entry: ProgressEntry): Promise<WorkProgressResult> =>
-  sendMapTool(deps, entry.nota ? { nota: entry.nota } : {}, { sent: PROGRESS_SENT, failed: PROGRESS_FAILED });
+  sendMapTool(deps, entry.nota ? { nota: entry.nota } : {}, { sent: PROGRESS_SENT, failed: PROGRESS_FAILED, own: true });

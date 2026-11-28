@@ -1,8 +1,8 @@
 import { randomUUID } from 'expo-crypto';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { Paintbrush, Plus, Undo2 } from 'lucide-react-native';
-import { BRUSH_NO_EDIT, brushLinesOf, brushTitle, createdOrRefusal, paintAt, percentLabel, sendWorkScope, sendWorkStage, stageCardsOf, undoStroke, workMapView, workRowsOf, workStageRequest, type Brush, type BrushStroke, type MapEditSend, type StageCard, type WorkMap, type WorkMapPoint, type WorkRow } from '@lilachat/shared';
+import { BRUSH_QUEUE_IDLE, brushLinesOf, brushTitle, createdOrRefusal, percentLabel, sendWorkStage, stageCardsOf, startBrushQueue, workMapView, workRowsOf, workStageRequest, type Brush, type MapEditSend, type StageCard, type WorkMap, type WorkRow } from '@lilachat/shared';
 import { Modal } from '../../../ui/Modal';
 import { useColores } from '../../../ui/tema';
 import { useMargenes } from '../../../ui/useMargenes';
@@ -99,25 +99,17 @@ export function WorkLayersSheet(props: SheetProps) {
   );
 }
 
-/** The brush's taps, kept so «Deshacer» walks them back one by one. */
+/** The brush's taps: painted at once, saved in order behind the map (José 28/11). */
 function useStrokes(map: WorkMap, send: MapEditSend, brush: Brush) {
-  const [state, setState] = useState<{ error: string | null; busy: boolean; strokes: BrushStroke[] }>({ error: null, busy: false, strokes: [] });
-  const latest = useRef(map);
-  latest.current = map;
-  const scope = (request: Parameters<MapEditSend>[0]) => send(request, sendWorkScope);
-  const run = async (work: () => Promise<{ failure: string | null; next: (strokes: BrushStroke[]) => BrushStroke[] }>) => {
-    if (state.busy) return;
-    setState((before) => ({ ...before, busy: true }));
-    const { failure, next } = await work();
-    setState((before) => ({ error: failure, busy: false, strokes: failure ? before.strokes : next(before.strokes) }));
-  };
-  const tap = (place: WorkMapPoint) => run(async () => {
-    const { failure, stroke } = await paintAt(latest.current, brush, place, scope, randomUUID);
-    return { failure, next: (strokes) => (stroke ? [...strokes, stroke] : strokes) };
-  });
-  const last = state.strokes[state.strokes.length - 1];
-  const undo = () => run(async () => ({ failure: last ? await undoStroke(last, latest.current, scope) : BRUSH_NO_EDIT, next: (strokes) => strokes.slice(0, -1) }));
-  return { ...state, tap, undo, canUndo: Boolean(last) };
+  const [snapshot, setSnapshot] = useState(BRUSH_QUEUE_IDLE);
+  const door = useRef(send);
+  door.current = send;
+  const [queue] = useState(() => startBrushQueue({ brush, map, send: () => door.current, newEntryId: randomUUID, onChange: setSnapshot }));
+  useEffect(() => {
+    queue.mapChanged(map);
+    return undefined;
+  }, [queue, map]);
+  return { ...snapshot, queue };
 }
 
 /** The map that moves, with the brush on: a tap toggles the street, the band says what is painted. */
@@ -129,12 +121,13 @@ export function BrushMap(props: { map: WorkMap; send: MapEditSend; brush: Brush;
   return (
     <Modal visible animationType="slide" onRequestClose={props.onDone}>
       <View testID="mapa-brocha-completo" className="flex-1 bg-background">
-        <WorkMapSurface view={view} moves controlsInset={margins.pie} stretches={brushLinesOf(props.map, props.brush)} onTap={(place) => void strokes.tap(place)} />
+        <WorkMapSurface view={view} moves controlsInset={margins.pie} stretches={brushLinesOf(strokes.queue.mapOf(props.map), props.brush)} onTap={strokes.queue.tap} />
         <View testID="mapa-brocha" className="absolute inset-x-3 rounded-2xl border border-primary/30 bg-surface p-3" style={{ top: margins.cabecera + BAND_GAP }}>
-          <Text className="text-[15px] font-semibold text-on-surface">{strokes.busy ? 'Guardando…' : brushTitle(props.map, props.brush)}</Text>
+          <Text className="text-[15px] font-semibold text-on-surface">{brushTitle(props.map, props.brush)}</Text>
+          {strokes.label ? <Text testID="brocha-cuenta" className="mt-0.5 text-[13px] text-on-surface-variant">{strokes.label}</Text> : null}
           {strokes.error ? <Text testID="brocha-error" className="mt-1 text-[13px] font-semibold text-error">{strokes.error}</Text> : null}
           <View className="mt-2 flex-row gap-2">
-            <Pressable testID="brocha-deshacer" disabled={!strokes.canUndo || strokes.busy} onPress={() => void strokes.undo()} className={`h-11 flex-1 flex-row items-center justify-center gap-1.5 rounded-xl border border-primary/30 ${strokes.canUndo ? '' : 'opacity-40'}`}>
+            <Pressable testID="brocha-deshacer" disabled={!strokes.canUndo} onPress={strokes.queue.undo} className={`h-11 flex-1 flex-row items-center justify-center gap-1.5 rounded-xl border border-primary/30 ${strokes.canUndo ? '' : 'opacity-40'}`}>
               <Undo2 size={16} color={colors.primary} /><Text className="text-[15px] font-semibold text-primary">Deshacer</Text>
             </Pressable>
             <Pressable testID="brocha-listo" onPress={props.onDone} className="h-11 flex-1 items-center justify-center rounded-xl bg-primary"><Text className="text-[15px] font-semibold text-on-primary">Listo</Text></Pressable>

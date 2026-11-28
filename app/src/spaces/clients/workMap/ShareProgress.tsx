@@ -24,9 +24,9 @@ function FrontSummary(props: { map: WorkMap; filter: WorkMapFilter }) {
           <View className="mt-1.5 h-3 w-3 rounded-sm" style={{ backgroundColor: row.color }} />
           <Text className="flex-1 text-[15px] text-on-surface"><Text className="font-bold">{row.name}:</Text> {row.streets}</Text>
         </View>
-      )) : <Text className="mt-2 text-[14px] text-on-surface-variant">Todavía no hay avance aprobado en este corte.</Text>}
+      )) : <Text className="mt-2 text-[14px] text-on-surface-variant">Todavía no hay avance registrado en este corte.</Text>}
       <View className="mt-3 flex-row items-end justify-between border-t border-outline/15 pt-3">
-        <Text className="text-[13px] text-on-surface-variant">Metrado aprobado</Text>
+        <Text className="text-[13px] text-on-surface-variant">Metrado acumulado</Text>
         <Text testID="mapa-parcial-metrado" className="font-mono text-[20px] font-bold text-primary">{summary.doneLabel}</Text>
       </View>
     </View>
@@ -72,7 +72,7 @@ function PublicLink(props: { state: LinkState }) {
       ) : <Text className="text-[14px] text-on-surface-variant">Crea el enlace con este corte. El cliente no puede ver más que eso.</Text>}
       {expiry ? <Text className="text-[13px] text-on-surface-variant">{expiry}</Text> : null}
       {error ? <Text testID="compartir-error" accessibilityRole="alert" className="text-[14px] font-semibold text-error">{error}</Text> : null}
-      <View className="flex-row items-start gap-1.5"><ShieldCheck size={15} color={colors.primary} /><Text className="flex-1 text-[13px] text-on-surface-variant">El cliente ve solo lo aprobado por la inspección técnica.</Text></View>
+      <View className="flex-row items-start gap-1.5"><ShieldCheck size={15} color={colors.primary} /><Text className="flex-1 text-[13px] text-on-surface-variant">El cliente ve el avance registrado en el mapa.</Text></View>
     </View>
   );
 }

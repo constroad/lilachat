@@ -3,7 +3,7 @@ import { Pressable, ScrollView, Text, TextInput, useWindowDimensions, View } fro
 import { randomUUID } from 'expo-crypto';
 import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
 import { Camera, Crosshair, Hand, Map as MapIcon, X } from 'lucide-react-native';
-import { GPS_UNAVAILABLE, MANUAL_NOTE_MAX, RECORD_ADD_NOTE, RECORD_NOTE_PLACEHOLDER, layerDraftFor, manualEndFromGps, pickManualWork, progressPreviewOf, RECORD_CHANGE, RECORD_PENDING_NOTE, RECORD_PHOTO_AND_SEND, RECORD_SEND, RECORD_TO_ME, RECORD_WHOLE, RECORD_WITHOUT_PHOTO, recordAtPercent, streetPercentOf, recordDropAt, recordHint, recordTitle, recordMapOf, recordProblem, recordSummary, recordWholeStreet, runManualProgress, youAreOn, type GpsStreet, type ManualPhotoUpload, type ManualProgressDraft, type MapEditSend, type StreetEnd, type WorkManualProgressRequest, type WorkMap, type WorkMapPoint, type WorkMapWork } from '@lilachat/shared';
+import { GPS_UNAVAILABLE, MANUAL_NOTE_MAX, RECORD_ADD_NOTE, RECORD_NOTE_PLACEHOLDER, layerDraftFor, manualEndFromGps, pickManualWork, progressPreviewOf, RECORD_CHANGE, RECORD_PHOTO_AND_SEND, RECORD_SEND, RECORD_TO_ME, RECORD_WHOLE, RECORD_WITHOUT_PHOTO, recordAtPercent, streetPercentOf, recordDropAt, recordHint, recordTitle, recordMapOf, recordProblem, recordSummary, recordWholeStreet, runManualProgress, youAreOn, type GpsStreet, type ManualPhotoUpload, type ManualProgressDraft, type MapEditSend, type StreetEnd, type WorkManualProgressRequest, type WorkMap, type WorkMapPoint, type WorkMapWork } from '@lilachat/shared';
 import type { CapturedShot } from '../../../chat/camara/cameraRequests';
 import { useColores } from '../../../ui/tema';
 import { useDisposicion } from '../../../ui/useDisposicion';
@@ -170,7 +170,6 @@ function RecordFoot(props: { record: ReturnType<typeof useRecord>; map: WorkMap;
         <Text className="text-[16px] font-bold text-on-primary">{sending ? 'Enviando…' : record.canPhoto ? RECORD_PHOTO_AND_SEND : RECORD_SEND}</Text>
       </Pressable>
       {record.canPhoto ? <Pressable testID="avance-sin-foto" disabled={record.busy !== null} onPress={() => void record.submit(false)} className="h-9 items-center justify-center"><Text className="text-[13px] font-semibold text-on-surface-variant underline">{RECORD_WITHOUT_PHOTO}</Text></Pressable> : null}
-      <Text className="text-center text-[11px] text-on-surface-variant">{RECORD_PENDING_NOTE}</Text>
     </View>
   );
 }
@@ -201,7 +200,7 @@ export function RecordScreen(props: RecordScreenProps) {
       <KeyboardAvoidingView behavior="padding" style={{ flex: 1 }}>
       <View className={`flex-1 ${amplia ? 'flex-row' : ''}`}>
         <View className="flex-1 overflow-hidden bg-surface-variant">
-          <WorkMapSurface view={view} moves stretches={shown.stretch} pending={shown.pending} stations={shown.stations} handles={shown.handles} onHandleDrop={record.drop} />
+          <WorkMapSurface view={view} moves stretches={shown.stretch} stations={shown.stations} handles={shown.handles} onHandleDrop={record.drop} />
           {props.located ? <View pointerEvents="none" className="absolute right-3 top-3 rounded-xl border border-outline/20 bg-surface px-3 py-2"><Text testID="avance-ubicado" className="text-[14px] text-on-surface">{youAreOn(props.located)}</Text></View> : null}
         </View>
         <ScrollView keyboardShouldPersistTaps="handled" style={amplia ? { width: SIDE_WIDTH, flexGrow: 0 } : { flexGrow: 0, maxHeight: height * FOOT_MAX_SHARE }} className="rounded-t-3xl bg-surface" contentContainerStyle={{ padding: 12, paddingBottom: 12 + margins.pie }}>

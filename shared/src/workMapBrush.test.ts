@@ -154,7 +154,7 @@ describe('brushLinesOf: the streets the brush already covers, painted over the m
 
 describe('brushTitle', () => {
   it('names what is being painted, as the design\'s band', () => {
-    expect(brushTitle(MAP, { kind: 'work', id: 'base' })).toBe('Pintando Base · Toca las calles que la llevan');
+    expect(brushTitle(MAP, { kind: 'work', id: 'base' })).toBe('Pintando Base · Toca las calles que lo llevan');
     expect(brushTitle(MAP, { kind: 'stage', id: 'e2' })).toBe('Toca las calles en el mapa para sumarlas a Etapa 2');
   });
 });

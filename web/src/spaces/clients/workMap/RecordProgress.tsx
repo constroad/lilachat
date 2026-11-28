@@ -1,6 +1,6 @@
 import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { Camera, Crosshair, Hand, Map as MapIcon, X } from 'lucide-react';
-import { GPS_UNAVAILABLE, MANUAL_NOTE_MAX, RECORD_ADD_NOTE, RECORD_NOTE_PLACEHOLDER, layerDraftFor, manualEndFromGps, pickManualWork, progressPreviewOf, RECORD_CHANGE, RECORD_PENDING_NOTE, RECORD_PHOTO_AND_SEND, RECORD_SEND, RECORD_TO_ME, RECORD_WHOLE, RECORD_WITHOUT_PHOTO, RECORD_PERCENT_LABEL, cleanDecimalText, decimalOf, decimalTextFollows, recordAtPercent, streetPercentOf, recordDropAt, recordHint, recordMapOf, recordProblem, recordSummary, recordTitle, recordWholeStreet, runManualProgress, youAreOn, type GpsStreet, type ManualPhotoUpload, type ManualProgressDraft, type MapEditSend, type StreetEnd, type WorkMap, type WorkMapPoint, type WorkMapWork } from '@lilachat/shared';
+import { GPS_UNAVAILABLE, MANUAL_NOTE_MAX, RECORD_ADD_NOTE, RECORD_NOTE_PLACEHOLDER, layerDraftFor, manualEndFromGps, pickManualWork, progressPreviewOf, RECORD_CHANGE, RECORD_PHOTO_AND_SEND, RECORD_SEND, RECORD_TO_ME, RECORD_WHOLE, RECORD_WITHOUT_PHOTO, RECORD_PERCENT_LABEL, cleanDecimalText, decimalOf, decimalTextFollows, recordAtPercent, streetPercentOf, recordDropAt, recordHint, recordMapOf, recordProblem, recordSummary, recordTitle, recordWholeStreet, runManualProgress, youAreOn, type GpsStreet, type ManualPhotoUpload, type ManualProgressDraft, type MapEditSend, type StreetEnd, type WorkMap, type WorkMapPoint, type WorkMapWork } from '@lilachat/shared';
 import { DrivePhotoInput } from '../ServiceDriveWeb';
 import type { PickerHandle } from '../../../chat/camera/cameraRequests';
 import { lazyChunk } from '../../../ui/lazyChunk';
@@ -158,7 +158,6 @@ function RecordFoot(props: { record: ReturnType<typeof useRecord>; map: WorkMap;
         {props.canPhoto ? <Camera size={20} /> : null}{record.busy === 'send' ? 'Enviando…' : props.canPhoto ? RECORD_PHOTO_AND_SEND : RECORD_SEND}
       </button>
       {props.canPhoto ? <button type="button" data-testid="avance-sin-foto" disabled={record.busy !== null} onClick={() => { if (!record.problem()) void record.send([]); }} className="h-9 w-full text-[13px] font-semibold text-on-surface-variant underline">{RECORD_WITHOUT_PHOTO}</button> : null}
-      <p className="text-center text-[11px] text-on-surface-variant">{RECORD_PENDING_NOTE}</p>
     </div>
   );
 }
@@ -184,7 +183,7 @@ export function RecordScreen(props: RecordScreenProps) {
       <div className="flex min-h-0 flex-1 flex-col md:flex-row">
         <div className="relative min-h-[240px] flex-1 overflow-hidden bg-surface-variant">
           <Suspense fallback={<div className="absolute inset-0 animate-pulse bg-surface-variant" />}>
-            <WorkMapCanvas view={view} expanded stretches={shown.stretch} pending={shown.pending} stations={shown.stations} handles={shown.handles} onHandleDrop={record.drop} />
+            <WorkMapCanvas view={view} expanded stretches={shown.stretch} stations={shown.stations} handles={shown.handles} onHandleDrop={record.drop} />
           </Suspense>
           {props.located ? <p data-testid="avance-ubicado" className="pointer-events-none absolute right-3 top-3 rounded-xl border border-outline/20 bg-surface px-3 py-2 text-[14px] text-on-surface shadow-md">{youAreOn(props.located)}</p> : null}
         </div>

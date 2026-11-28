@@ -2,19 +2,15 @@ import type { ReactNode } from 'react';
 import { ChevronUp, Pencil } from 'lucide-react';
 import { LAYER_LEGEND, layerBarOf, layerStreetsToggle, type LayerLatest, type LayerStreetSummary, type LayerSummary } from '@lilachat/shared';
 
-/** What waits for approval, hatched in the layer's colour (the colour is data, as on the map). */
 /** A colour dot ringed so a near-black layer still reads on the dark theme (José 28/11). */
 export const LAYER_DOT = 'h-2.5 w-2.5 shrink-0 rounded-full ring-[1.5px] ring-on-surface/40';
 
-const hatchOf = (color: string) => `repeating-linear-gradient(135deg, ${color} 0 3px, transparent 3px 7px)`;
-
-/** Approved solid from the left, what waits hatched right after it (design ma01). */
+/** What is done, solid from the left (design ma01; José 28/11: nothing waits for approval). */
 function LayerBar(props: { row: Pick<LayerStreetSummary, 'donePct' | 'pendingPct'>; color: string; tall?: boolean }) {
   const bar = layerBarOf(props.row);
   return (
     <div className={`relative overflow-hidden rounded-full bg-surface-variant ${props.tall ? 'h-3' : 'h-2'}`}>
       <span className="absolute inset-y-0 left-0" style={{ width: bar.done, backgroundColor: props.color }} />
-      {props.row.pendingPct > 0 ? <span data-testid="capa-por-aprobar" className="absolute inset-y-0 opacity-70" style={{ left: bar.pendingLeft, width: bar.pending, backgroundImage: hatchOf(props.color) }} /> : null}
     </div>
   );
 }
@@ -34,10 +30,7 @@ function StreetRow(props: { row: LayerStreetSummary; color: string }) {
 
 function Latest(props: { latest: LayerLatest }) {
   return (
-    <p data-testid="capa-ultimo" className="flex flex-wrap items-center gap-2 text-[13px] text-on-surface-variant">
-      {props.latest.text}
-      {props.latest.pill ? <span className="rounded-md border border-warning/40 bg-warning/10 px-2 py-0.5 text-[11px] font-bold uppercase text-warning">{props.latest.pill}</span> : null}
-    </p>
+    <p data-testid="capa-ultimo" className="text-[13px] text-on-surface-variant">{props.latest.text}</p>
   );
 }
 

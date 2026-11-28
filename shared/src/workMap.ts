@@ -4,6 +4,7 @@ import type { ServiceMapResult } from './serviceMap.js';
 import { mapMarksBounds, workMapMarksOf, type WorkMapMark } from './workMapMarks.js';
 import { observationsBounds, workMapObservationsOf, type WorkMapObservation } from './workMapObservations.js';
 import { DEFAULT_STREET_WIDTH_M } from './workLineWidth.js';
+import { foldWorkName } from './workNames.js';
 
 /**
  * The work map of a service (José 06/11: «el mapa literal de la obra»). Portal owns the streets,
@@ -15,7 +16,8 @@ export type WorkMapPoint = { lat: number; lng: number };
 export type WorkMapStreet = { id: string; name: string; line: WorkMapPoint[]; lengthM: number; widthM?: number };
 /** `id` and `widthM` let the person edit or delete a stretch (o-03, step 3). */
 export type WorkMapScope = { id: string; streetId: string; fromM: number; toM: number; workIds: string[]; stageId?: string; widthM?: number };
-export type WorkMapProgress = { streetId: string; workId: string; fromM: number; toM: number; date: string; rework: boolean };
+/** `id`: Portal's record, when it says it (the undo of an admin needs it). */
+export type WorkMapProgress = { id?: string; streetId: string; workId: string; fromM: number; toM: number; date: string; rework: boolean };
 /** `partida`: a contracted item, not a tag of the map; the progress names it `partidaId`. */
 export type WorkMapWork = { id: string; name: string; color: string; partida?: true };
 export type WorkMapStage = { id: string; name: string };
@@ -151,14 +153,28 @@ function scopesFrom(raw: unknown, streets: WorkMapStreet[]): WorkMapScope[] {
 function progressFrom(raw: unknown): WorkMapProgress[] {
   return listOf(raw).flatMap((record) => {
     const workId = textOf(record.tagId) || textOf(record.partidaId);
-    return workId ? [{ streetId: textOf(record.streetId), workId, fromM: numberOf(record.fromM), toM: numberOf(record.toM), date: textOf(record.date), rework: record.rework === true }] : [];
+    const id = textOf(record._id);
+    return workId ? [{ ...(id ? { id } : {}), streetId: textOf(record.streetId), workId, fromM: numberOf(record.fromM), toM: numberOf(record.toM), date: textOf(record.date), rework: record.rework === true }] : [];
   });
 }
 
 const byOrder = (left: Fields, right: Fields) => numberOf(left.order) - numberOf(right.order);
 
 /**
- * Tags first, in their order; then the partidas of the stretches that have no tag. The colors are
+ * The contract's partidas a person did not already create by hand (José 28/11, Pachacamac - Resanes:
+ * a new service showed no works until they were typed). One a stretch already carries always stays;
+ * any other is left out when a tag has its name, folded (`foldWorkName`).
+ */
+function partidaIdsFrom(names: Map<string, string>, tags: WorkMapWork[], scopes: WorkMapScope[]): string[] {
+  const tagIds = new Set(tags.map((tag) => tag.id));
+  const tagNames = new Set(tags.map((tag) => foldWorkName(tag.name)));
+  const carried = new Set(scopes.flatMap((scope) => scope.workIds).filter((id) => !tagIds.has(id)));
+  const inContractOrder = [...names.keys(), ...[...carried].filter((id) => !names.has(id))];
+  return inContractOrder.filter((id) => !tagIds.has(id) && (carried.has(id) || !tagNames.has(foldWorkName(names.get(id) ?? ''))));
+}
+
+/**
+ * Tags first, in their order; then the service's partidas (all of them, `partidaIdsFrom`). The colors are
  * Portal's (`colorForPartida`): priming blue, asphalt black, base brown, as in the drawings. A tag
  * whose color is not a hex gets the same rule, so MapLibre never receives a color it cannot paint.
  */
@@ -167,9 +183,11 @@ function worksFrom(rawTags: unknown, rawPartidas: unknown, scopes: WorkMapScope[
     const [id, name, color] = [textOf(tag._id), textOf(tag.name) || UNNAMED_WORK, textOf(tag.color)];
     return { id, name, color: HEX_COLOR.test(color) ? color : colorForPartida(id, name) };
   });
-  const seen = new Set(tags.map((tag) => tag.id));
-  const names = new Map(listOf(rawPartidas).map((partida) => [textOf(partida._id) || textOf(partida.id), textOf(partida.description)]));
-  const partidas = [...new Set(scopes.flatMap((scope) => scope.workIds))].filter((id) => !seen.has(id));
+  const names = new Map(listOf(rawPartidas).flatMap((partida) => {
+    const id = textOf(partida._id) || textOf(partida.id);
+    return id ? [[id, textOf(partida.description)] as const] : [];
+  }));
+  const partidas = partidaIdsFrom(names, tags, scopes);
   return [...tags, ...partidas.map((id) => {
     const name = names.get(id) || UNNAMED_WORK;
     return { id, name, color: colorForPartida(id, names.get(id) ?? ''), partida: true as const };
@@ -197,13 +215,16 @@ function layersFrom(detail: Fields, streets: WorkMapStreet[]): Pick<WorkMap, 'ma
   return { ...(marks.length ? { marks } : {}), ...(observations.length ? { observations } : {}) };
 }
 
-/** What the map draws out of Portal's service detail; null when the service has no streets, drawings nor observations. */
+/** What the map draws out of Portal's service detail; null when the service has no streets, works, drawings nor observations. */
 export function workMapOf(detail: unknown): WorkMap | null {
   if (!isFields(detail)) return null;
   const raw = isFields(detail.workStreets) ? detail.workStreets : {};
   const streets = streetsFrom(raw.streets);
   const layers = layersFrom(detail, streets);
-  if (!streets.length) return layers.marks || layers.observations ? { streets: [], scopes: [], progress: [], works: [], stages: [], ...layers } : null;
+  if (!streets.length) {
+    const works = worksFrom(raw.tags, detail.partidas, []);
+    return layers.marks || layers.observations || works.length ? { streets: [], scopes: [], progress: [], works, stages: [], ...layers } : null;
+  }
   const scopes = scopesFrom(raw.scopes, streets);
   const stages = [...listOf(raw.stages)].sort(byOrder).map((stage) => ({ id: textOf(stage._id), name: textOf(stage.name) }));
   return { streets, scopes, progress: progressFrom(raw.progress), works: worksFrom(raw.tags, detail.partidas, scopes), stages, ...layers };

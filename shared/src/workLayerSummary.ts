@@ -39,9 +39,8 @@ export type LayerSummary = Omit<LayerStreetSummary, 'streetId' | 'name'> & {
   streets: LayerStreetSummary[];
   recordLabel: string;
 };
-export type LayerLatest = { text: string; pill: string | null };
+export type LayerLatest = { text: string };
 
-export const LAYER_PENDING_PILL = 'por aprobar';
 export const layerWidthNote = (count: number) => `En metros: ${count === 1 ? '1 calle' : `${count} calles`} sin ancho`;
 
 const TIME_OF_DAY = /T(\d{2}):(\d{2})/;
@@ -97,7 +96,7 @@ export function layerChipsOf(map: Pick<WorkMap, 'streets' | 'scopes' | 'progress
   });
 }
 
-type LatestEntry = { date: string; streetId: string | null; lengthM: number; pending: boolean };
+type LatestEntry = { date: string; streetId: string | null; lengthM: number };
 
 /** «10:42» in Lima when the date carries a time; nothing for a bare day. */
 function timeOf(date: string): string {
@@ -115,12 +114,14 @@ function dayOfEntry(date: string): string {
 }
 
 function latestEntries(map: Pick<WorkMap, 'progress'>, workId: string, list: ByApproveList | null): LatestEntry[] {
-  const approved = map.progress.filter((one) => one.workId === workId && !one.rework && one.date).map((one) => ({ date: one.date, streetId: one.streetId, lengthM: one.toM - one.fromM, pending: false }));
-  const waiting = pendingOfLayer(list, workId).filter((one) => one.date).map((one) => ({ date: one.date, streetId: one.streetId, lengthM: one.fromM !== null && one.toM !== null ? one.toM - one.fromM : one.quantity, pending: true }));
-  return [...waiting, ...approved];
+  const waiting = pendingOfLayer(list, workId).filter((one) => one.date);
+  const listed = new Set(waiting.map((one) => one.id));
+  // A pending record the board already folded into the map counts once.
+  const done = map.progress.filter((one) => one.workId === workId && !one.rework && one.date && !(one.id && listed.has(one.id))).map((one) => ({ date: one.date, streetId: one.streetId, lengthM: one.toM - one.fromM }));
+  return [...waiting.map((one) => ({ date: one.date, streetId: one.streetId, lengthM: one.fromM !== null && one.toM !== null ? one.toM - one.fromM : one.quantity })), ...done];
 }
 
-/** «Último: hoy 10:42 · Jr. Progreso +46 m» with «por aprobar» apart; null when the layer has no dated progress. */
+/** «Último: hoy 10:42 · Jr. Progreso +46 m» of every record that counts (José 28/11: none waits); null when the layer has none dated. */
 export function layerLatestOf(map: Pick<WorkMap, 'streets' | 'progress'>, workId: string, list: ByApproveList | null, today: string): LayerLatest | null {
   // ISO dates sort as plain strings; on a tie what waits (listed first) stays first.
   const newest = latestEntries(map, workId, list).reduce<LatestEntry | null>((best, one) => (!best || dayOfEntry(one.date) + timeOf(one.date) > dayOfEntry(best.date) + timeOf(best.date) ? one : best), null);
@@ -129,7 +130,7 @@ export function layerLatestOf(map: Pick<WorkMap, 'streets' | 'progress'>, workId
   const when = [feedWhen(day, today).toLowerCase(), timeOf(newest.date)].filter(Boolean).join(' ');
   const street = map.streets.find((one) => one.id === newest.streetId)?.name;
   const parts = [`Último: ${when || day}`, `${street ? `${street} ` : ''}+${metersLabel(Math.max(0, newest.lengthM))}`];
-  return { text: parts.join(' · '), pill: newest.pending ? LAYER_PENDING_PILL : null };
+  return { text: parts.join(' · ') };
 }
 
 /** «Registrar avance de <capa>» (ma04): the GPS and «¿En qué calle?» only among the layer's streets, when it has any. */

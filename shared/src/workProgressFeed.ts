@@ -4,8 +4,9 @@ import { undoableIds, type ByApproveList, type ByApproveProgress } from './workB
 
 /**
  * «Avances» (design ma05, José 28/11; Portal's approved prototype): every progress of the work in one
- * list — what waits and what was refused (`avances_por_aprobar_de_obra`) plus what was approved (the
- * map's `progress[]`, which carries no author) — filtered by «Hoy / Semana / Todo» on Lima days.
+ * list — what Portal keeps pending or was undone (`avances_por_aprobar_de_obra`) plus what is done (the
+ * map's `progress[]`, which carries no author) — filtered by «Hoy / Semana / Todo» on Lima days. Since
+ * 28/11 nothing waits for an admin: pending and done read the same, only an undone one has a pill.
  * PURE: the APK and the web draw what this decides.
  */
 export type FeedState = 'pendiente' | 'aprobado' | 'rechazado';
@@ -25,15 +26,13 @@ export type FeedCard = {
   area: string | null;
   author: string | null;
   rejectNote: string | null;
-  /** «Deshacer»: the caller's newest pending one of its street and work. */
+  /** «Deshacer»: the caller's newest pending one of its street and work; for an admin, any that counts. */
   undoable: boolean;
-  /** «Aprobar» / «Rechazar» for an admin: only what still waits. */
-  resolvable: boolean;
   toM: number | null;
 };
 export type FeedSummary = { meters: string; area: string | null; count: string };
 
-export const FEED_PILL: Record<FeedState, string> = { pendiente: 'POR APROBAR', aprobado: 'APROBADO', rechazado: 'RECHAZADO' };
+export const FEED_PILL: Record<FeedState, string> = { pendiente: '', aprobado: '', rechazado: 'DESHECHO' };
 export const FEED_RANGES: ReadonlyArray<{ id: FeedRange; label: string }> = [{ id: 'hoy', label: 'Hoy' }, { id: 'semana', label: 'Semana' }, { id: 'todo', label: 'Todo' }];
 export const FEED_TITLE = 'Avances';
 export const FEED_EMPTY = 'No hay avances en este periodo.';
@@ -80,18 +79,29 @@ function cardOf(map: Pick<WorkMap, 'streets' | 'works'>, base: CardBase, today: 
     author: base.author,
     rejectNote: base.rejectNote,
     undoable: undoable.has(base.id),
-    resolvable: base.state === 'pendiente',
     toM: base.toM,
   };
 }
 
 const fromByApprove = (one: ByApproveProgress): CardBase => ({ id: one.id, state: one.state, date: one.date, streetId: one.streetId, workId: one.workId, fromM: one.fromM, toM: one.toM, quantity: one.quantity, author: one.author, rejectNote: one.rejectNote });
-const fromApproved = (one: WorkMapProgress, index: number): CardBase => ({ id: `aprobado-${one.streetId}-${one.workId}-${index}`, state: 'aprobado', date: one.date, streetId: one.streetId, workId: one.workId, fromM: one.fromM, toM: one.toM, quantity: 0, author: null, rejectNote: null });
+/** A done record Portal sent without its id: listed, never undone. */
+const UNNAMED_PREFIX = 'aprobado-';
+const fromApproved = (one: WorkMapProgress, index: number): CardBase => ({ id: one.id ?? `${UNNAMED_PREFIX}${one.streetId}-${one.workId}-${index}`, state: 'aprobado', date: one.date, streetId: one.streetId, workId: one.workId, fromM: one.fromM, toM: one.toM, quantity: 0, author: null, rejectNote: null });
 
-/** Newest first; on the same day what waits or was refused goes before what was approved. */
-export function progressFeedOf(map: Pick<WorkMap, 'streets' | 'works' | 'progress'>, list: ByApproveList | null, today: string): FeedCard[] {
-  const undoable = undoableIds(list);
-  const bases = [...(list?.items ?? []).map(fromByApprove), ...map.progress.map(fromApproved)];
+/** What «Deshacer» may take back: the caller's own pending ones, and for an admin every record with an id that counts. */
+function undoableOf(bases: CardBase[], list: ByApproveList | null, admin: boolean): Set<string> {
+  const own = undoableIds(list);
+  if (!admin) return own;
+  return new Set([...own, ...bases.filter((base) => base.state !== 'rechazado' && !base.id.startsWith(UNNAMED_PREFIX)).map((base) => base.id)]);
+}
+
+/** Newest first; on the same day what Portal keeps pending or was undone goes before the rest. */
+export function progressFeedOf(map: Pick<WorkMap, 'streets' | 'works' | 'progress'>, list: ByApproveList | null, today: string, admin = false): FeedCard[] {
+  const listed = new Set((list?.items ?? []).map((one) => one.id));
+  // The boards fold what Portal keeps pending into the map: each record is listed once.
+  const done = map.progress.flatMap((one, index) => (one.id && listed.has(one.id) ? [] : [fromApproved(one, index)]));
+  const bases = [...(list?.items ?? []).map(fromByApprove), ...done];
+  const undoable = undoableOf(bases, list, admin);
   const cards = bases.map((base) => cardOf(map, base, today, undoable));
   // ISO day keys sort as plain strings; localeCompare would build a collator per call on Hermes.
   return cards.sort((one, other) => { const [left, right] = [dayKey(other.date), dayKey(one.date)]; return left < right ? -1 : left > right ? 1 : 0; });

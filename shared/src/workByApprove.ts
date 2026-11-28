@@ -1,17 +1,15 @@
 import { FORMS_LEVEL } from './appForms.js';
-import { dayOf } from './serviceDetail.js';
-import { streetWidthExpression } from './workLineWidth.js';
-import { stationLabel, type WorkMap, type WorkMapLine, type WorkMapPendingStretch } from './workMap.js';
-import { stretchLineOf } from './workMapProgress.js';
+import { stationLabel, type WorkMap, type WorkMapProgress } from './workMap.js';
+import { workResolveRequest, type WorkResolveRequest } from './workPending.js';
 import { sendMapTool, type WorkProgressDeps, type WorkProgressResult } from './workProgressSend.js';
 import type { MapEditSend } from './workScopeDraft.js';
 
 /**
- * What waits for approval, on the map (José 28/11: the pending progress was invisible and the same
- * stretch could be registered twice). Portal's `avances_por_aprobar_de_obra` lists ALL pending
- * progress of the service (anyone's) and the rejected of the last 14 days, newest first;
- * `deshacer_avance_de_obra` deletes the caller's own while it is still pending. Member tools,
- * through the member's door only. PURE: the APK and the web draw and send what this decides.
+ * Field progress counts as soon as it is recorded (José 28/11: «ningún admin lo aprueba»). Portal
+ * still stores it pending until it changes, so `avances_por_aprobar_de_obra` (ALL pending of the
+ * service, and the rejected of the last 14 days) is folded into the done progress here. Undo:
+ * `deshacer_avance_de_obra` deletes the caller's own while Portal keeps it pending; an admin takes
+ * back any other with `resolver_avance_de_obra` «rechazar». PURE: the APK and the web send what this decides.
  */
 export type ByApproveState = 'pendiente' | 'rechazado';
 export type ByApproveProgress = {
@@ -31,18 +29,14 @@ export type ByApproveList = { total: number; items: ByApproveProgress[] };
 export type WorkByApproveRequest = { kind: 'work_by_approve'; forms: number };
 export type WorkUndoRequest = { kind: 'work_undo'; progress_id: string; forms: number };
 
-export const BY_APPROVE_PILL = 'POR APROBAR';
-export const REJECTED_PILL = 'RECHAZADO';
 export const UNDO_LABEL = 'Deshacer';
 export const UNDONE = 'Avance deshecho.';
 export const UNDO_FAILED = 'No se pudo deshacer el avance. Revisa tu señal y vuelve a intentarlo.';
-const BY_APPROVE_FAILED = 'No se pudo traer lo que espera aprobación.';
-const NO_STREET = 'Calle sin nombre';
-export const pendingAlready = (toM: number) => `Ya hay un avance por aprobar hasta ${stationLabel(toM)} en esta calle.`;
-export const undoQuestion = (toM: number) => `¿Deshacer el avance hasta ${stationLabel(toM)}? Se borra antes de que lo aprueben.`;
-
-/** MapLibre paint of what waits: the work's color, solid and half-transparent, as wide as the street (José 28/11: no dashes). */
-export const WORK_MAP_PENDING_PAINT = { 'line-color': ['get', 'color'], 'line-width': streetWidthExpression(4), 'line-opacity': 0.65 };
+const BY_APPROVE_FAILED = 'No se pudo traer el avance registrado.';
+/** Kept in the resident's record when an admin takes a progress back from the map. */
+const UNDO_NOTE = 'Deshecho desde el mapa.';
+export const pendingAlready = (toM: number) => `Ya hay un avance registrado hasta ${stationLabel(toM)} en esta calle.`;
+export const undoQuestion = (toM: number) => `¿Deshacer el avance hasta ${stationLabel(toM)}? Deja de sumar al avance de la obra.`;
 
 type Raw = Record<string, unknown>;
 const STATES = new Set<string>(['pendiente', 'rechazado']);
@@ -80,40 +74,24 @@ export function byApproveOf(data: unknown): ByApproveList {
 }
 
 const pendingItems = (list: ByApproveList | null): ByApproveProgress[] => (list ? list.items.filter((one) => one.state === 'pendiente') : []);
-export const pendingCountOf = (list: ByApproveList | null): number => pendingItems(list).length;
-export const rejectedOf = (list: ByApproveList | null): ByApproveProgress[] => (list ? list.items.filter((one) => one.state === 'rechazado') : []);
 
-function stretchOf(one: ByApproveProgress): WorkMapPendingStretch | null {
+function doneOf(one: ByApproveProgress): WorkMapProgress | null {
   if (!one.streetId || !one.workId || one.fromM === null || one.toM === null || one.toM <= one.fromM) return null;
-  return { streetId: one.streetId, workId: one.workId, fromM: one.fromM, toM: one.toM };
+  return { id: one.id, streetId: one.streetId, workId: one.workId, fromM: one.fromM, toM: one.toM, date: one.date, rework: false };
 }
 
-/** The map that also knows what waits, so «desde» skips it; without the list the map stays as is. */
-export const withPendingOf = (map: WorkMap, list: ByApproveList | null): WorkMap =>
-  (list ? { ...map, pending: pendingItems(list).flatMap((one) => stretchOf(one) ?? []) } : map);
+/** The map with what Portal still keeps pending counted as done (José 28/11); without the list the map stays as is. */
+export function withPendingOf(map: WorkMap, list: ByApproveList | null): WorkMap {
+  if (!list) return map;
+  const known = new Set(map.progress.flatMap((one) => (one.id ? [one.id] : [])));
+  const added = pendingItems(list).flatMap((one) => (known.has(one.id) ? [] : doneOf(one) ?? []));
+  return { ...map, progress: [...map.progress, ...added] };
+}
 
 /** Where the pending progress of that work on that street ends; null when nothing waits. */
 export function pendingEndOf(map: Pick<WorkMap, 'pending'>, streetId: string, workId: string): number | null {
   const ends = (map.pending ?? []).filter((one) => one.streetId === streetId && one.workId === workId).map((one) => one.toM);
   return ends.length ? Math.round(Math.max(...ends)) : null;
-}
-
-/** Each pending one over its stretch, in its work's color; the rejected are not drawn. */
-export function byApproveLinesOf(map: Pick<WorkMap, 'streets' | 'works'>, list: ByApproveList | null): WorkMapLine[] {
-  return pendingItems(list).flatMap((one) => {
-    const stretch = stretchOf(one);
-    const line = stretch ? stretchLineOf(map, stretch.streetId, stretch.fromM, stretch.toM) : null;
-    const color = map.works.find((work) => work.id === one.workId)?.color;
-    return line && stretch ? [{ ...line, workId: stretch.workId, ...(color ? { color } : {}) }] : [];
-  });
-}
-
-/** «Jr. Lima · 0+030 a 0+060 · Imprimación · 28 nov · por Ana Ruiz». */
-export function byApproveDetail(map: Pick<WorkMap, 'streets' | 'works'>, one: ByApproveProgress): string {
-  const street = map.streets.find((candidate) => candidate.id === one.streetId)?.name ?? NO_STREET;
-  const stretch = one.fromM !== null && one.toM !== null ? `${stationLabel(one.fromM)} a ${stationLabel(one.toM)}` : '';
-  const work = map.works.find((candidate) => candidate.id === one.workId)?.name ?? '';
-  return [street, stretch, work, one.date ? dayOf(one.date) : '', one.author ? `por ${one.author}` : ''].filter(Boolean).join(' · ');
 }
 
 const isUndoable = (one: ByApproveProgress): boolean => one.own && one.state === 'pendiente' && one.toM !== null;
@@ -139,6 +117,12 @@ export function undoableIds(list: ByApproveList | null): Set<string> {
 export const workByApproveRequest = (): WorkByApproveRequest => ({ kind: 'work_by_approve', forms: FORMS_LEVEL });
 export const workUndoRequest = (id: string): WorkUndoRequest => ({ kind: 'work_undo', progress_id: id, forms: FORMS_LEVEL });
 
+/** The caller's own pending one is deleted; anything else (an admin's undo) is taken back with the existing reject. */
+export function undoRequestOf(list: ByApproveList | null, id: string): WorkUndoRequest | WorkResolveRequest {
+  const own = list?.items.find((one) => one.id === id && one.own && one.state === 'pendiente');
+  return own ? workUndoRequest(id) : workResolveRequest(id, 'rechazar', UNDO_NOTE);
+}
+
 const sendByApprove = (deps: WorkProgressDeps): Promise<WorkProgressResult> => sendMapTool(deps, {}, { sent: '', failed: BY_APPROVE_FAILED });
 const sendUndo = (deps: WorkProgressDeps): Promise<WorkProgressResult> => sendMapTool(deps, {}, { sent: UNDONE, failed: UNDO_FAILED });
 
@@ -154,21 +138,22 @@ export async function loadByApprove(send: MapEditSend): Promise<ByApproveList | 
   }
 }
 
-/** «Deshacer»: null when Portal deleted it, else Portal's reason. */
-export async function undoByApprove(send: MapEditSend, id: string): Promise<string | null> {
-  const answer = await send(workUndoRequest(id), sendUndo);
+/** «Deshacer»: null when Portal deleted or took it back, else Portal's reason. */
+export async function undoByApprove(send: MapEditSend, id: string, list: ByApproveList | null): Promise<string | null> {
+  const answer = await send(undoRequestOf(list, id), sendUndo);
   return answer.ok ? null : answer.message;
 }
 
 /** What the platforms' `useByApprove` runs: load the list into `setList`, and undo then load again. */
 export function byApproveActions(sender: { current: MapEditSend | undefined }, setList: (list: ByApproveList | null) => void) {
+  let latest: Promise<ByApproveList | null> = Promise.resolve(null);
   const load = (): void => {
-    if (sender.current) void loadByApprove(sender.current).then(setList);
-    else setList(null);
+    latest = sender.current ? loadByApprove(sender.current) : Promise.resolve(null);
+    void latest.then(setList);
   };
   const undo = async (id: string): Promise<string | null> => {
     if (!sender.current) return UNDO_FAILED;
-    const failure = await undoByApprove(sender.current, id);
+    const failure = await undoByApprove(sender.current, id, await latest);
     if (!failure) load();
     return failure;
   };

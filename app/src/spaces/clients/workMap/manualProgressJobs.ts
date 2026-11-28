@@ -13,7 +13,7 @@ import { uploadKeptFile } from '../useDriveUpload';
  * `entry_id` as already marked.
  */
 type ProgressPayload = { request: WorkManualProgressRequest; note: string };
-export const MANUAL_QUEUED = 'Avance guardado en el teléfono. Sale solo apenas haya señal y espera la aprobación de un administrador.';
+export const MANUAL_QUEUED = 'Avance guardado en el teléfono. Sale solo apenas haya señal.';
 
 async function sendProgress(job: FieldJob, jwt: string): Promise<FieldJobVerdict> {
   const { request, note } = job.payload as unknown as ProgressPayload;

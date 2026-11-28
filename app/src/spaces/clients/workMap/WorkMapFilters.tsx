@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { CalendarDays, Check, ChevronDown } from 'lucide-react-native';
-import { mapLegendEntries, workChoiceLabel, workChoicesOf, workMapCutChip, workMapCutDays, workMapCutLabel, workMapDayFilter, workMapWorkFilter, type WorkMap, type WorkMapFilter, type WorkMapView } from '@lilachat/shared';
+import { definedLegendEntries, mapLegendEntries, workChoiceLabel, workChoicesOf, workMapCutChip, workMapCutDays, workMapCutLabel, workMapDayFilter, workMapWorkFilter, type WorkMap, type WorkMapFilter, type WorkMapView } from '@lilachat/shared';
 import { Sheet } from '../../../ui/Sheet';
 import { useColores } from '../../../ui/tema';
 import { KICKER } from './WorkMapPanel';
@@ -88,14 +88,14 @@ export function WorkMapFilters(props: FilterProps) {
 }
 
 /** «Convenciones» at the foot of the map: one line per work, what is still to build and what waits approval. */
-export function WorkMapLegend(props: { view: WorkMapView; waiting: number }) {
-  if (!props.view.works.length) return null;
+export function WorkMapLegend(props: { view: WorkMapView; /** Streets drawn with no work painted yet. */ defined?: number }) {
+  const defined = definedLegendEntries(props.defined ?? 0);
+  if (!props.view.works.length && !defined.length) return null;
   return (
     <View testID="mapa-leyenda" className="gap-1.5 rounded-xl border border-outline/15 bg-surface px-3 py-2" style={MAP_SHADOW}>
-      {mapLegendEntries(props.view, props.waiting).map((entry) => (
+      {[...(props.view.works.length ? mapLegendEntries(props.view) : []), ...defined].map((entry) => (
         <View key={entry.key} className="flex-row items-center gap-2">
           {entry.kind === 'todo' ? <View className="h-1.5 w-4 rounded-full bg-on-surface-variant/35" />
-            : entry.kind === 'waiting' ? <View className="h-1.5 w-4 rounded-full bg-on-surface/40" />
             : <View className="h-1.5 w-4 rounded-full border border-on-surface/40" style={{ backgroundColor: entry.color ?? undefined }} />}
           <Text className={`text-[13px] ${entry.kind === 'work' ? 'font-medium text-on-surface' : 'text-on-surface-variant'}`}>{entry.label}</Text>
         </View>

@@ -158,7 +158,7 @@ export function brushLinesOf(map: WorkMap, brush: Brush): WorkMapLine[] {
 /** The band over the map while the brush is on (o-04, o-05). */
 export function brushTitle(map: WorkMap, brush: Brush): string {
   if (brush.kind === 'stage') return `Toca las calles en el mapa para sumarlas a ${map.stages.find((stage) => stage.id === brush.id)?.name ?? 'la etapa'}`;
-  return `Pintando ${map.works.find((work) => work.id === brush.id)?.name ?? 'el trabajo'} · Toca las calles que la llevan`;
+  return `Pintando ${map.works.find((work) => work.id === brush.id)?.name ?? 'el trabajo'} · Toca las calles que lo llevan`;
 }
 
 /** Sends a tap's stretches one by one; the first refusal stops and is what the person reads. */

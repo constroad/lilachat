@@ -22,24 +22,20 @@ describe('workProgressRequest (what the server opens, agentes 07/11)', () => {
 });
 
 describe('sendWorkProgress', () => {
-  it('opens, sends the note and says what Portal answered', async () => {
+  it('opens, sends the note and says it is registered, never that it waits (José 28/11)', async () => {
     // Arrange
     const deps = depsWith(answered('Avance registrado: 90 m, pendiente de aprobación.'));
     // Act
     const result = await sendWorkProgress(deps, entry);
     // Assert
     expect(deps.submit).toHaveBeenCalledWith('cmd-1', { nota: 'Tramo de la mañana' });
-    expect(result).toEqual({ ok: true, message: 'Avance registrado: 90 m, pendiente de aprobación.' });
-  });
-
-  it('without a text it still says the progress waits for approval', async () => {
-    const result = await sendWorkProgress(depsWith(answered('')), { ...entry, nota: undefined });
     expect(result).toEqual({ ok: true, message: PROGRESS_SENT });
+    expect(PROGRESS_SENT).toBe('Avance registrado.');
   });
 
-  it('the same entry sent again is no failure: agentes answers it as text (07/11)', async () => {
+  it('the same entry sent again is no failure (07/11)', async () => {
     const result = await sendWorkProgress(depsWith(answered('Ya estaba registrado.')), entry);
-    expect(result).toEqual({ ok: true, message: 'Ya estaba registrado.' });
+    expect(result).toEqual({ ok: true, message: PROGRESS_SENT });
   });
 
   it('says why when Portal, agentes or the server refuse it', async () => {
@@ -50,6 +46,7 @@ describe('sendWorkProgress', () => {
 
   it('a late answer is read from the notice', async () => {
     const deps = { ...depsWith({ ok: true, outcome: { ...form, outcome: 'pending' } as CommandOutcome }), notice: vi.fn(async () => ({ response: { responseType: 'ephemeral', text: 'Avance registrado.' } })) } as WorkProgressDeps;
-    expect(await sendWorkProgress(deps, entry)).toEqual({ ok: true, message: 'Avance registrado.' });
+    expect(await sendWorkProgress(deps, entry)).toEqual({ ok: true, message: PROGRESS_SENT });
+    expect(deps.notice).toHaveBeenCalledWith('cmd-1');
   });
 });

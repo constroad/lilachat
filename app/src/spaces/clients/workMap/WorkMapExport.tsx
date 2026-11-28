@@ -74,12 +74,12 @@ function PlanPdf(props: { filter: WorkMapFilter; send: MapEditSend }) {
   );
 }
 
-/** «Estructura de capas KMZ generada»: the folders Google Earth will show, with their metres. */
+/** «Estructura del KMZ generada»: the folders Google Earth will show, with their metres. */
 function KmzTree(props: { map: WorkMap; filter: WorkMapFilter; fileName: string }) {
   const layers = kmzLayersOf(props.map, props.filter);
   return (
     <View testID="exportar-capas" className="gap-1 rounded-2xl bg-on-surface p-4">
-      <Text className="text-[11px] font-bold uppercase tracking-[1.5px] text-surface/70">Estructura de capas KMZ</Text>
+      <Text className="text-[11px] font-bold uppercase tracking-[1.5px] text-surface/70">Estructura del KMZ</Text>
       <Text className="font-mono text-[13px] text-surface">{props.fileName.replace(/\.kmz$/, '')}/</Text>
       <Text className="ml-3 font-mono text-[13px] text-primary-container">Ejecutado/</Text>
       {layers.done.map((layer) => <Text key={layer.workId} className="ml-6 font-mono text-[13px] text-surface">{layer.name} ({layer.meters})</Text>)}
@@ -115,7 +115,7 @@ export function WorkMapExport(props: Props) {
         {notice ? <Text accessibilityRole="alert" className="mt-2 text-[14px] text-error">{notice}</Text> : null}
       </Card>
       {props.send ? <PlanPdf filter={props.filter} send={props.send} /> : null}
-      <Card icon={<Link2 size={18} color={colors.primary} />} title="Enlace para el cliente" hint="Solo lo aprobado.">
+      <Card icon={<Link2 size={18} color={colors.primary} />} title="Enlace para el cliente" hint="El avance registrado.">
         <Text numberOfLines={1} className="mt-2 rounded-lg border border-outline/20 bg-background px-2.5 py-1.5 font-mono text-[13px] text-on-surface-variant">{props.pageUrl}</Text>
         <Pressable testID="mapa-copiar-enlace-visor" onPress={copy} className="mt-2 min-h-[48px] flex-row items-center justify-center gap-2 rounded-xl border border-primary/30">
           <Copy size={18} color={colors.primary} />

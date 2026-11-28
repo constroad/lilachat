@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { mapLegendEntries, mapMoreItems, workChoiceLabel, workChoicesOf, isPavingWork, showsUnitPins } from './workMapMenu.js';
+import { definedLegendEntries, mapLegendEntries, mapMoreItems, workChoiceLabel, workChoicesOf, isPavingWork, showsUnitPins } from './workMapMenu.js';
 
 /** José 09/11: the actions were piled up; the rest goes under «Más», the works in a select, the legend folds. */
 const view = { works: [{ id: 'w1', name: 'Base granular', color: '#a16207', percent: 100 }, { id: 'w2', name: 'Imprimación', color: '#2563eb', percent: 41.5 }] };
@@ -64,15 +64,20 @@ describe('the work select', () => {
 });
 
 describe('the legend', () => {
-  it('each work, the stretch still to build and, only when something waits, «Por aprobar»', () => {
+  it('each work and the stretch still to build, never «Por aprobar» (José 28/11)', () => {
     // Act
-    const quiet = mapLegendEntries(view, 0);
-    const waiting = mapLegendEntries(view, 2);
+    const entries = mapLegendEntries(view);
     // Assert
-    expect(quiet.map((entry) => entry.kind)).toEqual(['work', 'work', 'todo']);
-    expect(quiet[2]).toEqual({ key: 'todo', kind: 'todo', label: 'Pendiente de ejecución', color: null });
-    expect(waiting.at(-1)).toEqual({ key: 'waiting', kind: 'waiting', label: 'Por aprobar (2)', color: null });
-    expect(mapLegendEntries(view, 1).at(-1)?.label).toBe('Por aprobar (1)');
+    expect(entries.map((entry) => entry.kind)).toEqual(['work', 'work', 'todo']);
+    expect(entries[2]).toEqual({ key: 'todo', kind: 'todo', label: 'Pendiente de ejecución', color: null });
+    expect(entries.some((entry) => /aprobar/i.test(entry.label))).toBe(false);
+  });
+});
+
+describe('the legend of the defined streets', () => {
+  it('names the orange street with no work only when there is one', () => {
+    expect(definedLegendEntries(2)).toEqual([{ key: 'defined', kind: 'defined', label: 'Calle sin trabajo', color: '#FF6A00' }]);
+    expect(definedLegendEntries(0)).toEqual([]);
   });
 });
 

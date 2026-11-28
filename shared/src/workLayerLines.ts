@@ -14,7 +14,12 @@ export type LayerMapLines = { base: WorkMapLine[]; planned: WorkMapLine[]; done:
 
 /** MapLibre paints hex, not tokens: a slate that reads on the light and the dark basemap. */
 export const LAYER_BASE_COLOR = '#64748b';
-export const LAYER_BASE_PAINT = { 'line-color': ['get', 'color'], 'line-width': streetWidthExpression(2), 'line-opacity': 0.35 };
+/** A street drawn with no work painted yet (José 28/11): a bright orange that reads on the light and the dark basemap. */
+export const STREET_DEFINED_COLOR = '#FF6A00';
+export const STREET_DEFINED_LEGEND = 'Calle sin trabajo';
+const BASE_OPACITY = 0.35;
+/** The neutral base is faint; a defined street with no work is opaque, both as wide as the street. */
+export const LAYER_BASE_PAINT = { 'line-color': ['get', 'color'], 'line-width': streetWidthExpression(2), 'line-opacity': ['case', ['==', ['get', 'color'], STREET_DEFINED_COLOR], 1, BASE_OPACITY] };
 export const LAYER_PLANNED_PAINT = { 'line-color': ['get', 'color'], 'line-width': streetWidthExpression(4), 'line-opacity': 0.4 };
 /** The stretch being recorded or painted (Registrar avance, the brush): solid and as wide as the street. */
 export const WORK_MAP_STRETCH_PAINT = { 'line-color': ['get', 'color'], 'line-width': streetWidthExpression(6), 'line-opacity': 0.6 };
@@ -29,10 +34,17 @@ const HALF = 2;
 const MIN_POINTS = 2;
 const lngLat = (street: WorkMapStreet): Array<[number, number]> => street.line.map((point) => [point.lng, point.lat]);
 
-/** The streets the view shows, whole, thin and neutral: the work reads without looking pending. */
-export function baseLinesOf(map: Pick<WorkMap, 'streets'>, view: Pick<WorkMapView, 'streets'>): WorkMapLine[] {
+/** The streets with no stretch carrying a work: drawn, but nothing painted on them yet. */
+export function definedStreetIdsOf(map: Pick<WorkMap, 'streets' | 'scopes'>): Set<string> {
+  const worked = new Set(map.scopes.filter((scope) => scope.workIds.length > 0).map((scope) => scope.streetId));
+  return new Set(map.streets.filter((street) => !worked.has(street.id)).map((street) => street.id));
+}
+
+/** The streets the view shows, whole: neutral and faint under a work, orange when none is painted. */
+export function baseLinesOf(map: Pick<WorkMap, 'streets' | 'scopes'>, view: Pick<WorkMapView, 'streets'>): WorkMapLine[] {
   const shown = new Set(view.streets.map((row) => row.id));
-  return map.streets.filter((street) => shown.has(street.id) && street.line.length >= MIN_POINTS).map((street) => ({ streetId: street.id, color: LAYER_BASE_COLOR, coordinates: lngLat(street), ...widthOf(street.widthM) }));
+  const defined = definedStreetIdsOf(map);
+  return map.streets.filter((street) => shown.has(street.id) && street.line.length >= MIN_POINTS).map((street) => ({ streetId: street.id, color: defined.has(street.id) ? STREET_DEFINED_COLOR : LAYER_BASE_COLOR, coordinates: lngLat(street), ...widthOf(street.widthM) }));
 }
 
 /** The street's % at the middle of its line, as the design writes «42 %» beside the stretch. */
@@ -44,7 +56,7 @@ export function layerLabelsOf(map: Pick<WorkMap, 'streets'>, rows: readonly Pick
   });
 }
 
-type LayerLinesInput = { map: WorkMap; view: WorkMapView; filter: WorkMapFilter; workId: string | null; rows: readonly Pick<LayerStreetSummary, 'streetId' | 'percentText'>[]; /** The layer's switch in «Capas y leyenda» is off. */ hidden: boolean };
+type LayerLinesInput = { map: WorkMap; view: WorkMapView; filter: WorkMapFilter; workId: string | null; rows: readonly Pick<LayerStreetSummary, 'streetId' | 'percentText'>[]; /** The layer's switch in «Ver» is off. */ hidden: boolean };
 
 /** What the board draws: without a layer (no works yet) only the neutral streets and what is done. */
 export function layerMapLinesOf(input: LayerLinesInput): LayerMapLines {

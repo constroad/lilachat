@@ -71,8 +71,8 @@ describe('layerPlanProblem / layerButtonLabel', () => {
     expect(layerPlanProblem(MAP, { name: 'Riego de liga', color: '#000000', allStreets: true })).toBeNull();
   });
   it('names the layer on the button', () => {
-    expect(layerButtonLabel(null, false)).toBe('Crear capa');
-    expect(layerButtonLabel({ name: ' Base granular ', color: '#000000', allStreets: true }, false)).toBe('Crear capa Base granular');
+    expect(layerButtonLabel(null, false)).toBe('Crear trabajo');
+    expect(layerButtonLabel({ name: ' Base granular ', color: '#000000', allStreets: true }, false)).toBe('Crear trabajo Base granular');
     expect(layerButtonLabel({ name: 'X', color: '#000000', allStreets: true }, true)).toBe('Creando…');
   });
 });
